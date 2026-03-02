@@ -1,8 +1,29 @@
-apiVersion: v1               # Versió de l'API de Kubernetes per a objectes de configuració
-kind: ConfigMap               # Tipus de recurs: Mapa de configuració
+# ============================================================
+# ConfigMap para el namespace 'databases'
+# Contiene la configuración no sensible que necesita MariaDB
+# ============================================================
+apiVersion: v1
+kind: ConfigMap
 metadata:
-  name: mariadb-config        # Nom del recurs per referenciar-lo en altres fitxers
-  namespace: wordpress-ha     # Namespace on es crea (ha de coincidir amb el Secret i el Pod)
-data:                         # Secció on definim les variables d'entorn
-  MYSQL_DATABASE: wordpress_db # Nom de la base de dades que es crearà automàticament
-  MYSQL_USER: wordpress_user     # Nom de l'usuari de la BD (diferent del root)
+  name: mariadb-config        # Referenciado por el Deployment de MariaDB
+  namespace: databases        # Mismo namespace que MariaDB y el Secret
+data:
+  MYSQL_DATABASE: wordpress_db   # Nombre de la base de datos que se creará automáticamente
+  MYSQL_USER: wordpress_user     # Usuario de la BD (distinto de root)
+
+---
+# ============================================================
+# ConfigMap para el namespace 'wordpress'
+# Contiene la configuración no sensible que necesita WordPress
+# ============================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: wordpress-config      # Referenciado por el Deployment de WordPress
+  namespace: wordpress        # Mismo namespace que WordPress
+data:
+  WORDPRESS_DB_HOST: "mariadb.databases.svc.cluster.local"  # FQDN del Service de MariaDB en namespace 'databases'
+  WORDPRESS_DB_NAME: "wordpress_db"                          # Debe coincidir con MYSQL_DATABASE de mariadb-config
+  WORDPRESS_DB_USER: "wordpress_user"                        # Debe coincidir con MYSQL_USER de mariadb-config
+  WORDPRESS_SITE_URL: "http://wp-k8s.local"                  # URL pública de la instalación de WordPress
+  WORDPRESS_ADMIN_EMAIL: "admin@example.com"                 # Email del administrador (no sensible)
