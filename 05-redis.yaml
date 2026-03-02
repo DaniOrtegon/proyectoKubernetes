@@ -1,35 +1,53 @@
-apiVersion: apps/v1              # Versió de l'API per a recursos de tipus Deployment
-kind: Deployment                 # Tipus de recurs: Un desplegament de Pods
+# ============================================================
+# Deployment para Redis en el namespace 'databases'
+# Redis actúa como caché para WordPress, mejorando su rendimiento
+# ============================================================
+apiVersion: apps/v1
+kind: Deployment
 metadata:
-  name: redis                    # Nom del Deployment dins del clúster
-  namespace: wordpress-ha        # Namespace on s'executarà el Redis
-  labels:                        # Etiquetes per organitzar el recurs
+  name: redis
+  namespace: databases  # Mismo namespace que MariaDB
+  labels:
     app: redis
 spec:
-  replicas: 1                    # Nombre de Pods de Redis que volem (1 és suficient per a cache)
-  selector:                      # Com identifica el Deployment els seus Pods
+  replicas: 1
+  selector:
     matchLabels:
-      app: redis                 # Ha de coincidir amb l'etiqueta del template
-  template:                      # La plantilla per crear els Pods
+      app: redis
+  template:
     metadata:
-      labels:                    # Etiquetes que s'assignaran als Pods
+      labels:
         app: redis
     spec:
-      containers:                # Definició del contenidor que va dins del Pod
-      - name: redis              # Nom del contenidor
-        image: redis:6.2-alpine  # Imatge lleugera (Alpine) de Redis versió 6.2
-        ports:
-        - containerPort: 6379    # Port estàndard on escolta Redis
+      containers:
+        - name: redis
+          image: redis:6.2-alpine  # Alpine es más ligero, ideal para entornos de prácticas
+          ports:
+            - containerPort: 6379  # Puerto estándar de Redis
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          # Redis por defecto almacena datos en memoria (caché).
+          # Solo añade persistencia con PVC si necesitas que los datos
+          # sobrevivan a reinicios del Pod. Para caché pura no es necesario.
+
 ---
-apiVersion: v1                   # Versió de l'API per a recursos bàsics (Service)
-kind: Service                    # Tipus de recurs: Servei de xarxa
+# ============================================================
+# Servicio para Redis en el namespace 'databases'
+# WordPress lo alcanza via FQDN: redis.databases.svc.cluster.local
+# ============================================================
+apiVersion: v1
+kind: Service
 metadata:
-  name: redis                    # Nom de host DNS (WordPress buscarà "redis")
-  namespace: wordpress-ha        # Mateix namespace que el Deployment
+  name: redis
+  namespace: databases
 spec:
   ports:
-    - port: 6379                 # Port que el servei exposa a la xarxa del clúster
-  selector:                      # Envia el trànsit als Pods amb aquesta etiqueta
+    - port: 6379
+      targetPort: 6379
+  selector:
     app: redis
-
-
