@@ -1,4 +1,22 @@
-apiVersion: v1              # Versió de l'API bàsica de Kubernetes
-kind: Namespace             # Tipus de recurs: Namespace (espai de noms)
+apiVersion: v1
+kind: Namespace
 metadata:
-  name: wordpress-ha        # El nom del nostre "projecte" o entorn aïllat
+  name: security   # Namespace para recursos relacionados con la seguridad (RBAC, Network Policies, etc.)
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: wordpress  # Namespace para los recursos de WordPress (Deployment, Service, PVCs, etc.)
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: databases  # Namespace para bases de datos (MariaDB, PostgreSQL, etc.)
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring  # Namespace para herramientas de monitoreo (Prometheus, Grafana, Alertmanager, etc.)
