@@ -1,8 +1,11 @@
+# ============================================================
+# Deployment para WordPress en el namespace 'wordpress'
+# ============================================================
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: wordpress
-  namespace: wordpress-ha
+  namespace: wordpress
   labels:
     app: wordpress
 spec:
@@ -16,55 +19,75 @@ spec:
         app: wordpress
     spec:
       containers:
-      - name: wordpress
-        image: wordpress:latest
-        ports:
-        - containerPort: 80
-        env:
-        - name: WORDPRESS_DB_HOST
-          value: mariadb
-        - name: WORDPRESS_DB_USER
-          valueFrom:
-            configMapKeyRef:
-              name: mariadb-config
-              key: MYSQL_USER
-        - name: WORDPRESS_DB_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: mariadb-secret
-              key: mariadb-user-password
-        - name: WORDPRESS_DB_NAME
-          valueFrom:
-            configMapKeyRef:
-              name: mariadb-config
-              key: MYSQL_DATABASE
-        - name: WORDPRESS_CONFIG_EXTRA
-          value: "define('WP_HOME', 'http://wp-k8s.local');\ndefine('WP_SITEURL', 'http://wp-k8s.local');\ndefine('FORCE_SSL_ADMIN', false);"
-        resources:
-          requests:
-            cpu: 100m
-            memory: 128Mi
-          limits:
-            cpu: 500m
-            memory: 256Mi
-        volumeMounts:
-        - name: wordpress-storage
-          mountPath: /var/www/html
+        - name: wordpress
+          image: wordpress:6.4  # Versión estable actual, evitamos 5.7 (desactualizada) y latest
+          ports:
+            - containerPort: 80
+          env:
+            - name: WORDPRESS_DB_HOST
+              value: "mariadb.databases.svc.cluster.local"  # FQDN del Service de MariaDB en namespace 'databases'
+
+            # Datos no sensibles desde el ConfigMap 'wordpress-config'
+            - name: WORDPRESS_DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: wordpress-config
+                  key: WORDPRESS_DB_NAME
+            - name: WORDPRESS_DB_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: wordpress-config
+                  key: WORDPRESS_DB_USER
+
+            # Contraseña desde el Secret 'mariadb-secret'
+            # IMPORTANTE: Este Secret está en namespace 'databases'.
+            # Para que WordPress pueda usarlo, debes crear una copia del Secret
+            # en el namespace 'wordpress' o usar External Secrets Operator.
+            # Por simplicidad en prácticas, duplicamos el Secret en 01-secrets.yaml.
+            - name: WORDPRESS_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mariadb-secret
+                  key: mariadb-user-password
+
+            # Configuración extra de WordPress via PHP
+            - name: WORDPRESS_CONFIG_EXTRA
+              value: |
+                define('WP_HOME', 'http://wp-k8s.local');
+                define('WP_SITEURL', 'http://wp-k8s.local');
+                define('WP_REDIS_HOST', 'redis.databases.svc.cluster.local');
+                define('WP_REDIS_PORT', 6379);
+
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          volumeMounts:
+            - name: wordpress-storage
+              mountPath: /var/www/html  # Ruta donde WordPress guarda plugins, temas y uploads
       volumes:
-      - name: wordpress-storage
-        persistentVolumeClaim:
-          claimName: wordpress-pvc
+        - name: wordpress-storage
+          persistentVolumeClaim:
+            claimName: wordpress-pvc  # PVC definido en 03-pvc.yaml
+
 ---
+# ============================================================
+# Servicio para WordPress en el namespace 'wordpress'
+# Usamos NodePort para acceso externo sin necesidad de LoadBalancer
+# ============================================================
 apiVersion: v1
 kind: Service
 metadata:
   name: wordpress
-  namespace: wordpress-ha
+  namespace: wordpress
 spec:
-  type: NodePort
+  type: NodePort          # Compatible con Minikube y clústeres sin LoadBalancer
   ports:
     - port: 80
       targetPort: 80
-      nodePort: 30080
+      nodePort: 30080     # Puerto accesible desde fuera del clúster: http://<IP-nodo>:30080
   selector:
     app: wordpress
