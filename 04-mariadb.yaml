@@ -1,0 +1,62 @@
+apiVersion: apps/v1              # Versió de l'API per a Deployments
+kind: Deployment                 # Tipus de recurs: Desplegament de Pods
+metadata:
+  name: mariadb                  # Nom del Deployment
+  namespace: wordpress-ha        # Espai de noms on viurà la base de dades
+  labels:                        # Etiquetes organitzatives
+    app: mariadb
+spec:
+  selector:                      # Defineix com el Deployment troba els seus Pods
+    matchLabels:
+      app: mariadb               # Ha de coincidir amb la lable del template
+  template:                      # La "recepta" per crear els Pods
+    metadata:
+      labels:                    # Etiquetes que tindran els Pods creats
+        app: mariadb
+    spec:
+      containers:                # Llista de contenidors dins del Pod
+      - name: mariadb            # Nom del contenidor
+        image: mariadb:10.6.4-focal # Imatge de MariaDB que es descarregarà
+        ports:
+        - containerPort: 3306    # Port on escolta la base de dades
+        env:                     # Variables d'entorn per configurar MariaDB
+        - name: MYSQL_ROOT_PASSWORD # Variable per a la contrasenya de Root
+          valueFrom:
+            secretKeyRef:        # Agafa el valor d'un Secret
+              name: mariadb-secret
+              key: mariadb-root-password
+        - name: MYSQL_DATABASE   # Variable per al nom de la BD
+          valueFrom:
+            configMapKeyRef:     # Agafa el valor d'un ConfigMap
+              name: mariadb-config
+              key: MYSQL_DATABASE
+        - name: MYSQL_USER       # Variable per a l'usuari de la BD
+          valueFrom:
+            configMapKeyRef:
+              name: mariadb-config
+              key: MYSQL_USER
+        - name: MYSQL_PASSWORD   # Variable per a la contrasenya de l'usuari
+          valueFrom:
+            secretKeyRef:
+              name: mariadb-secret
+              key: mariadb-user-password
+        volumeMounts:            # On "enganxem" el disc dins del contenidor
+        - name: mariadb-storage
+          mountPath: /var/lib/mysql # Ruta interna on MariaDB desa les dades
+      volumes:                   # Definició dels volums disponibles
+      - name: mariadb-storage    # Nom intern per connectar amb volumeMounts
+        persistentVolumeClaim:
+          claimName: mariadb-pvc # Nom del PVC que vam crear (el disc de 1Gi)
+
+---
+apiVersion: v1                   # Versió de l'API bàsica
+kind: Service                    # Tipus de recurs: Servei (Xarxa)
+metadata:
+  name: mariadb                  # Nom de host DNS (wordpress usarà aquest nom)
+  namespace: wordpress-ha        # Mateix namespace que el Deployment
+spec:
+  ports:
+    - port: 3306                 # Port que exposa el servei
+  selector:                      # Envia el trànsit als Pods amb aquesta etiqueta
+    app: mariadb
+  clusterIP: None                # Servei "Headless": DNS directe a la IP del Pod

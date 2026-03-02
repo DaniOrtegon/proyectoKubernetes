@@ -1,0 +1,8 @@
+apiVersion: v1               # Versió de l'API de Kubernetes per a objectes de configuració
+kind: ConfigMap               # Tipus de recurs: Mapa de configuració
+metadata:
+  name: mariadb-config        # Nom del recurs per referenciar-lo en altres fitxers
+  namespace: wordpress-ha     # Namespace on es crea (ha de coincidir amb el Secret i el Pod)
+data:                         # Secció on definim les variables d'entorn
+  MYSQL_DATABASE: wordpress_db # Nom de la base de dades que es crearà automàticament
+  MYSQL_USER: wordpress_user     # Nom de l'usuari de la BD (diferent del root)

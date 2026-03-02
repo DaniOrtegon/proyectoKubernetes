@@ -1,0 +1,62 @@
+# --- POLÍTICA PER A LA BASE DE DADES (MariaDB) ---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: mariadb-policy          # Nom de la regla de seguretat
+  namespace: wordpress-ha       # On s'aplica (assegura't que el namespace existeix)
+spec:
+  podSelector:                  # A qui estem protegint?
+    matchLabels:
+      app: mariadb              # Aquesta política "cau" sobre el Pod que té l'etiqueta app: mariadb
+  policyTypes:
+  - Ingress                     # Controlarem el trànsit d'ENTRADA (Ingress)
+  ingress:
+  - from:                       # Des d'on permetem que vingui el trànsit?
+    - podSelector:
+        matchLabels:
+          app: wordpress        # NOMÉS els Pods amb l'etiqueta app: wordpress poden entrar
+
+---
+# --- POLÍTICA PER A LA MEMÒRIA CAU (Redis) ---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: redis-policy            # Nom de la regla per al Redis
+  namespace: wordpress-ha
+spec:
+  podSelector:
+    matchLabels:
+      app: redis                # Protegim el Pod del Redis
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: wordpress        # NOMÉS permetem que el WordPress hi connecti
+
+---
+# --- POLÍTICA PER A LA COMUNICACIÓ ENTRE GRAFANA I LOKI ---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-grafana-to-loki
+  namespace: logging  # Aplicamos la política en el namespace 'logging' (donde está Loki)
+spec:
+  podSelector: {}  # Afecta a todos los pods en el namespace 'logging'
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: default  # Permite tráfico desde el namespace 'default' (donde Grafana está)
+    ports:
+    - protocol: TCP
+      port: 3100  # Puerto en el que Loki escucha (puedes cambiarlo si es otro)
+  policyTypes:
+  - Ingress
+
+
+
+
+
+

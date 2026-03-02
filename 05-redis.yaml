@@ -1,0 +1,35 @@
+apiVersion: apps/v1              # Versió de l'API per a recursos de tipus Deployment
+kind: Deployment                 # Tipus de recurs: Un desplegament de Pods
+metadata:
+  name: redis                    # Nom del Deployment dins del clúster
+  namespace: wordpress-ha        # Namespace on s'executarà el Redis
+  labels:                        # Etiquetes per organitzar el recurs
+    app: redis
+spec:
+  replicas: 1                    # Nombre de Pods de Redis que volem (1 és suficient per a cache)
+  selector:                      # Com identifica el Deployment els seus Pods
+    matchLabels:
+      app: redis                 # Ha de coincidir amb l'etiqueta del template
+  template:                      # La plantilla per crear els Pods
+    metadata:
+      labels:                    # Etiquetes que s'assignaran als Pods
+        app: redis
+    spec:
+      containers:                # Definició del contenidor que va dins del Pod
+      - name: redis              # Nom del contenidor
+        image: redis:6.2-alpine  # Imatge lleugera (Alpine) de Redis versió 6.2
+        ports:
+        - containerPort: 6379    # Port estàndard on escolta Redis
+---
+apiVersion: v1                   # Versió de l'API per a recursos bàsics (Service)
+kind: Service                    # Tipus de recurs: Servei de xarxa
+metadata:
+  name: redis                    # Nom de host DNS (WordPress buscarà "redis")
+  namespace: wordpress-ha        # Mateix namespace que el Deployment
+spec:
+  ports:
+    - port: 6379                 # Port que el servei exposa a la xarxa del clúster
+  selector:                      # Envia el trànsit als Pods amb aquesta etiqueta
+    app: redis
+
+

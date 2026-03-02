@@ -1,0 +1,272 @@
+# ============================================================
+# PROMETHEUS - Namespace: monitoring
+# Recopila métricas del clúster, nodos, pods y aplicaciones
+# ============================================================
+
+# --- ConfigMap con la configuración principal de Prometheus ---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: monitoring
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s        # Cada cuánto recoge métricas
+      evaluation_interval: 15s    # Cada cuánto evalúa las reglas de alerta
+
+    alerting:
+      alertmanagers:
+        - static_configs:
+            - targets: []         # Sin Alertmanager externo por ahora
+
+    rule_files:
+      - "/etc/prometheus/rules/*.yml"   # Carga las reglas de alerta desde el ConfigMap de reglas
+
+    scrape_configs:
+      # Métricas del propio Prometheus
+      - job_name: 'prometheus'
+        static_configs:
+          - targets: ['localhost:9090']
+
+      # Métricas de los nodos del clúster (requiere node-exporter)
+      - job_name: 'kubernetes-nodes'
+        kubernetes_sd_configs:
+          - role: node
+        relabel_configs:
+          - action: labelmap
+            regex: __meta_kubernetes_node_label_(.+)
+
+      # Métricas de todos los Pods del clúster via anotaciones
+      - job_name: 'kubernetes-pods'
+        kubernetes_sd_configs:
+          - role: pod
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: true
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+            action: replace
+            target_label: __metrics_path__
+            regex: (.+)
+          - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+            action: replace
+            regex: ([^:]+)(?::\d+)?;(\d+)
+            replacement: $1:$2
+            target_label: __address__
+          - action: labelmap
+            regex: __meta_kubernetes_pod_label_(.+)
+          - source_labels: [__meta_kubernetes_namespace]
+            action: replace
+            target_label: kubernetes_namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            action: replace
+            target_label: kubernetes_pod_name
+
+      # Métricas de MariaDB (namespace databases)
+      - job_name: 'mariadb'
+        static_configs:
+          - targets: ['mariadb.databases.svc.cluster.local:3306']
+        metrics_path: /metrics
+
+      # Métricas de WordPress (namespace wordpress)
+      - job_name: 'wordpress'
+        static_configs:
+          - targets: ['wordpress.wordpress.svc.cluster.local:80']
+        metrics_path: /metrics
+
+---
+# --- ConfigMap con las reglas de alerta ---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-rules
+  namespace: monitoring
+data:
+  alerts.yml: |
+    groups:
+      - name: kubernetes-alerts
+        rules:
+
+          # Alerta: Pod caído (no en estado Running/Succeeded)
+          - alert: PodDown
+            expr: kube_pod_status_phase{phase!~"Running|Succeeded"} == 1
+            for: 2m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Pod caído: {{ $labels.pod }}"
+              description: "El Pod {{ $labels.pod }} en namespace {{ $labels.namespace }} lleva más de 2 minutos sin estar Running."
+
+          # Alerta: CPU > 80%
+          - alert: HighCPUUsage
+            expr: |
+              (sum(rate(container_cpu_usage_seconds_total{container!=""}[5m])) by (pod, namespace)
+              / sum(kube_pod_container_resource_limits{resource="cpu"}) by (pod, namespace)) * 100 > 80
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "CPU alta en Pod: {{ $labels.pod }}"
+              description: "El Pod {{ $labels.pod }} en {{ $labels.namespace }} supera el 80% de CPU durante más de 5 minutos."
+
+          # Alerta: Memoria > 80%
+          - alert: HighMemoryUsage
+            expr: |
+              (sum(container_memory_working_set_bytes{container!=""}) by (pod, namespace)
+              / sum(kube_pod_container_resource_limits{resource="memory"}) by (pod, namespace)) * 100 > 80
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Memoria alta en Pod: {{ $labels.pod }}"
+              description: "El Pod {{ $labels.pod }} en {{ $labels.namespace }} supera el 80% de memoria durante más de 5 minutos."
+
+          # Alerta: MariaDB no responde
+          - alert: MariaDBDown
+            expr: up{job="mariadb"} == 0
+            for: 1m
+            labels:
+              severity: critical
+            annotations:
+              summary: "MariaDB no responde"
+              description: "El job de Prometheus no puede conectar con MariaDB desde hace más de 1 minuto."
+
+---
+# --- PersistentVolumeClaim para Prometheus ---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: prometheus-pvc
+  namespace: monitoring
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: standard
+
+---
+# --- ServiceAccount y RBAC para que Prometheus descubra recursos del clúster ---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus
+  namespace: monitoring
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prometheus
+rules:
+  - apiGroups: [""]
+    resources: ["nodes", "nodes/proxy", "services", "endpoints", "pods", "namespaces"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["extensions", "networking.k8s.io"]
+    resources: ["ingresses"]
+    verbs: ["get", "list", "watch"]
+  - nonResourceURLs: ["/metrics"]
+    verbs: ["get"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: prometheus
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: prometheus
+subjects:
+  - kind: ServiceAccount
+    name: prometheus
+    namespace: monitoring
+
+---
+# --- Deployment de Prometheus ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  namespace: monitoring
+  labels:
+    app: prometheus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        app: prometheus
+    spec:
+      serviceAccountName: prometheus   # Necesario para el service discovery de Kubernetes
+      securityContext:
+        fsGroup: 65534                 # Permite a Prometheus escribir en el volumen persistente
+        runAsUser: 65534               # Usuario 'nobody', evita correr como root
+        runAsNonRoot: true
+      containers:
+        - name: prometheus
+          image: prom/prometheus:v2.48.0   # Versión fija estable
+          args:
+            - "--config.file=/etc/prometheus/prometheus.yml"
+            - "--storage.tsdb.path=/prometheus"
+            - "--storage.tsdb.retention.time=15d"   # Retención de 15 días de métricas
+            - "--web.enable-lifecycle"               # Permite recargar config sin reiniciar
+          ports:
+            - containerPort: 9090
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+          volumeMounts:
+            - name: config
+              mountPath: /etc/prometheus
+            - name: rules
+              mountPath: /etc/prometheus/rules
+            - name: prometheus-storage
+              mountPath: /prometheus
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: 9090
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: 9090
+            initialDelaySeconds: 30
+            periodSeconds: 15
+      volumes:
+        - name: config
+          configMap:
+            name: prometheus-config
+        - name: rules
+          configMap:
+            name: prometheus-rules
+        - name: prometheus-storage
+          persistentVolumeClaim:
+            claimName: prometheus-pvc
+
+---
+# --- Service de Prometheus (ClusterIP interno + NodePort para acceso directo) ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  namespace: monitoring
+spec:
+  type: NodePort
+  ports:
+    - port: 9090
+      targetPort: 9090
+      nodePort: 30090    # Acceso directo: http://<IP-nodo>:30090
+  selector:
+    app: prometheus

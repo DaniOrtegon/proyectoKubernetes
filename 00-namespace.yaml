@@ -1,0 +1,4 @@
+apiVersion: v1              # Versió de l'API bàsica de Kubernetes
+kind: Namespace             # Tipus de recurs: Namespace (espai de noms)
+metadata:
+  name: wordpress-ha        # El nom del nostre "projecte" o entorn aïllat

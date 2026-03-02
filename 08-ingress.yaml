@@ -1,0 +1,19 @@
+apiVersion: networking.k8s.io/v1     # Especifica la versió de l'API de xarxa de K8s.
+kind: Ingress                        # Defineix que aquest objecte és un Ingress (punt d'entrada).
+metadata:                            # Secció de dades descriptives.
+  name: wordpress-ingress            # El nom identificatiu d'aquesta regla.
+  namespace: wordpress-ha           # Ubicació: s'aplica dins del nostre namespace de treball.
+  annotations:                       # Configuracions especials per al programari de l'Ingress.
+    nginx.ingress.kubernetes.io/rewrite-target: / # Indica que redirigeixi el trànsit a l'arrel del servei.
+spec:                                # Defineix les regles de funcionament.
+  rules:                             # Llista de regles segons el nom de domini.
+  - host: wp-k8s.local               # El domini que l'usuari escriurà al navegador.
+    http:                            # Protocol de comunicació (HTTP).
+      paths:                         # Llista de camins o rutes dins del domini.
+      - path: /                      # Ruta principal (tota la web des de l'inici).
+        pathType: Prefix             # Tipus de coincidència: qualsevol subruta (ex: /blog) també entra.
+        backend:                     # Defineix cap a on s'envia el visitant.
+          service:                   # L'objectiu és un Servei.
+            name: wordpress          # El nom del servei que vam crear a l'Activitat 5.
+            port:                    # Port de destí.
+              number: 80             # El port HTTP estàndard on escolta el WordPress.
