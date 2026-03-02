@@ -1,62 +1,83 @@
-apiVersion: apps/v1              # Versió de l'API per a Deployments
-kind: Deployment                 # Tipus de recurs: Desplegament de Pods
+# ============================================================
+# Deployment para MariaDB en el namespace 'databases'
+# Crea una instancia de MariaDB para que sea usada por WordPress.
+# ============================================================
+apiVersion: apps/v1
+kind: Deployment
 metadata:
-  name: mariadb                  # Nom del Deployment
-  namespace: wordpress-ha        # Espai de noms on viurà la base de dades
-  labels:                        # Etiquetes organitzatives
+  name: mariadb
+  namespace: databases       # Mismo namespace que el Secret y el PVC
+  labels:
     app: mariadb
 spec:
-  selector:                      # Defineix com el Deployment troba els seus Pods
+  replicas: 1
+  selector:
     matchLabels:
-      app: mariadb               # Ha de coincidir amb la lable del template
-  template:                      # La "recepta" per crear els Pods
+      app: mariadb
+  template:
     metadata:
-      labels:                    # Etiquetes que tindran els Pods creats
+      labels:
         app: mariadb
     spec:
-      containers:                # Llista de contenidors dins del Pod
-      - name: mariadb            # Nom del contenidor
-        image: mariadb:10.6.4-focal # Imatge de MariaDB que es descarregarà
-        ports:
-        - containerPort: 3306    # Port on escolta la base de dades
-        env:                     # Variables d'entorn per configurar MariaDB
-        - name: MYSQL_ROOT_PASSWORD # Variable per a la contrasenya de Root
-          valueFrom:
-            secretKeyRef:        # Agafa el valor d'un Secret
-              name: mariadb-secret
-              key: mariadb-root-password
-        - name: MYSQL_DATABASE   # Variable per al nom de la BD
-          valueFrom:
-            configMapKeyRef:     # Agafa el valor d'un ConfigMap
-              name: mariadb-config
-              key: MYSQL_DATABASE
-        - name: MYSQL_USER       # Variable per a l'usuari de la BD
-          valueFrom:
-            configMapKeyRef:
-              name: mariadb-config
-              key: MYSQL_USER
-        - name: MYSQL_PASSWORD   # Variable per a la contrasenya de l'usuari
-          valueFrom:
-            secretKeyRef:
-              name: mariadb-secret
-              key: mariadb-user-password
-        volumeMounts:            # On "enganxem" el disc dins del contenidor
+      containers:
+        - name: mariadb
+          image: mariadb:10.6  # Versión fija recomendada, evitar 'latest' en producción
+          ports:
+            - containerPort: 3306  # Puerto estándar de MariaDB
+          env:
+            # Variables tomadas del Secret 'mariadb-secret' (datos sensibles)
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mariadb-secret
+                  key: mariadb-root-password
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mariadb-secret
+                  key: mariadb-user-password
+            # Variables tomadas del ConfigMap 'mariadb-config' (datos no sensibles)
+            - name: MYSQL_DATABASE
+              valueFrom:
+                configMapKeyRef:
+                  name: mariadb-config
+                  key: MYSQL_DATABASE
+            - name: MYSQL_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: mariadb-config
+                  key: MYSQL_USER
+          resources:
+            requests:
+              cpu: 100m        # Mínimo de CPU garantizado
+              memory: 256Mi    # Mínimo de memoria garantizada
+            limits:
+              cpu: 500m        # Máximo de CPU permitido
+              memory: 512Mi    # Máximo de memoria permitida
+          volumeMounts:
+            - name: mariadb-storage
+              mountPath: /var/lib/mysql  # Ruta interna donde MariaDB guarda los datos
+      volumes:
         - name: mariadb-storage
-          mountPath: /var/lib/mysql # Ruta interna on MariaDB desa les dades
-      volumes:                   # Definició dels volums disponibles
-      - name: mariadb-storage    # Nom intern per connectar amb volumeMounts
-        persistentVolumeClaim:
-          claimName: mariadb-pvc # Nom del PVC que vam crear (el disc de 1Gi)
+          persistentVolumeClaim:
+            claimName: mariadb-pvc  # PVC definido en 03-pvc.yaml
 
 ---
-apiVersion: v1                   # Versió de l'API bàsica
-kind: Service                    # Tipus de recurs: Servei (Xarxa)
+# ============================================================
+# Servicio para MariaDB en el namespace 'databases'
+# Expone MariaDB internamente para que WordPress pueda conectarse.
+# WordPress lo alcanza via FQDN: mariadb.databases.svc.cluster.local
+# ============================================================
+apiVersion: v1
+kind: Service
 metadata:
-  name: mariadb                  # Nom de host DNS (wordpress usarà aquest nom)
-  namespace: wordpress-ha        # Mateix namespace que el Deployment
+  name: mariadb
+  namespace: databases
 spec:
   ports:
-    - port: 3306                 # Port que exposa el servei
-  selector:                      # Envia el trànsit als Pods amb aquesta etiqueta
-    app: mariadb
-  clusterIP: None                # Servei "Headless": DNS directe a la IP del Pod
+    - port: 3306        # Puerto que expone el Service
+      targetPort: 3306  # Puerto del contenedor al que redirige el tráfico
+  selector:
+    app: mariadb        # Envía el tráfico a los Pods con esta etiqueta
+  # clusterIP: None eliminado — usamos ClusterIP normal para mayor compatibilidad
+  # WordPress se conecta via FQDN: mariadb.databases.svc.cluster.local
