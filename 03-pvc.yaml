@@ -1,11 +1,36 @@
+# ============================================================
+# PersistentVolumeClaim (PVC) para el namespace 'databases'
+# Se usa para almacenar datos de manera persistente para MariaDB
+# ============================================================
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: wordpress-pvc
-  namespace: wordpress-ha
+  name: mariadb-pvc          # Nombre del PVC, utilizado por el Deployment de MariaDB
+  namespace: databases       # Mismo namespace que el Deployment de MariaDB
 spec:
   accessModes:
-  - ReadWriteOnce
+    - ReadWriteOnce          # El volumen será montado solo por un nodo a la vez
   resources:
     requests:
-      storage: 2Gi
+      storage: 1Gi           # Suficiente para un entorno de prácticas
+  storageClassName: standard  # Clase de almacenamiento por defecto
+  volumeMode: Filesystem      # Modo de volumen de sistema de archivos
+
+---
+# ============================================================
+# PersistentVolumeClaim (PVC) para el namespace 'wordpress'
+# Se usa para almacenar datos persistentes de WordPress (uploads, temas, plugins)
+# ============================================================
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: wordpress-pvc        # Nombre del PVC, utilizado por el Deployment de WordPress
+  namespace: wordpress       # Mismo namespace que el Deployment de WordPress
+spec:
+  accessModes:
+    - ReadWriteOnce          # El volumen será montado solo por un nodo a la vez
+  resources:
+    requests:
+      storage: 2Gi           # Más espacio que MariaDB, WordPress almacena media y plugins
+  storageClassName: standard  # Clase de almacenamiento por defecto
+  volumeMode: Filesystem      # Modo de volumen de sistema de archivos
