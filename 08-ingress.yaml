@@ -1,19 +1,26 @@
-apiVersion: networking.k8s.io/v1     # Especifica la versió de l'API de xarxa de K8s.
-kind: Ingress                        # Defineix que aquest objecte és un Ingress (punt d'entrada).
-metadata:                            # Secció de dades descriptives.
-  name: wordpress-ingress            # El nom identificatiu d'aquesta regla.
-  namespace: wordpress-ha           # Ubicació: s'aplica dins del nostre namespace de treball.
-  annotations:                       # Configuracions especials per al programari de l'Ingress.
-    nginx.ingress.kubernetes.io/rewrite-target: / # Indica que redirigeixi el trànsit a l'arrel del servei.
-spec:                                # Defineix les regles de funcionament.
-  rules:                             # Llista de regles segons el nom de domini.
-  - host: wp-k8s.local               # El domini que l'usuari escriurà al navegador.
-    http:                            # Protocol de comunicació (HTTP).
-      paths:                         # Llista de camins o rutes dins del domini.
-      - path: /                      # Ruta principal (tota la web des de l'inici).
-        pathType: Prefix             # Tipus de coincidència: qualsevol subruta (ex: /blog) també entra.
-        backend:                     # Defineix cap a on s'envia el visitant.
-          service:                   # L'objectiu és un Servei.
-            name: wordpress          # El nom del servei que vam crear a l'Activitat 5.
-            port:                    # Port de destí.
-              number: 80             # El port HTTP estàndard on escolta el WordPress.
+# ============================================================
+# Ingress para exponer WordPress en el namespace 'wordpress'
+# Requiere un Ingress Controller instalado en el clúster.
+# En Minikube: minikube addons enable ingress
+# ============================================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: wordpress-ingress
+  namespace: wordpress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/proxy-body-size: "64m"  # Permite subir archivos de hasta 64MB en WordPress
+spec:
+  ingressClassName: nginx  # Especifica explícitamente el controlador a usar (recomendado desde K8s 1.18+)
+  rules:
+    - host: wp-k8s.local   # Añade '127.0.0.1 wp-k8s.local' en tu /etc/hosts para resolución local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: wordpress
+                port:
+                  number: 80
