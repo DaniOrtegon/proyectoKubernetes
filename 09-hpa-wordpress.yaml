@@ -1,19 +1,31 @@
+# ============================================================
+# HorizontalPodAutoscaler (HPA) para WordPress en el namespace 'wordpress'
+# Requiere Metrics Server instalado en el clúster.
+# En Minikube: minikube addons enable metrics-server
+# Verificar: kubectl top pods -n wordpress
+# ============================================================
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: wordpress-hpa
-  namespace: wordpress-ha
+  namespace: wordpress
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
     name: wordpress
-  minReplicas: 2
-  maxReplicas: 10
+  minReplicas: 2      # Mínimo 2 réplicas para garantizar alta disponibilidad (HA)
+  maxReplicas: 5      # Máximo 5 réplicas para controlar el consumo de recursos
   metrics:
-  - type: Resource
-    resource:
-      name: cpu
-      target:
-        type: Utilization
-        averageUtilization: 50
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 50  # Escala cuando el uso medio de CPU supere el 50%
+    - type: Resource
+      resource:
+        name: memory              # Segunda métrica: también escalamos por memoria
+        target:
+          type: Utilization
+          averageUtilization: 70  # Escala cuando el uso medio de memoria supere el 70%
