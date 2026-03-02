@@ -1,62 +1,115 @@
-# --- POLÍTICA PER A LA BASE DE DADES (MariaDB) ---
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: mariadb-policy          # Nom de la regla de seguretat
-  namespace: wordpress-ha       # On s'aplica (assegura't que el namespace existeix)
-spec:
-  podSelector:                  # A qui estem protegint?
-    matchLabels:
-      app: mariadb              # Aquesta política "cau" sobre el Pod que té l'etiqueta app: mariadb
-  policyTypes:
-  - Ingress                     # Controlarem el trànsit d'ENTRADA (Ingress)
-  ingress:
-  - from:                       # Des d'on permetem que vingui el trànsit?
-    - podSelector:
-        matchLabels:
-          app: wordpress        # NOMÉS els Pods amb l'etiqueta app: wordpress poden entrar
+# ============================================================
+# IMPORTANTE: Para que los namespaceSelector funcionen correctamente,
+# los namespaces deben tener la etiqueta 'kubernetes.io/metadata.name'
+# que Kubernetes añade automáticamente desde la versión 1.21+.
+# Si tu clúster es anterior, añade las etiquetas manualmente:
+#   kubectl label namespace wordpress kubernetes.io/metadata.name=wordpress
+#   kubectl label namespace databases kubernetes.io/metadata.name=databases
+# ============================================================
 
----
-# --- POLÍTICA PER A LA MEMÒRIA CAU (Redis) ---
+# ------------------------------------------------------------
+# POLÍTICA 1: MariaDB solo acepta tráfico desde WordPress
+# Namespace: databases
+# ------------------------------------------------------------
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: redis-policy            # Nom de la regla per al Redis
-  namespace: wordpress-ha
+  name: allow-wordpress-to-mariadb
+  namespace: databases
 spec:
   podSelector:
     matchLabels:
-      app: redis                # Protegim el Pod del Redis
+      app: mariadb
   policyTypes:
-  - Ingress
+    - Ingress
   ingress:
-  - from:
-    - podSelector:
-        matchLabels:
-          app: wordpress        # NOMÉS permetem que el WordPress hi connecti
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: wordpress  # Solo tráfico del namespace 'wordpress'
+          podSelector:
+            matchLabels:
+              app: wordpress  # Y además solo de los Pods de WordPress (doble restricción)
+      ports:
+        - protocol: TCP
+          port: 3306
 
 ---
-# --- POLÍTICA PER A LA COMUNICACIÓ ENTRE GRAFANA I LOKI ---
+# ------------------------------------------------------------
+# POLÍTICA 2: Redis solo acepta tráfico desde WordPress
+# Namespace: databases
+# ------------------------------------------------------------
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: allow-grafana-to-loki
-  namespace: logging  # Aplicamos la política en el namespace 'logging' (donde está Loki)
+  name: allow-wordpress-to-redis
+  namespace: databases
 spec:
-  podSelector: {}  # Afecta a todos los pods en el namespace 'logging'
-  ingress:
-  - from:
-    - namespaceSelector:
-        matchLabels:
-          name: default  # Permite tráfico desde el namespace 'default' (donde Grafana está)
-    ports:
-    - protocol: TCP
-      port: 3100  # Puerto en el que Loki escucha (puedes cambiarlo si es otro)
+  podSelector:
+    matchLabels:
+      app: redis
   policyTypes:
-  - Ingress
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: wordpress
+          podSelector:
+            matchLabels:
+              app: wordpress
+      ports:
+        - protocol: TCP
+          port: 6379
 
-
-
-
-
-
+---
+# ------------------------------------------------------------
+# POLÍTICA 3: WordPress puede salir hacia databases (MariaDB y Redis)
+# También permite salida al exterior para DNS (puerto 53)
+# Namespace: wordpress
+# ------------------------------------------------------------
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-wordpress-egress
+  namespace: wordpress
+spec:
+  podSelector:
+    matchLabels:
+      app: wordpress
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - ports:
+        - protocol: TCP
+          port: 80  # Permite tráfico HTTP entrante (desde el Ingress Controller)
+  egress:
+    # Permite salida hacia MariaDB en namespace 'databases'
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: databases
+          podSelector:
+            matchLabels:
+              app: mariadb
+      ports:
+        - protocol: TCP
+          port: 3306
+    # Permite salida hacia Redis en namespace 'databases'
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: databases
+          podSelector:
+            matchLabels:
+              app: redis
+      ports:
+        - protocol: TCP
+          port: 6379
+    # Permite resolución DNS (sin esto WordPress no puede resolver FQDNs)
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
