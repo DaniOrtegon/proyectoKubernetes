@@ -69,56 +69,48 @@ load_images() {
 
 # ============================================================
 # FUNCIÓN: Instalar Ingress Controller
-# Parcheamos los Jobs para usar imagePullPolicy: Never y
-# eliminar el digest SHA256 que impide usar imágenes locales
 # ============================================================
 install_ingress_controller() {
   if kubectl get pods -n ingress-nginx -l app.kubernetes.io/component=controller 2>/dev/null | grep -q "Running"; then
     log_success "Ingress Controller ya está corriendo"
-    return
+  else
+    log_info "Instalando Ingress Controller..."
+    kubectl delete namespace ingress-nginx --ignore-not-found=true 2>/dev/null
+    sleep 5
+
+    curl -sL https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.14.1/deploy/static/provider/baremetal/deploy.yaml \
+      | sed 's/@sha256:[a-f0-9]*//g' \
+      | kubectl apply -f - \
+      || log_error "No se pudo aplicar el manifest del Ingress Controller."
+
+    log_info "Parcheando Jobs para usar imágenes locales..."
+    sleep 5
+    for JOB in ingress-nginx-admission-create ingress-nginx-admission-patch; do
+      kubectl patch job $JOB -n ingress-nginx --type=json \
+        -p='[{"op":"replace","path":"/spec/template/spec/containers/0/imagePullPolicy","value":"Never"}]' \
+        2>/dev/null && log_success "Job $JOB parcheado" || true
+    done
+    kubectl patch deployment ingress-nginx-controller -n ingress-nginx --type=json \
+      -p='[{"op":"replace","path":"/spec/template/spec/containers/0/imagePullPolicy","value":"Never"}]' \
+      2>/dev/null && log_success "Deployment ingress-nginx-controller parcheado"
+
+    log_info "Esperando a que el Ingress Controller esté listo..."
+    local retries=0
+    until kubectl get pods -n ingress-nginx -l app.kubernetes.io/component=controller 2>/dev/null | grep -q "Running"; do
+      retries=$((retries + 1))
+      [ $retries -ge 36 ] && log_error "El Ingress Controller no arrancó en 6 minutos."
+      echo -n "."
+      sleep 10
+    done
+    echo ""
+    log_success "Ingress Controller está listo"
   fi
 
-  log_info "Instalando Ingress Controller..."
-
-  # Limpia instalación previa rota
-  kubectl delete namespace ingress-nginx --ignore-not-found=true 2>/dev/null
-  sleep 5
-
-  # Descarga el manifest, elimina los digests SHA256 y aplica
-  log_info "Aplicando manifest del Ingress Controller (sin digest SHA256)..."
-  curl -sL https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.14.1/deploy/static/provider/baremetal/deploy.yaml \
-    | sed 's/@sha256:[a-f0-9]*//g' \
-    | kubectl apply -f - \
-    || log_error "No se pudo aplicar el manifest del Ingress Controller."
-
-  # Parchea los Jobs para usar imagePullPolicy: Never
-  log_info "Parcheando Jobs para usar imágenes locales..."
-  sleep 5
-
-  for JOB in ingress-nginx-admission-create ingress-nginx-admission-patch; do
-    kubectl patch job $JOB -n ingress-nginx --type=json \
-      -p='[{"op":"replace","path":"/spec/template/spec/containers/0/imagePullPolicy","value":"Never"}]' \
-      2>/dev/null && log_success "Job $JOB parcheado" || log_warn "No se pudo parchear $JOB (puede que ya esté corriendo)"
-  done
-
-  # Parchea el Deployment del controller
-  kubectl patch deployment ingress-nginx-controller -n ingress-nginx --type=json \
-    -p='[{"op":"replace","path":"/spec/template/spec/containers/0/imagePullPolicy","value":"Never"}]' \
-    2>/dev/null && log_success "Deployment ingress-nginx-controller parcheado"
-
-  log_info "Esperando a que el Ingress Controller esté listo (puede tardar 3-4 minutos)..."
-  local retries=0
-  local max_retries=36  # 36 x 10s = 6 minutos
-  until kubectl get pods -n ingress-nginx -l app.kubernetes.io/component=controller 2>/dev/null | grep -q "Running"; do
-    retries=$((retries + 1))
-    if [ $retries -ge $max_retries ]; then
-      log_error "El Ingress Controller no arrancó en 6 minutos. Revisa: kubectl get pods -n ingress-nginx"
-    fi
-    echo -n "."
-    sleep 10
-  done
-  echo ""
-  log_success "Ingress Controller está listo"
+  # Cambia a LoadBalancer para que minikube tunnel asigne IP en puerto 80
+  log_info "Configurando Ingress Controller como LoadBalancer..."
+  kubectl patch svc ingress-nginx-controller -n ingress-nginx \
+    -p '{"spec":{"type":"LoadBalancer"}}' 2>/dev/null
+  log_success "Ingress Controller configurado como LoadBalancer"
 }
 
 # ============================================================
@@ -161,6 +153,38 @@ apply_file() {
 }
 
 # ============================================================
+# FUNCIÓN: Actualizar /etc/hosts automáticamente
+# ============================================================
+update_hosts() {
+  log_info "Obteniendo IP externa del Ingress Controller..."
+
+  # Espera a que el tunnel asigne una EXTERNAL-IP
+  local retries=0
+  local EXTERNAL_IP=""
+  until [ -n "$EXTERNAL_IP" ] && [ "$EXTERNAL_IP" != "<pending>" ]; do
+    retries=$((retries + 1))
+    [ $retries -ge 18 ] && log_error "No se asignó EXTERNAL-IP. Asegúrate de tener 'sudo minikube tunnel' corriendo."
+    EXTERNAL_IP=$(kubectl get svc ingress-nginx-controller -n ingress-nginx \
+      -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null)
+    [ -z "$EXTERNAL_IP" ] && echo -n "." && sleep 5
+  done
+  echo ""
+  log_success "EXTERNAL-IP obtenida: $EXTERNAL_IP"
+
+  # Elimina entradas anteriores y añade las nuevas
+  log_info "Actualizando /etc/hosts (requiere sudo)..."
+  sudo sed -i '/wp-k8s\.local/d' /etc/hosts
+  sudo sed -i '/grafana\.monitoring\.local/d' /etc/hosts
+  sudo sed -i '/prometheus\.monitoring\.local/d' /etc/hosts
+
+  echo "$EXTERNAL_IP wp-k8s.local" | sudo tee -a /etc/hosts > /dev/null
+  echo "$EXTERNAL_IP grafana.monitoring.local" | sudo tee -a /etc/hosts > /dev/null
+  echo "$EXTERNAL_IP prometheus.monitoring.local" | sudo tee -a /etc/hosts > /dev/null
+
+  log_success "/etc/hosts actualizado correctamente"
+}
+
+# ============================================================
 # FUNCIÓN: Deshacer todo (cleanup)
 # ============================================================
 cleanup() {
@@ -174,6 +198,10 @@ cleanup() {
   done
   log_warn "Eliminando Ingress Controller..."
   kubectl delete namespace ingress-nginx --ignore-not-found=true 2>/dev/null
+  log_warn "Limpiando /etc/hosts..."
+  sudo sed -i '/wp-k8s\.local/d' /etc/hosts
+  sudo sed -i '/grafana\.monitoring\.local/d' /etc/hosts
+  sudo sed -i '/prometheus\.monitoring\.local/d' /etc/hosts
   log_success "Cleanup completado."
   exit 0
 }
@@ -197,7 +225,7 @@ echo ""
 load_images
 echo ""
 
-# 3. Instalar Ingress Controller
+# 3. Instalar Ingress Controller y configurar como LoadBalancer
 install_ingress_controller
 echo ""
 
@@ -252,6 +280,21 @@ apply_file "12-grafana.yaml" "Grafana (Deployment + Service)"
 wait_for_deployment "monitoring" "grafana" 120
 
 # ============================================================
+# TUNNEL Y /etc/hosts
+# ============================================================
+echo ""
+log_warn "PASO FINAL: Necesitas abrir una terminal nueva y ejecutar:"
+echo ""
+echo -e "   ${GREEN}sudo minikube tunnel${NC}"
+echo ""
+log_info "Esperando a que el tunnel esté activo y asigne IP..."
+log_info "(Si no has abierto el tunnel todavía, ábrelo ahora en otra terminal)"
+echo ""
+
+# Actualiza /etc/hosts automáticamente una vez el tunnel asigne la IP
+update_hosts
+
+# ============================================================
 # RESUMEN FINAL
 # ============================================================
 echo ""
@@ -259,23 +302,10 @@ echo -e "${GREEN}============================================================${N
 echo -e "${GREEN}   ✅ Despliegue completado con éxito${NC}"
 echo -e "${GREEN}============================================================${NC}"
 echo ""
-
-MINIKUBE_IP=$(minikube ip)
-
-echo -e "${BLUE}📌 Añade estas líneas a tu /etc/hosts:${NC}"
-echo -e "   ${MINIKUBE_IP} wp-k8s.local"
-echo -e "   ${MINIKUBE_IP} grafana.monitoring.local"
-echo -e "   ${MINIKUBE_IP} prometheus.monitoring.local"
-echo ""
-echo -e "${BLUE}📌 URLs de acceso via Ingress:${NC}"
+echo -e "${BLUE}📌 URLs de acceso (mantén 'sudo minikube tunnel' activo):${NC}"
 echo -e "   WordPress:  http://wp-k8s.local"
 echo -e "   Grafana:    http://grafana.monitoring.local  (admin / admin123)"
 echo -e "   Prometheus: http://prometheus.monitoring.local"
-echo ""
-echo -e "${BLUE}📌 URLs alternativas via NodePort:${NC}"
-echo -e "   WordPress:  http://${MINIKUBE_IP}:30080"
-echo -e "   Grafana:    http://${MINIKUBE_IP}:30030"
-echo -e "   Prometheus: http://${MINIKUBE_IP}:30090"
 echo ""
 echo -e "${BLUE}📌 Comandos útiles:${NC}"
 echo -e "   Ver todos los pods:     kubectl get pods -A"
