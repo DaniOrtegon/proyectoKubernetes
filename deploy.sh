@@ -23,29 +23,23 @@ log_error()   { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
 # ============================================================
 check_requirements() {
   log_info "Verificando requisitos previos..."
-
   command -v kubectl &>/dev/null || log_error "kubectl no encontrado."
   log_success "kubectl encontrado"
-
   command -v docker &>/dev/null || log_error "docker no encontrado en el host."
   log_success "docker encontrado"
-
   minikube status | grep -q "Running" || log_error "Minikube no está corriendo. Ejecuta: minikube start"
   log_success "Minikube está activo"
-
   kubectl get storageclass standard &>/dev/null || log_error "StorageClass 'standard' no encontrada."
   log_success "StorageClass 'standard' disponible"
 }
 
 # ============================================================
 # FUNCIÓN: Descargar imágenes en el host y cargarlas en Minikube
-# Solución al problema de DNS/UDP dentro de la VM de Minikube
 # ============================================================
 load_images() {
   log_info "Descargando imágenes en el host y cargándolas en Minikube..."
   echo ""
 
-  # Lista de imágenes necesarias
   IMAGES=(
     "mariadb:10.6"
     "redis:6.2-alpine"
@@ -59,21 +53,12 @@ load_images() {
   )
 
   for IMAGE in "${IMAGES[@]}"; do
-    # Comprueba si la imagen ya está cargada en Minikube
-    if minikube image ls 2>/dev/null | grep -q "$(echo $IMAGE | cut -d: -f1)"; then
-      log_success "Ya cargada en Minikube: $IMAGE"
-      continue
-    fi
-
-    # Descarga en el host si no existe
     if ! docker image inspect "$IMAGE" &>/dev/null; then
       log_info "Descargando en host: $IMAGE"
-      docker pull "$IMAGE" || log_error "No se pudo descargar $IMAGE. Verifica tu conexión a internet."
+      docker pull "$IMAGE" || log_error "No se pudo descargar $IMAGE."
     else
       log_success "Ya existe en host: $IMAGE"
     fi
-
-    # Carga en Minikube
     log_info "Cargando en Minikube: $IMAGE"
     minikube image load "$IMAGE" && log_success "Cargada en Minikube: $IMAGE"
   done
@@ -83,10 +68,11 @@ load_images() {
 }
 
 # ============================================================
-# FUNCIÓN: Instalar Ingress Controller via manifest oficial
+# FUNCIÓN: Instalar Ingress Controller
+# Parcheamos los Jobs para usar imagePullPolicy: Never y
+# eliminar el digest SHA256 que impide usar imágenes locales
 # ============================================================
 install_ingress_controller() {
-  # Si ya está corriendo, no hacemos nada
   if kubectl get pods -n ingress-nginx -l app.kubernetes.io/component=controller 2>/dev/null | grep -q "Running"; then
     log_success "Ingress Controller ya está corriendo"
     return
@@ -94,21 +80,39 @@ install_ingress_controller() {
 
   log_info "Instalando Ingress Controller..."
 
-  # Limpia cualquier instalación previa rota
+  # Limpia instalación previa rota
   kubectl delete namespace ingress-nginx --ignore-not-found=true 2>/dev/null
-  sleep 3
+  sleep 5
 
-  # Aplica el manifest oficial para baremetal
-  kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.14.1/deploy/static/provider/baremetal/deploy.yaml \
+  # Descarga el manifest, elimina los digests SHA256 y aplica
+  log_info "Aplicando manifest del Ingress Controller (sin digest SHA256)..."
+  curl -sL https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.14.1/deploy/static/provider/baremetal/deploy.yaml \
+    | sed 's/@sha256:[a-f0-9]*//g' \
+    | kubectl apply -f - \
     || log_error "No se pudo aplicar el manifest del Ingress Controller."
 
-  log_info "Esperando a que el Ingress Controller esté listo (puede tardar 2-3 minutos)..."
+  # Parchea los Jobs para usar imagePullPolicy: Never
+  log_info "Parcheando Jobs para usar imágenes locales..."
+  sleep 5
+
+  for JOB in ingress-nginx-admission-create ingress-nginx-admission-patch; do
+    kubectl patch job $JOB -n ingress-nginx --type=json \
+      -p='[{"op":"replace","path":"/spec/template/spec/containers/0/imagePullPolicy","value":"Never"}]' \
+      2>/dev/null && log_success "Job $JOB parcheado" || log_warn "No se pudo parchear $JOB (puede que ya esté corriendo)"
+  done
+
+  # Parchea el Deployment del controller
+  kubectl patch deployment ingress-nginx-controller -n ingress-nginx --type=json \
+    -p='[{"op":"replace","path":"/spec/template/spec/containers/0/imagePullPolicy","value":"Never"}]' \
+    2>/dev/null && log_success "Deployment ingress-nginx-controller parcheado"
+
+  log_info "Esperando a que el Ingress Controller esté listo (puede tardar 3-4 minutos)..."
   local retries=0
-  local max_retries=24
+  local max_retries=36  # 36 x 10s = 6 minutos
   until kubectl get pods -n ingress-nginx -l app.kubernetes.io/component=controller 2>/dev/null | grep -q "Running"; do
     retries=$((retries + 1))
     if [ $retries -ge $max_retries ]; then
-      log_error "El Ingress Controller no arrancó en 4 minutos. Revisa: kubectl get pods -n ingress-nginx"
+      log_error "El Ingress Controller no arrancó en 6 minutos. Revisa: kubectl get pods -n ingress-nginx"
     fi
     echo -n "."
     sleep 10
@@ -189,7 +193,7 @@ echo ""
 check_requirements
 echo ""
 
-# 2. Descargar y cargar imágenes en Minikube (evita ImagePullBackOff)
+# 2. Cargar imágenes en Minikube
 load_images
 echo ""
 
