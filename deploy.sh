@@ -285,7 +285,7 @@ wait_for_deployment "monitoring" "grafana" 120
 echo ""
 log_warn "PASO FINAL: Necesitas abrir una terminal nueva y ejecutar:"
 echo ""
-echo -e "   ${GREEN}sudo minikube tunnel${NC}"
+echo -e "   ${GREEN} minikube tunnel${NC}"
 echo ""
 log_info "Esperando a que el tunnel esté activo y asigne IP..."
 log_info "(Si no has abierto el tunnel todavía, ábrelo ahora en otra terminal)"
