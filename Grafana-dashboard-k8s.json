@@ -3037,9 +3037,9 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(container_fs_usage_bytes{container!=\"\", container!=\"POD\"}) by (namespace)",
+          "expr": "sum(container_fs_usage_bytes{container!=\"\",container!=\"POD\"}) by (namespace)",
           "refId": "A",
-          "legendFormat": "{{namespace}}:{{ persistentvolumeclaim }}",
+          "legendFormat": "{{namespace}}",
           "instant": true,
           "range": false,
           "editorMode": "code",
@@ -3050,9 +3050,9 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(container_fs_limit_bytes{container!=\"\", container!=\"POD\"}) by (namespace)",
+          "expr": "sum(container_fs_limit_bytes{container!=\"\",container!=\"POD\"}) by (namespace)",
           "refId": "B",
-          "legendFormat": "__auto",
+          "legendFormat": "{{namespace}}",
           "instant": true,
           "range": false,
           "editorMode": "code",
@@ -3065,27 +3065,14 @@
           },
           "expr": "sum(container_fs_usage_bytes{container!=\"\",container!=\"POD\"}) by (namespace) / sum(container_fs_limit_bytes{container!=\"\",container!=\"POD\"}) by (namespace)",
           "refId": "C",
-          "legendFormat": "{{namespace}}:{{ persistentvolumeclaim }}",
-          "instant": true,
-          "range": false,
-          "editorMode": "code",
-          "format": "table"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "count by (namespace,persistentvolumeclaim)(kube_pod_spec_volumes_persistentvolumeclaims_info{})",
-          "refId": "D",
-          "legendFormat": "__auto",
+          "legendFormat": "{{namespace}}",
           "instant": true,
           "range": false,
           "editorMode": "code",
           "format": "table"
         }
       ],
-      "title": "Storage Usage by Namespace",
+      "title": "PVC Storage Usage",
       "transformations": [
         {
           "id": "merge",
@@ -3306,7 +3293,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum (container_memory_working_set_bytes{container !=\"\",container!=\"POD\"}) by (namespace) > 1*1024*1024*1024",
+          "expr": "sum (container_memory_working_set_bytes{container !=\"\",container!=\"POD\"}) by (namespace)",
           "refId": "A",
           "legendFormat": "{{namespace} {{ pod }}",
           "instant": false,
@@ -3314,7 +3301,7 @@
           "editorMode": "code"
         }
       ],
-      "title": "Namespaces WSS Memory Usage (>1G)",
+      "title": "Namespaces Memory Usage (WSS)",
       "type": "timeseries"
     },
     {
@@ -4280,9 +4267,9 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "max(irate(container_cpu_usage_seconds_total{pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}[2m])) by (container, pod) / (max(container_spec_cpu_quota{pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}/100000) by (container, pod)) * 100",
+          "expr": "max(irate(container_cpu_usage_seconds_total{pod=~\"$Pod\",container=~\"$Container\",container!=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}[2m])) by (container, pod) / max(kube_pod_container_resource_limits{resource=\"cpu\",unit=\"core\",pod=~\"$Pod\",container=~\"$Container\",namespace=~\"$NameSpace\"}) by (container, pod)",
           "refId": "A",
-          "legendFormat": "{{ pod }}",
+          "legendFormat": "{{pod}} / {{container}}",
           "instant": false,
           "range": true,
           "editorMode": "code"
@@ -4382,9 +4369,9 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "max (container_memory_working_set_bytes{pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container, pod)/ max(container_spec_memory_limit_bytes{pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container, pod) * 100",
+          "expr": "max(container_memory_working_set_bytes{pod=~\"$Pod\",container=~\"$Container\",container!=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container, pod)",
           "refId": "A",
-          "legendFormat": "WSS\uff1a{{ pod }}",
+          "legendFormat": "WSS {{pod}} / {{container}}",
           "instant": false,
           "range": true,
           "editorMode": "code"
@@ -4394,21 +4381,9 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "max (container_memory_rss{pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container, pod)/ max(container_spec_memory_limit_bytes{pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container, pod) * 100",
+          "expr": "max(kube_pod_container_resource_limits{resource=\"memory\",unit=\"byte\",pod=~\"$Pod\",container=~\"$Container\",namespace=~\"$NameSpace\"}) by (container, pod)",
           "refId": "B",
-          "legendFormat": "RSS\uff1a{{ pod }}",
-          "instant": false,
-          "range": true,
-          "editorMode": "code"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "(cass_jvm_heap{service=~\"$Container\"} * on (pod_ip) group_right(service) kube_pod_info{pod=~\"$Pod\",namespace=~\"$NameSpace\"}) / (cass_jvm_heap_max{service=~\"$Container\"} * on (pod_ip) group_right(service) kube_pod_info{pod=~\"$Pod\",namespace=~\"$NameSpace\"}) * 100",
-          "refId": "C",
-          "legendFormat": "Heap\uff1a{{ pod }}",
+          "legendFormat": "Limit {{pod}} / {{container}}",
           "instant": false,
           "range": true,
           "editorMode": "code"
@@ -6147,7 +6122,7 @@
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "sum(container_spec_memory_limit_bytes{container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)",
+              "expr": "max(container_memory_working_set_bytes{pod=~\"$Pod\",container=~\"$Container\",container!=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container, pod)",
               "refId": "B",
               "legendFormat": "Memory Limit\uff1a{{ container }}",
               "instant": false,
@@ -6295,9 +6270,19 @@
         "current": {}
       },
       {
+        "allValue": ".*",
+        "current": {},
+        "hide": 0,
+        "includeAll": true,
+        "multi": false,
         "name": "Node",
-        "type": "query",
         "label": "Node",
+        "options": [],
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query",
         "datasource": {
           "type": "prometheus",
           "uid": "${datasource}"
@@ -6306,77 +6291,79 @@
         "query": {
           "query": "label_values(kube_node_info, node)",
           "refId": "StandardVariableQuery"
-        },
-        "refresh": 2,
-        "includeAll": true,
-        "multi": false,
+        }
+      },
+      {
         "allValue": ".*",
         "current": {},
         "hide": 0,
-        "sort": 1
-      },
-      {
-        "name": "NameSpace",
-        "type": "query",
-        "label": "Namespace",
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "definition": "label_values(kube_pod_info, namespace)",
-        "query": {
-          "query": "label_values(kube_pod_info, namespace)",
-          "refId": "StandardVariableQuery"
-        },
-        "refresh": 2,
         "includeAll": true,
         "multi": true,
-        "allValue": ".*",
-        "current": {},
-        "hide": 0,
-        "sort": 1
-      },
-      {
-        "name": "Pod",
+        "name": "NameSpace",
+        "label": "Namespace",
+        "options": [],
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
         "type": "query",
-        "label": "Pod",
         "datasource": {
           "type": "prometheus",
           "uid": "${datasource}"
         },
-        "definition": "label_values(kube_pod_info{namespace=~\"$NameSpace\"}, pod)",
+        "definition": "label_values(kube_namespace_created, namespace)",
         "query": {
-          "query": "label_values(kube_pod_info{namespace=~\"$NameSpace\"}, pod)",
+          "query": "label_values(kube_namespace_created, namespace)",
           "refId": "StandardVariableQuery"
-        },
-        "refresh": 2,
-        "includeAll": true,
-        "multi": false,
+        }
+      },
+      {
         "allValue": ".*",
         "current": {},
         "hide": 0,
-        "sort": 1
-      },
-      {
+        "includeAll": true,
+        "multi": false,
         "name": "Container",
-        "type": "query",
         "label": "Container",
+        "options": [],
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query",
         "datasource": {
           "type": "prometheus",
           "uid": "${datasource}"
         },
-        "definition": "label_values(kube_pod_container_info{namespace=~\"$NameSpace\",pod=~\"$Pod\"}, container)",
+        "definition": "label_values(kube_pod_container_info{namespace=~\"$NameSpace\"}, container)",
         "query": {
-          "query": "label_values(kube_pod_container_info{namespace=~\"$NameSpace\",pod=~\"$Pod\"}, container)",
+          "query": "label_values(kube_pod_container_info{namespace=~\"$NameSpace\"}, container)",
           "refId": "StandardVariableQuery"
-        },
-        "refresh": 2,
-        "includeAll": true,
-        "multi": false,
+        }
+      },
+      {
         "allValue": ".*",
         "current": {},
         "hide": 0,
-        "sort": 1
+        "includeAll": true,
+        "multi": false,
+        "name": "Pod",
+        "label": "Pod",
+        "options": [],
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "definition": "label_values(kube_pod_container_info{namespace=~\"$NameSpace\",container=~\"$Container\"}, pod)",
+        "query": {
+          "query": "label_values(kube_pod_container_info{namespace=~\"$NameSpace\",container=~\"$Container\"}, pod)",
+          "refId": "StandardVariableQuery"
+        }
       }
     ]
   },
@@ -6408,5 +6395,5 @@
   "timezone": "browser",
   "title": "Kubernetes Dashboard",
   "version": 8,
-  "uid": "wordpress-k8s-v2"
+  "uid": "kubernetes-dashboard-v2"
 }
