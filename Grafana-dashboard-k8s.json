@@ -1,5 +1,4 @@
 {
-  "__elements": {},
   "annotations": {
     "list": [
       {
@@ -23,11 +22,12 @@
       }
     ]
   },
-  "description": "\u3010English version\u30112025.01.25 Updates\uff0ckubernetesComprehensive display of resources\uff01Includes K8S Overall Resource Overview\u3001Microservices Resource Details\u3001Pod Resource Details andK8SNetwork Bandwidth\uff0cOptimization metrics\u3002https://grafana.com/orgs/starsliao/dashboards",
+  "description": "【English version】2025.01.25 Updates，kubernetesComprehensive display of resources！Includes K8S Overall Resource Overview、Microservices Resource Details、Pod Resource Details andK8SNetwork Bandwidth，Optimization metrics。https://grafana.com/orgs/starsliao/dashboards",
   "editable": true,
   "fiscalYearStartMonth": 0,
+  "gnetId": 15661,
   "graphTooltip": 0,
-  "id": null,
+  "id": 8,
   "links": [
     {
       "icon": "bolt",
@@ -67,14 +67,13 @@
       },
       "id": 54,
       "panels": [],
-      "title": "Node Resource Overview\uff1aSelected Nodes:\u3010$Node\u3011",
-      "type": "row",
-      "targets": []
+      "title": "Node Resource Overview：Selected Nodes:【$Node】",
+      "type": "row"
     },
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "PBFA97CFB590B2093"
       },
       "fieldConfig": {
         "defaults": {
@@ -129,46 +128,54 @@
         "text": {},
         "valueMode": "color"
       },
-      "pluginVersion": "10.4.1",
+      "pluginVersion": "10.2.3",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum(container_memory_working_set_bytes{container!=\"\",node=~\"^$Node$\"}) / sum(kube_node_status_allocatable{resource=\"memory\", unit=\"byte\", node=~\"^$Node$\"})",
-          "refId": "A",
+          "editorMode": "code",
+          "exemplar": true,
+          "expr": "sum(container_memory_working_set_bytes{origin_prometheus=~\"$origin_prometheus\",container!=\"\",node=~\"^$Node$\"}) / sum(kube_node_status_allocatable{origin_prometheus=~\"$origin_prometheus\",resource=\"memory\", unit=\"byte\", node=~\"^$Node$\"})",
+          "format": "time_series",
+          "hide": false,
+          "instant": true,
+          "interval": "",
           "legendFormat": "Memory Utilization",
-          "instant": true,
-          "range": false,
-          "editorMode": "code",
-          "format": "time_series"
+          "refId": "C"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum(kube_pod_container_resource_requests{resource=\"memory\", unit=\"byte\",node=~\"^$Node$\"}) / sum(kube_node_status_allocatable{resource=\"memory\", unit=\"byte\", node=~\"^$Node$\"})",
-          "refId": "B",
+          "editorMode": "code",
+          "exemplar": true,
+          "expr": "sum(kube_pod_container_resource_requests{origin_prometheus=~\"$origin_prometheus\",resource=\"memory\", unit=\"byte\",node=~\"^$Node$\"}) / sum(kube_node_status_allocatable{origin_prometheus=~\"$origin_prometheus\",resource=\"memory\", unit=\"byte\", node=~\"^$Node$\"})",
+          "format": "time_series",
+          "hide": false,
+          "instant": true,
+          "interval": "",
           "legendFormat": "Memory Request Rate",
-          "instant": true,
-          "range": false,
-          "editorMode": "code",
-          "format": "time_series"
+          "refId": "A"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum(kube_pod_container_resource_limits{resource=\"memory\", unit=\"byte\",node=~\"^$Node$\"}) / sum(kube_node_status_allocatable{resource=\"memory\", unit=\"byte\", node=~\"^$Node$\"})",
-          "refId": "C",
-          "legendFormat": "Memory Limit Rate",
-          "instant": true,
-          "range": false,
           "editorMode": "code",
-          "format": "time_series"
+          "exemplar": true,
+          "expr": "sum(kube_pod_container_resource_limits{origin_prometheus=~\"$origin_prometheus\",resource=\"memory\", unit=\"byte\",node=~\"^$Node$\"}) / sum(kube_node_status_allocatable{origin_prometheus=~\"$origin_prometheus\",resource=\"memory\", unit=\"byte\", node=~\"^$Node$\"})",
+          "format": "time_series",
+          "hide": false,
+          "instant": true,
+          "interval": "",
+          "intervalFactor": 1,
+          "legendFormat": "Memory Limit Rate",
+          "refId": "B",
+          "step": 10
         }
       ],
       "title": "Node Memory Ratio",
@@ -177,7 +184,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "PBFA97CFB590B2093"
       },
       "fieldConfig": {
         "defaults": {
@@ -232,46 +239,50 @@
         "text": {},
         "valueMode": "color"
       },
-      "pluginVersion": "10.4.1",
+      "pluginVersion": "10.2.3",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum (irate(container_cpu_usage_seconds_total{container!=\"\",node=~\"^$Node$\"}[2m])) / sum(kube_node_status_allocatable{resource=\"cpu\", unit=\"core\", node=~\"^$Node$\"})",
-          "refId": "A",
+          "editorMode": "code",
+          "exemplar": true,
+          "expr": "sum (irate(container_cpu_usage_seconds_total{origin_prometheus=~\"$origin_prometheus\",container!=\"\",node=~\"^$Node$\"}[2m])) / sum(kube_node_status_allocatable{origin_prometheus=~\"$origin_prometheus\",resource=\"cpu\", unit=\"core\", node=~\"^$Node$\"})",
+          "format": "time_series",
+          "hide": false,
+          "instant": true,
+          "interval": "",
           "legendFormat": "CPU Utilization Rate",
-          "instant": true,
-          "range": false,
-          "editorMode": "code",
-          "format": "time_series"
+          "refId": "C"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum(kube_pod_container_resource_requests{resource=\"cpu\", unit=\"core\",node=~\"^$Node$\"}) / sum(kube_node_status_allocatable{resource=\"cpu\", unit=\"core\", node=~\"^$Node$\"})",
-          "refId": "B",
+          "editorMode": "code",
+          "exemplar": true,
+          "expr": "sum(kube_pod_container_resource_requests{origin_prometheus=~\"$origin_prometheus\",resource=\"cpu\", unit=\"core\",node=~\"^$Node$\"}) / sum(kube_node_status_allocatable{origin_prometheus=~\"$origin_prometheus\",resource=\"cpu\", unit=\"core\", node=~\"^$Node$\"})",
+          "format": "time_series",
+          "instant": true,
+          "interval": "",
           "legendFormat": "CPU Request Rate",
-          "instant": true,
-          "range": false,
-          "editorMode": "code",
-          "format": "time_series"
+          "refId": "A"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum(kube_pod_container_resource_limits{resource=\"cpu\", unit=\"core\",node=~\"^$Node$\"}) / sum(kube_node_status_allocatable{resource=\"cpu\", unit=\"core\", node=~\"^$Node$\"})",
-          "refId": "C",
-          "legendFormat": "CPU Limit Rate",
-          "instant": true,
-          "range": false,
           "editorMode": "code",
-          "format": "time_series"
+          "exemplar": true,
+          "expr": "sum(kube_pod_container_resource_limits{origin_prometheus=~\"$origin_prometheus\",resource=\"cpu\", unit=\"core\",node=~\"^$Node$\"}) / sum(kube_node_status_allocatable{origin_prometheus=~\"$origin_prometheus\",resource=\"cpu\", unit=\"core\", node=~\"^$Node$\"})",
+          "format": "time_series",
+          "instant": true,
+          "interval": "",
+          "legendFormat": "CPU Limit Rate",
+          "refId": "B"
         }
       ],
       "title": "Node CPU Ratio",
@@ -280,9 +291,9 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "PBFA97CFB590B2093"
       },
-      "description": "Number of cluster nodes\uff0cNodes POD Number of\uff0cNodesPODUpper Limit",
+      "description": "Number of cluster nodes，Nodes POD Number of，NodesPODUpper Limit",
       "fieldConfig": {
         "defaults": {
           "mappings": [],
@@ -335,43 +346,43 @@
         "text": {},
         "valueMode": "color"
       },
-      "pluginVersion": "10.4.1",
+      "pluginVersion": "10.2.3",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "count(kube_node_info{})",
-          "refId": "A",
+          "expr": "count(kube_node_info{origin_prometheus=~\"$origin_prometheus\"})",
+          "instant": true,
+          "interval": "",
           "legendFormat": "Number of nodes",
-          "instant": true,
-          "range": false,
-          "editorMode": "code"
+          "refId": "A"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "count(kube_pod_info{created_by_kind!~\"<none>|Job\",node=~\"^$Node$\"})",
-          "refId": "B",
+          "expr": "count(kube_pod_info{origin_prometheus=~\"$origin_prometheus\",created_by_kind!~\"<none>|Job\",node=~\"^$Node$\"})",
+          "hide": false,
+          "instant": true,
+          "interval": "",
           "legendFormat": "Pod Number of nodes",
-          "instant": true,
-          "range": false,
-          "editorMode": "code"
+          "refId": "B"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum(kube_node_status_allocatable{resource=\"pods\", unit=\"integer\",node=~\"^$Node$\"})",
-          "refId": "C",
-          "legendFormat": "Upper limit Pod",
+          "exemplar": true,
+          "expr": "sum(kube_node_status_allocatable{origin_prometheus=~\"$origin_prometheus\",resource=\"pods\", unit=\"integer\",node=~\"^$Node$\"})",
+          "hide": false,
           "instant": true,
-          "range": false,
-          "editorMode": "code"
+          "interval": "",
+          "legendFormat": "Upper limit Pod",
+          "refId": "C"
         }
       ],
       "title": "Nodes with Pod",
@@ -380,7 +391,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "PBFA97CFB590B2093"
       },
       "fieldConfig": {
         "defaults": {
@@ -512,72 +523,76 @@
           }
         ]
       },
-      "pluginVersion": "10.4.1",
+      "pluginVersion": "10.2.3",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "count(kube_pod_info{node=~\"^$Node$\"}) by (namespace)",
-          "refId": "A",
-          "legendFormat": "",
-          "instant": true,
-          "range": false,
           "editorMode": "code",
-          "format": "table"
+          "expr": "count(kube_pod_info{origin_prometheus=~\"$origin_prometheus\",node=~\"^$Node$\"}) by (namespace)",
+          "format": "table",
+          "instant": true,
+          "interval": "",
+          "legendFormat": "",
+          "refId": "A"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "count(kube_service_info{}) by(namespace)",
-          "refId": "B",
-          "legendFormat": "",
-          "instant": true,
-          "range": false,
           "editorMode": "code",
-          "format": "table"
+          "expr": "count(kube_service_info{origin_prometheus=~\"$origin_prometheus\"}) by(namespace)",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "interval": "",
+          "legendFormat": "",
+          "refId": "C"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "count by (namespace)({__name__=~\"kube_deployment_metadata_generation|kube_daemonset_metadata_generation|kube_statefulset_metadata_generation\"})",
-          "refId": "C",
+          "editorMode": "code",
+          "expr": "count by (namespace)({__name__=~\"kube_deployment_metadata_generation|kube_daemonset_metadata_generation|kube_statefulset_metadata_generation\",origin_prometheus=~\"$origin_prometheus\"})",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "interval": "",
           "legendFormat": "__auto",
-          "instant": true,
-          "range": false,
-          "editorMode": "code",
-          "format": "table"
+          "refId": "D"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "count(kube_configmap_info{}) by(namespace)",
-          "refId": "D",
+          "editorMode": "code",
+          "expr": "count(kube_configmap_info{origin_prometheus=~\"$origin_prometheus\"}) by(namespace)",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "interval": "",
           "legendFormat": "configmap",
-          "instant": true,
-          "range": false,
-          "editorMode": "code",
-          "format": "table"
+          "refId": "B"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "count(kube_secret_info{}) by(namespace)",
-          "refId": "E",
-          "legendFormat": "secret",
-          "instant": true,
-          "range": false,
           "editorMode": "code",
-          "format": "table"
+          "expr": "count(kube_secret_info{origin_prometheus=~\"$origin_prometheus\"}) by(namespace)",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "interval": "",
+          "legendFormat": "secret",
+          "refId": "E"
         }
       ],
       "title": "Namespace Resource Statistics",
@@ -627,7 +642,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "PBFA97CFB590B2093"
       },
       "fieldConfig": {
         "defaults": {
@@ -715,36 +730,44 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum (irate(container_network_receive_bytes_total{node=~\"^$Node$\",namespace=~\"$NameSpace\"}[2m]))*8",
-          "refId": "A",
-          "legendFormat": "Receive",
-          "instant": false,
-          "range": true,
           "editorMode": "code",
-          "format": "time_series"
+          "exemplar": true,
+          "expr": "sum (irate(container_network_receive_bytes_total{origin_prometheus=~\"$origin_prometheus\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}[2m]))*8",
+          "format": "time_series",
+          "interval": "",
+          "intervalFactor": 1,
+          "legendFormat": "Receive",
+          "metric": "network",
+          "range": true,
+          "refId": "A",
+          "step": 10
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum (irate(container_network_transmit_bytes_total{node=~\"^$Node$\",namespace=~\"$NameSpace\"}[2m]))*8",
-          "refId": "B",
-          "legendFormat": "Send",
+          "editorMode": "code",
+          "exemplar": true,
+          "expr": "sum (irate(container_network_transmit_bytes_total{origin_prometheus=~\"$origin_prometheus\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}[2m]))*8",
           "instant": false,
-          "range": true,
-          "editorMode": "code"
+          "interval": "",
+          "intervalFactor": 1,
+          "legendFormat": "Send",
+          "metric": "network",
+          "refId": "B",
+          "step": 10
         }
       ],
-      "title": "$NameSpace\uff1aNetwork Overview\uff08Associable nodes and namespaces\uff09",
+      "title": "$NameSpace：Network Overview（Associable nodes and namespaces）",
       "type": "timeseries"
     },
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "PBFA97CFB590B2093"
       },
       "fieldConfig": {
         "defaults": {
@@ -799,55 +822,55 @@
         "text": {},
         "valueMode": "color"
       },
-      "pluginVersion": "10.4.1",
+      "pluginVersion": "10.2.3",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum(kube_node_status_allocatable{resource=\"memory\", unit=\"byte\", node=~\"^$Node$\"})",
-          "refId": "A",
+          "exemplar": true,
+          "expr": "sum(kube_node_status_allocatable{origin_prometheus=~\"$origin_prometheus\",resource=\"memory\", unit=\"byte\", node=~\"^$Node$\"})",
+          "instant": true,
+          "interval": "",
           "legendFormat": "Total Memory",
-          "instant": true,
-          "range": false,
-          "editorMode": "code"
+          "refId": "A"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum (container_memory_working_set_bytes{container!=\"\",node=~\"^$Node$\"})",
-          "refId": "B",
+          "exemplar": true,
+          "expr": "sum (container_memory_working_set_bytes{origin_prometheus=~\"$origin_prometheus\",container!=\"\",node=~\"^$Node$\"})",
+          "instant": true,
+          "interval": "",
           "legendFormat": "Usage",
-          "instant": true,
-          "range": false,
-          "editorMode": "code"
+          "refId": "C"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum(kube_pod_container_resource_requests{resource=\"memory\", unit=\"byte\",node=~\"^$Node$\"})",
-          "refId": "C",
+          "exemplar": true,
+          "expr": "sum(kube_pod_container_resource_requests{origin_prometheus=~\"$origin_prometheus\",resource=\"memory\", unit=\"byte\",node=~\"^$Node$\"})",
+          "instant": true,
+          "interval": "",
           "legendFormat": "Requests",
-          "instant": true,
-          "range": false,
-          "editorMode": "code"
+          "refId": "D"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum(kube_pod_container_resource_limits{resource=\"memory\", unit=\"byte\",node=~\"^$Node$\"})",
-          "refId": "D",
-          "legendFormat": "Limits",
+          "exemplar": true,
+          "expr": "sum(kube_pod_container_resource_limits{origin_prometheus=~\"$origin_prometheus\",resource=\"memory\", unit=\"byte\",node=~\"^$Node$\"})",
           "instant": true,
-          "range": false,
-          "editorMode": "code"
+          "interval": "",
+          "legendFormat": "Limits",
+          "refId": "B"
         }
       ],
       "title": "Node Memory Information",
@@ -856,7 +879,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "PBFA97CFB590B2093"
       },
       "fieldConfig": {
         "defaults": {
@@ -911,55 +934,55 @@
         "text": {},
         "valueMode": "color"
       },
-      "pluginVersion": "10.4.1",
+      "pluginVersion": "10.2.3",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum(kube_node_status_allocatable{resource=\"cpu\", unit=\"core\", node=~\"^$Node$\"})",
-          "refId": "A",
+          "exemplar": true,
+          "expr": "sum(kube_node_status_allocatable{origin_prometheus=~\"$origin_prometheus\",resource=\"cpu\", unit=\"core\", node=~\"^$Node$\"})",
+          "instant": true,
+          "interval": "",
           "legendFormat": "Total Cores",
-          "instant": true,
-          "range": false,
-          "editorMode": "code"
+          "refId": "A"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum (irate(container_cpu_usage_seconds_total{id=\"/\",node=~\"^$Node$\"}[2m]))",
-          "refId": "B",
+          "exemplar": true,
+          "expr": "sum (irate(container_cpu_usage_seconds_total{origin_prometheus=~\"$origin_prometheus\",id=\"/\",node=~\"^$Node$\"}[2m]))",
+          "instant": true,
+          "interval": "",
           "legendFormat": "Usage",
-          "instant": true,
-          "range": false,
-          "editorMode": "code"
+          "refId": "C"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum(kube_pod_container_resource_requests{resource=\"cpu\", unit=\"core\",node=~\"^$Node$\"})",
-          "refId": "C",
+          "exemplar": true,
+          "expr": "sum(kube_pod_container_resource_requests{origin_prometheus=~\"$origin_prometheus\",resource=\"cpu\", unit=\"core\",node=~\"^$Node$\"})",
+          "instant": true,
+          "interval": "",
           "legendFormat": "Requests",
-          "instant": true,
-          "range": false,
-          "editorMode": "code"
+          "refId": "D"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum(kube_pod_container_resource_limits{resource=\"cpu\", unit=\"core\",node=~\"^$Node$\"})",
-          "refId": "D",
-          "legendFormat": "Limit",
+          "exemplar": true,
+          "expr": "sum(kube_pod_container_resource_limits{origin_prometheus=~\"$origin_prometheus\",resource=\"cpu\", unit=\"core\",node=~\"^$Node$\"})",
           "instant": true,
-          "range": false,
-          "editorMode": "code"
+          "interval": "",
+          "legendFormat": "Limit",
+          "refId": "B"
         }
       ],
       "title": "Node CPU Number of cores",
@@ -968,7 +991,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "PBFA97CFB590B2093"
       },
       "fieldConfig": {
         "defaults": {
@@ -1075,43 +1098,40 @@
         "text": {},
         "valueMode": "color"
       },
-      "pluginVersion": "10.4.1",
+      "pluginVersion": "10.2.3",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum (container_fs_usage_bytes{device=~\"^/dev/.*$\",id=\"/\",node=~\"^$Node$\"}) / sum (container_fs_limit_bytes{device=~\"^/dev/.*$\",id=\"/\",node=~\"^$Node$\"})",
-          "refId": "A",
+          "expr": "sum (container_fs_usage_bytes{origin_prometheus=~\"$origin_prometheus\",device=~\"^/dev/.*$\",id=\"/\",node=~\"^$Node$\"}) / sum (container_fs_limit_bytes{origin_prometheus=~\"$origin_prometheus\",device=~\"^/dev/.*$\",id=\"/\",node=~\"^$Node$\"})",
+          "instant": true,
+          "interval": "",
           "legendFormat": "Utilization Rate",
-          "instant": true,
-          "range": false,
-          "editorMode": "code"
+          "refId": "C"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum (container_fs_usage_bytes{device=~\"^/dev/.*$\",id=\"/\",node=~\"^$Node$\"})",
-          "refId": "B",
+          "expr": "sum (container_fs_usage_bytes{origin_prometheus=~\"$origin_prometheus\",device=~\"^/dev/.*$\",id=\"/\",node=~\"^$Node$\"})",
+          "instant": true,
+          "interval": "",
           "legendFormat": "Usage",
-          "instant": true,
-          "range": false,
-          "editorMode": "code"
+          "refId": "A"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum (container_fs_limit_bytes{device=~\"^/dev/.*$\",id=\"/\",node=~\"^$Node$\"})",
-          "refId": "C",
-          "legendFormat": "Total",
+          "expr": "sum (container_fs_limit_bytes{origin_prometheus=~\"$origin_prometheus\",device=~\"^/dev/.*$\",id=\"/\",node=~\"^$Node$\"})",
           "instant": true,
-          "range": false,
-          "editorMode": "code"
+          "interval": "",
+          "legendFormat": "Total",
+          "refId": "B"
         }
       ],
       "title": "Node Storage Information",
@@ -1120,7 +1140,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "PBFA97CFB590B2093"
       },
       "fieldConfig": {
         "defaults": {
@@ -1185,82 +1205,94 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "10.4.1",
+      "pluginVersion": "10.2.3",
       "repeat": "origin_prometheus",
       "repeatDirection": "v",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "count({__name__=~\"kube_deployment_metadata_generation|kube_daemonset_metadata_generation|kube_statefulset_metadata_generation\"})",
-          "refId": "A",
-          "legendFormat": "Workload",
-          "instant": true,
-          "range": false,
-          "editorMode": "code"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "count(kube_pod_info{})",
-          "refId": "B",
-          "legendFormat": "Total Pod",
-          "instant": true,
-          "range": false,
-          "editorMode": "code"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "count by(key,origin_prometheus)(kube_node_spec_taint{key=~\"node.kubernetes.io.*\"})",
-          "refId": "C",
-          "legendFormat": "{{key}}",
-          "instant": true,
-          "range": false,
           "editorMode": "code",
-          "format": "time_series"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "count by(origin_prometheus)(kube_node_info{})",
-          "refId": "D",
-          "legendFormat": "Total Nodes",
+          "exemplar": false,
+          "expr": "count({__name__=~\"kube_deployment_metadata_generation|kube_daemonset_metadata_generation|kube_statefulset_metadata_generation\",origin_prometheus=~\"$origin_prometheus\"})",
+          "hide": false,
           "instant": true,
+          "legendFormat": "Workload",
           "range": false,
-          "editorMode": "code"
+          "refId": "F"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "count by(origin_prometheus)(kube_node_info{}) - count by(origin_prometheus)(kube_node_spec_taint{key!~\"node.kubernetes.io.*\"})",
-          "refId": "E",
-          "legendFormat": "Normal Node",
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "count(kube_pod_info{origin_prometheus=~\"$origin_prometheus\"})",
+          "hide": false,
           "instant": true,
+          "legendFormat": "Total Pod",
           "range": false,
-          "editorMode": "code"
+          "refId": "E"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "count by(key,origin_prometheus)(kube_node_spec_taint{key!~\"node.kubernetes.io.*\"})",
-          "refId": "F",
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "count by(key,origin_prometheus)(kube_node_spec_taint{origin_prometheus=~\"$origin_prometheus\",key=~\"node.kubernetes.io.*\"})",
+          "format": "time_series",
+          "hide": false,
+          "instant": true,
           "legendFormat": "{{key}}",
-          "instant": true,
           "range": false,
-          "editorMode": "code"
+          "refId": "D"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "count by(origin_prometheus)(kube_node_info{origin_prometheus=~\"$origin_prometheus\"})",
+          "hide": false,
+          "instant": true,
+          "legendFormat": "Total Nodes",
+          "range": false,
+          "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "count by(origin_prometheus)(kube_node_info{origin_prometheus=~\"$origin_prometheus\"}) - count by(origin_prometheus)(kube_node_spec_taint{origin_prometheus=~\"$origin_prometheus\",key!~\"node.kubernetes.io.*\"})",
+          "hide": false,
+          "instant": true,
+          "legendFormat": "Normal Node",
+          "range": false,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "count by(key,origin_prometheus)(kube_node_spec_taint{origin_prometheus=~\"$origin_prometheus\",key!~\"node.kubernetes.io.*\"})",
+          "hide": false,
+          "instant": true,
+          "legendFormat": "{{key}}",
+          "range": false,
+          "refId": "A"
         }
       ],
       "transformations": [
@@ -1277,7 +1309,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "PBFA97CFB590B2093"
       },
       "fieldConfig": {
         "defaults": {
@@ -1378,59 +1410,62 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum(kube_node_status_allocatable{resource=\"memory\", unit=\"byte\", node=~\"^$Node$\"})",
-          "refId": "A",
+          "editorMode": "code",
+          "exemplar": true,
+          "expr": "sum(kube_node_status_allocatable{origin_prometheus=~\"$origin_prometheus\",resource=\"memory\", unit=\"byte\", node=~\"^$Node$\"})",
+          "instant": false,
+          "interval": "",
           "legendFormat": "Total Memory",
-          "instant": false,
-          "range": true,
-          "editorMode": "code"
+          "refId": "A"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum (container_memory_working_set_bytes{container!=\"\",node=~\"^$Node$\"})",
-          "refId": "B",
+          "exemplar": true,
+          "expr": "sum (container_memory_working_set_bytes{origin_prometheus=~\"$origin_prometheus\",container!=\"\",node=~\"^$Node$\"})",
+          "instant": false,
+          "interval": "",
           "legendFormat": "Usage",
-          "instant": false,
-          "range": true,
-          "editorMode": "code"
+          "refId": "C"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum(kube_pod_container_resource_requests{resource=\"memory\", unit=\"byte\",node=~\"^$Node$\"})",
-          "refId": "C",
+          "exemplar": true,
+          "expr": "sum(kube_pod_container_resource_requests{origin_prometheus=~\"$origin_prometheus\",resource=\"memory\", unit=\"byte\",node=~\"^$Node$\"})",
+          "hide": true,
+          "instant": false,
+          "interval": "",
           "legendFormat": "Requests",
-          "instant": false,
-          "range": true,
-          "editorMode": "code"
+          "refId": "D"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum(kube_pod_container_resource_limits{resource=\"memory\", unit=\"byte\",node=~\"^$Node$\"})",
-          "refId": "D",
-          "legendFormat": "Limit",
+          "exemplar": true,
+          "expr": "sum(kube_pod_container_resource_limits{origin_prometheus=~\"$origin_prometheus\",resource=\"memory\", unit=\"byte\",node=~\"^$Node$\"})",
+          "hide": true,
           "instant": false,
-          "range": true,
-          "editorMode": "code"
+          "interval": "",
+          "legendFormat": "Limit",
+          "refId": "B"
         }
       ],
-      "title": "Memory Usage\u3010$Node\u3011",
+      "title": "Memory Usage【$Node】",
       "type": "timeseries"
     },
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "PBFA97CFB590B2093"
       },
       "fieldConfig": {
         "defaults": {
@@ -1531,61 +1566,64 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum(kube_node_status_allocatable{resource=\"cpu\", unit=\"core\", node=~\"^$Node$\"})",
-          "refId": "A",
+          "editorMode": "code",
+          "exemplar": true,
+          "expr": "sum(kube_node_status_allocatable{origin_prometheus=~\"$origin_prometheus\",resource=\"cpu\", unit=\"core\", node=~\"^$Node$\"})",
+          "instant": false,
+          "interval": "",
           "legendFormat": "Total Cores",
-          "instant": false,
-          "range": true,
-          "editorMode": "code"
+          "refId": "A"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum (irate(container_cpu_usage_seconds_total{id=\"/\",node=~\"^$Node$\"}[2m]))",
-          "refId": "B",
+          "exemplar": true,
+          "expr": "sum (irate(container_cpu_usage_seconds_total{origin_prometheus=~\"$origin_prometheus\",id=\"/\",node=~\"^$Node$\"}[2m]))",
+          "instant": false,
+          "interval": "",
           "legendFormat": "Usage",
-          "instant": false,
-          "range": true,
-          "editorMode": "code"
+          "refId": "C"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum(kube_pod_container_resource_requests{resource=\"cpu\", unit=\"core\",node=~\"^$Node$\"})",
-          "refId": "C",
+          "exemplar": true,
+          "expr": "sum(kube_pod_container_resource_requests{origin_prometheus=~\"$origin_prometheus\",resource=\"cpu\", unit=\"core\",node=~\"^$Node$\"})",
+          "hide": true,
+          "instant": false,
+          "interval": "",
           "legendFormat": "Requests",
-          "instant": false,
-          "range": true,
-          "editorMode": "code"
+          "refId": "D"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum(kube_pod_container_resource_limits{resource=\"cpu\", unit=\"core\",node=~\"^$Node$\"})",
-          "refId": "D",
-          "legendFormat": "Limit",
+          "exemplar": true,
+          "expr": "sum(kube_pod_container_resource_limits{origin_prometheus=~\"$origin_prometheus\",resource=\"cpu\", unit=\"core\",node=~\"^$Node$\"})",
+          "hide": true,
           "instant": true,
-          "range": false,
-          "editorMode": "code"
+          "interval": "",
+          "legendFormat": "Limit",
+          "refId": "B"
         }
       ],
-      "title": "CPU Used Cores\u3010$Node\u3011",
+      "title": "CPU Used Cores【$Node】",
       "type": "timeseries"
     },
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "PBFA97CFB590B2093"
       },
-      "description": "Number of Cluster Nodes\uff0cNodes POD Number of\uff0cNodes POD Upper Limit",
+      "description": "Number of Cluster Nodes，Nodes POD Number of，Nodes POD Upper Limit",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1712,47 +1750,51 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "count(kube_node_info{})",
-          "refId": "A",
+          "exemplar": true,
+          "expr": "count(kube_node_info{origin_prometheus=~\"$origin_prometheus\"})",
+          "hide": false,
+          "instant": false,
+          "interval": "",
           "legendFormat": "Number of nodes",
-          "instant": false,
-          "range": true,
-          "editorMode": "code"
+          "refId": "A"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "count(kube_pod_info{created_by_kind!~\"<none>|Job\",node=~\"^$Node$\"})",
-          "refId": "B",
+          "editorMode": "code",
+          "exemplar": true,
+          "expr": "count(kube_pod_info{origin_prometheus=~\"$origin_prometheus\",created_by_kind!~\"<none>|Job\",node=~\"^$Node$\"})",
+          "hide": false,
+          "instant": false,
+          "interval": "",
           "legendFormat": "Pod Number",
-          "instant": false,
-          "range": true,
-          "editorMode": "code"
+          "refId": "B"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum(kube_node_status_allocatable{resource=\"pods\", unit=\"integer\",node=~\"^$Node$\"})",
-          "refId": "C",
-          "legendFormat": "Upper Limit Pod",
+          "exemplar": true,
+          "expr": "sum(kube_node_status_allocatable{origin_prometheus=~\"$origin_prometheus\",resource=\"pods\", unit=\"integer\",node=~\"^$Node$\"})",
+          "hide": false,
           "instant": false,
-          "range": true,
-          "editorMode": "code"
+          "interval": "",
+          "legendFormat": "Upper Limit Pod",
+          "refId": "C"
         }
       ],
-      "title": "Pod Number and nodes\u3010$Node\u3011",
+      "title": "Pod Number and nodes【$Node】",
       "type": "timeseries"
     },
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "PBFA97CFB590B2093"
       },
       "fieldConfig": {
         "defaults": {
@@ -1853,24 +1895,25 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum (irate(container_cpu_usage_seconds_total{container!=\"\",node=~\"^$Node$\"}[2m]))by (node) / sum(kube_node_status_allocatable{resource=\"cpu\", unit=\"core\", node=~\"^$Node$\"})by (node)*100",
-          "refId": "A",
-          "legendFormat": "{{node}}",
+          "exemplar": true,
+          "expr": "sum (irate(container_cpu_usage_seconds_total{origin_prometheus=~\"$origin_prometheus\",container!=\"\",node=~\"^$Node$\"}[2m]))by (node) / sum(kube_node_status_allocatable{origin_prometheus=~\"$origin_prometheus\",resource=\"cpu\", unit=\"core\", node=~\"^$Node$\"})by (node)*100",
+          "format": "time_series",
+          "hide": false,
           "instant": false,
-          "range": true,
-          "editorMode": "code",
-          "format": "time_series"
+          "interval": "",
+          "legendFormat": "{{node}}",
+          "refId": "I"
         }
       ],
-      "title": "$Node\uff1aNodes CPU Breakdown",
+      "title": "$Node：Nodes CPU Breakdown",
       "type": "timeseries"
     },
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "PBFA97CFB590B2093"
       },
       "fieldConfig": {
         "defaults": {
@@ -1955,24 +1998,25 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum (container_memory_working_set_bytes{container!=\"\",node=~\"^$Node$\"})by (node) / sum(kube_node_status_allocatable{resource=\"memory\", unit=\"byte\", node=~\"^$Node$\"})by (node)*100",
-          "refId": "A",
-          "legendFormat": "{{node}}",
+          "exemplar": true,
+          "expr": "sum (container_memory_working_set_bytes{origin_prometheus=~\"$origin_prometheus\",container!=\"\",node=~\"^$Node$\"})by (node) / sum(kube_node_status_allocatable{origin_prometheus=~\"$origin_prometheus\",resource=\"memory\", unit=\"byte\", node=~\"^$Node$\"})by (node)*100",
+          "format": "time_series",
+          "hide": false,
           "instant": false,
-          "range": true,
-          "editorMode": "code",
-          "format": "time_series"
+          "interval": "",
+          "legendFormat": "{{node}}",
+          "refId": "I"
         }
       ],
-      "title": "$Node\uff1aNode Memory Breakdown",
+      "title": "$Node：Node Memory Breakdown",
       "type": "timeseries"
     },
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "PBFA97CFB590B2093"
       },
       "fieldConfig": {
         "defaults": {
@@ -1983,7 +2027,7 @@
             "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "series",
-            "axisLabel": "\u2190Inflow/Outflow\u2192",
+            "axisLabel": "←Inflow/Outflow→",
             "axisPlacement": "auto",
             "barAlignment": 0,
             "drawStyle": "line",
@@ -2071,36 +2115,41 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum (irate(container_network_receive_bytes_total{node=~\"^$Node$\"}[2m]))by (node) *8",
-          "refId": "A",
+          "exemplar": true,
+          "expr": "sum (irate(container_network_receive_bytes_total{origin_prometheus=~\"$origin_prometheus\",node=~\"^$Node$\"}[2m]))by (node) *8",
+          "format": "time_series",
+          "interval": "",
+          "intervalFactor": 1,
           "legendFormat": "Inflow:{{node}}",
-          "instant": false,
-          "range": true,
-          "editorMode": "code",
-          "format": "time_series"
+          "metric": "network",
+          "refId": "A",
+          "step": 10
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum (irate(container_network_transmit_bytes_total{node=~\"^$Node$\"}[2m]))by (node) *8",
-          "refId": "B",
-          "legendFormat": "Outflows:{{node}}",
+          "exemplar": true,
+          "expr": "sum (irate(container_network_transmit_bytes_total{origin_prometheus=~\"$origin_prometheus\",node=~\"^$Node$\"}[2m]))by (node) *8",
           "instant": false,
-          "range": true,
-          "editorMode": "code"
+          "interval": "",
+          "intervalFactor": 1,
+          "legendFormat": "Outflows:{{node}}",
+          "metric": "network",
+          "refId": "B",
+          "step": 10
         }
       ],
-      "title": "$Node\uff1aNode Network Overview",
+      "title": "$Node：Node Network Overview",
       "type": "timeseries"
     },
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "PBFA97CFB590B2093"
       },
       "fieldConfig": {
         "defaults": {
@@ -2458,265 +2507,285 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "count(kube_pod_info{created_by_kind!~\"<none>|Job\",node=~\"^$Node$\"}) by (node)",
-          "refId": "A",
+          "exemplar": false,
+          "expr": "count(kube_pod_info{origin_prometheus=~\"$origin_prometheus\",created_by_kind!~\"<none>|Job\",node=~\"^$Node$\"}) by (node)",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "interval": "",
           "legendFormat": "pod Number",
-          "instant": true,
-          "range": false,
-          "editorMode": "code",
-          "format": "table"
+          "refId": "A"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "kube_node_status_condition{status=\"true\",node=~\"^$Node$\"}  == 1",
-          "refId": "B",
+          "exemplar": false,
+          "expr": "kube_node_status_condition{origin_prometheus=~\"$origin_prometheus\",status=\"true\",node=~\"^$Node$\"}  == 1",
+          "format": "table",
+          "hide": true,
+          "instant": true,
+          "interval": "",
           "legendFormat": "Status",
-          "instant": true,
-          "range": false,
-          "editorMode": "code",
-          "format": "table"
+          "refId": "B"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum (irate(container_cpu_usage_seconds_total{container!=\"\",node=~\"^$Node$\"}[2m])) by (node)",
-          "refId": "C",
+          "exemplar": false,
+          "expr": "sum (irate(container_cpu_usage_seconds_total{origin_prometheus=~\"$origin_prometheus\",container!=\"\",node=~\"^$Node$\"}[2m])) by (node)",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "interval": "",
           "legendFormat": "",
-          "instant": true,
-          "range": false,
-          "editorMode": "code",
-          "format": "table"
+          "refId": "I"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "kube_node_status_allocatable{resource=\"cpu\", unit=\"core\", node=~\"^$Node$\"} - 0",
-          "refId": "D",
+          "exemplar": false,
+          "expr": "kube_node_status_allocatable{origin_prometheus=~\"$origin_prometheus\",resource=\"cpu\", unit=\"core\", node=~\"^$Node$\"} - 0",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "interval": "",
           "legendFormat": "",
-          "instant": true,
-          "range": false,
-          "editorMode": "code",
-          "format": "table"
+          "refId": "C"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum(kube_pod_container_resource_requests{resource=\"cpu\", unit=\"core\",node=~\"^$Node$\"}) by (node)",
-          "refId": "E",
+          "exemplar": false,
+          "expr": "sum(kube_pod_container_resource_requests{origin_prometheus=~\"$origin_prometheus\",resource=\"cpu\", unit=\"core\",node=~\"^$Node$\"}) by (node)",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "interval": "",
           "legendFormat": "",
-          "instant": true,
-          "range": false,
-          "editorMode": "code",
-          "format": "table"
+          "refId": "E"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum(kube_pod_container_resource_limits{resource=\"cpu\", unit=\"core\",node=~\"^$Node$\"}) by (node)",
-          "refId": "F",
+          "exemplar": false,
+          "expr": "sum(kube_pod_container_resource_limits{origin_prometheus=~\"$origin_prometheus\",resource=\"cpu\", unit=\"core\",node=~\"^$Node$\"}) by (node)",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "interval": "",
           "legendFormat": "",
-          "instant": true,
-          "range": false,
-          "editorMode": "code",
-          "format": "table"
+          "refId": "F"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum (container_memory_working_set_bytes{container!=\"\",node=~\"^$Node$\"}) by (node)",
-          "refId": "G",
+          "exemplar": false,
+          "expr": "sum (container_memory_working_set_bytes{origin_prometheus=~\"$origin_prometheus\",container!=\"\",node=~\"^$Node$\"}) by (node)",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "interval": "",
           "legendFormat": "",
-          "instant": true,
-          "range": false,
-          "editorMode": "code",
-          "format": "table"
+          "refId": "J"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum(kube_node_status_allocatable{resource=\"memory\", unit=\"byte\", node=~\"^$Node$\"}) by (node) - 0",
-          "refId": "H",
+          "exemplar": false,
+          "expr": "sum(kube_node_status_allocatable{origin_prometheus=~\"$origin_prometheus\",resource=\"memory\", unit=\"byte\", node=~\"^$Node$\"}) by (node) - 0",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "interval": "",
           "legendFormat": "",
-          "instant": true,
-          "range": false,
-          "editorMode": "code",
-          "format": "table"
+          "refId": "D"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum(kube_pod_container_resource_requests{resource=\"memory\", unit=\"byte\",node=~\"^$Node$\"}) by (node)",
-          "refId": "I",
+          "exemplar": false,
+          "expr": "sum(kube_pod_container_resource_requests{origin_prometheus=~\"$origin_prometheus\",resource=\"memory\", unit=\"byte\",node=~\"^$Node$\"}) by (node)",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "interval": "",
           "legendFormat": "",
-          "instant": true,
-          "range": false,
-          "editorMode": "code",
-          "format": "table"
+          "refId": "G"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum(kube_pod_container_resource_limits{resource=\"memory\", unit=\"byte\",node=~\"^$Node$\"}) by (node)",
-          "refId": "J",
+          "exemplar": false,
+          "expr": "sum(kube_pod_container_resource_limits{origin_prometheus=~\"$origin_prometheus\",resource=\"memory\", unit=\"byte\",node=~\"^$Node$\"}) by (node)",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "interval": "",
           "legendFormat": "",
-          "instant": true,
-          "range": false,
-          "editorMode": "code",
-          "format": "table"
+          "refId": "H"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum (container_fs_usage_bytes{device=~\"^/dev/.*$\",id=\"/\",node=~\"^$Node$\"}) by (node)",
-          "refId": "K",
+          "exemplar": false,
+          "expr": "sum (container_fs_usage_bytes{origin_prometheus=~\"$origin_prometheus\",device=~\"^/dev/.*$\",id=\"/\",node=~\"^$Node$\"}) by (node)",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "interval": "",
           "legendFormat": "",
-          "instant": true,
-          "range": false,
-          "editorMode": "code",
-          "format": "table"
+          "refId": "K"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum (container_fs_limit_bytes{device=~\"^/dev/.*$\",id=\"/\",node=~\"^$Node$\"}) by (node)",
-          "refId": "L",
+          "exemplar": false,
+          "expr": "sum (container_fs_limit_bytes{origin_prometheus=~\"$origin_prometheus\",device=~\"^/dev/.*$\",id=\"/\",node=~\"^$Node$\"}) by (node)",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "interval": "",
           "legendFormat": "",
-          "instant": true,
-          "range": false,
-          "editorMode": "code",
-          "format": "table"
+          "refId": "L"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum (container_memory_working_set_bytes{container!=\"\",node=~\"^$Node$\"})by (node) / sum(kube_node_status_allocatable{resource=\"memory\", unit=\"byte\", node=~\"^$Node$\"})by (node)",
-          "refId": "M",
+          "exemplar": false,
+          "expr": "sum (container_memory_working_set_bytes{origin_prometheus=~\"$origin_prometheus\",container!=\"\",node=~\"^$Node$\"})by (node) / sum(kube_node_status_allocatable{origin_prometheus=~\"$origin_prometheus\",resource=\"memory\", unit=\"byte\", node=~\"^$Node$\"})by (node)",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "interval": "",
           "legendFormat": "Memory Usage%",
-          "instant": true,
-          "range": false,
-          "editorMode": "code",
-          "format": "table"
+          "refId": "M"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum(kube_pod_container_resource_requests{resource=\"memory\", unit=\"byte\",node=~\"^$Node$\"})by (node) / sum(kube_node_status_allocatable{resource=\"memory\", unit=\"byte\", node=~\"^$Node$\"})by (node)",
-          "refId": "N",
+          "exemplar": false,
+          "expr": "sum(kube_pod_container_resource_requests{origin_prometheus=~\"$origin_prometheus\",resource=\"memory\", unit=\"byte\",node=~\"^$Node$\"})by (node) / sum(kube_node_status_allocatable{origin_prometheus=~\"$origin_prometheus\",resource=\"memory\", unit=\"byte\", node=~\"^$Node$\"})by (node)",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "interval": "",
           "legendFormat": "Memory Requests%",
-          "instant": true,
-          "range": false,
-          "editorMode": "code",
-          "format": "table"
+          "refId": "N"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum(kube_pod_container_resource_limits{resource=\"memory\", unit=\"byte\",node=~\"^$Node$\"})by (node) / sum(kube_node_status_allocatable{resource=\"memory\", unit=\"byte\", node=~\"^$Node$\"})by (node)",
-          "refId": "O",
+          "exemplar": false,
+          "expr": "sum(kube_pod_container_resource_limits{origin_prometheus=~\"$origin_prometheus\",resource=\"memory\", unit=\"byte\",node=~\"^$Node$\"})by (node) / sum(kube_node_status_allocatable{origin_prometheus=~\"$origin_prometheus\",resource=\"memory\", unit=\"byte\", node=~\"^$Node$\"})by (node)",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "interval": "",
           "legendFormat": "Memory Limit%",
-          "instant": true,
-          "range": false,
-          "editorMode": "code",
-          "format": "table"
+          "refId": "O"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum (irate(container_cpu_usage_seconds_total{container!=\"\",node=~\"^$Node$\"}[2m]))by (node) / sum(kube_node_status_allocatable{resource=\"cpu\", unit=\"core\", node=~\"^$Node$\"})by (node)",
-          "refId": "P",
+          "exemplar": false,
+          "expr": "sum (irate(container_cpu_usage_seconds_total{origin_prometheus=~\"$origin_prometheus\",container!=\"\",node=~\"^$Node$\"}[2m]))by (node) / sum(kube_node_status_allocatable{origin_prometheus=~\"$origin_prometheus\",resource=\"cpu\", unit=\"core\", node=~\"^$Node$\"})by (node)",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "interval": "",
           "legendFormat": "CPU Usage%",
-          "instant": true,
-          "range": false,
-          "editorMode": "code",
-          "format": "table"
+          "refId": "P"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum(kube_pod_container_resource_requests{resource=\"cpu\", unit=\"core\",node=~\"^$Node$\"})by (node) / sum(kube_node_status_allocatable{resource=\"cpu\", unit=\"core\", node=~\"^$Node$\"})by (node)",
-          "refId": "Q",
+          "exemplar": false,
+          "expr": "sum(kube_pod_container_resource_requests{origin_prometheus=~\"$origin_prometheus\",resource=\"cpu\", unit=\"core\",node=~\"^$Node$\"})by (node) / sum(kube_node_status_allocatable{origin_prometheus=~\"$origin_prometheus\",resource=\"cpu\", unit=\"core\", node=~\"^$Node$\"})by (node)",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "interval": "",
           "legendFormat": "CPU Requests%",
-          "instant": true,
-          "range": false,
-          "editorMode": "code",
-          "format": "table"
+          "refId": "Q"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum(kube_pod_container_resource_limits{resource=\"cpu\", unit=\"core\",node=~\"^$Node$\"})by (node) / sum(kube_node_status_allocatable{resource=\"cpu\", unit=\"core\", node=~\"^$Node$\"})by (node)",
-          "refId": "R",
+          "exemplar": false,
+          "expr": "sum(kube_pod_container_resource_limits{origin_prometheus=~\"$origin_prometheus\",resource=\"cpu\", unit=\"core\",node=~\"^$Node$\"})by (node) / sum(kube_node_status_allocatable{origin_prometheus=~\"$origin_prometheus\",resource=\"cpu\", unit=\"core\", node=~\"^$Node$\"})by (node)",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "interval": "",
           "legendFormat": "Memory Limit%",
-          "instant": true,
-          "range": false,
-          "editorMode": "code",
-          "format": "table"
+          "refId": "R"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum (container_fs_usage_bytes{device=~\"^/dev/.*$\",id=\"/\",node=~\"^$Node$\"})by (node) / sum (container_fs_limit_bytes{device=~\"^/dev/.*$\",id=\"/\",node=~\"^$Node$\"})by (node)",
-          "refId": "S",
+          "exemplar": false,
+          "expr": "sum (container_fs_usage_bytes{origin_prometheus=~\"$origin_prometheus\",device=~\"^/dev/.*$\",id=\"/\",node=~\"^$Node$\"})by (node) / sum (container_fs_limit_bytes{origin_prometheus=~\"$origin_prometheus\",device=~\"^/dev/.*$\",id=\"/\",node=~\"^$Node$\"})by (node)",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "interval": "",
           "legendFormat": "Disk Usage%",
-          "instant": true,
-          "range": false,
-          "editorMode": "code",
-          "format": "table"
+          "refId": "S"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum(kube_node_status_allocatable{resource=\"pods\", unit=\"integer\",node=~\"^$Node$\"})by (node)",
-          "refId": "T",
-          "legendFormat": "PodCaps",
+          "exemplar": false,
+          "expr": "sum(kube_node_status_allocatable{origin_prometheus=~\"$origin_prometheus\",resource=\"pods\", unit=\"integer\",node=~\"^$Node$\"})by (node)",
+          "format": "table",
+          "hide": false,
           "instant": true,
-          "range": false,
-          "editorMode": "code",
-          "format": "table"
+          "interval": "",
+          "legendFormat": "PodCaps",
+          "refId": "T"
         }
       ],
-      "title": "$Node\uff1aNode Information Detail",
+      "title": "$Node：Node Information Detail",
       "transformations": [
         {
           "id": "merge",
@@ -2848,7 +2917,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "PBFA97CFB590B2093"
       },
       "fieldConfig": {
         "defaults": {
@@ -3035,41 +3104,77 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum(container_fs_usage_bytes{container!=\"\",container!=\"POD\"}) by (namespace)",
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "max by (namespace,persistentvolumeclaim) (kubelet_volume_stats_used_bytes{origin_prometheus=~\"$origin_prometheus\"})",
+          "format": "table",
+          "instant": true,
+          "interval": "",
+          "intervalFactor": 1,
+          "legendFormat": "{{namespace}}:{{ persistentvolumeclaim }}",
+          "metric": "container_memory_usage:sort_desc",
+          "range": false,
           "refId": "A",
-          "legendFormat": "{{namespace}}",
-          "instant": true,
-          "range": false,
-          "editorMode": "code",
-          "format": "table"
+          "step": 10
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum(container_fs_limit_bytes{container!=\"\",container!=\"POD\"}) by (namespace)",
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "min by (namespace,persistentvolumeclaim) (kubelet_volume_stats_available_bytes{origin_prometheus=~\"$origin_prometheus\"}) + max by (namespace,persistentvolumeclaim) (kubelet_volume_stats_used_bytes{origin_prometheus=~\"$origin_prometheus\"})",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "interval": "",
+          "intervalFactor": 1,
+          "legendFormat": "__auto",
+          "metric": "container_memory_usage:sort_desc",
+          "range": false,
           "refId": "B",
-          "legendFormat": "{{namespace}}",
-          "instant": true,
-          "range": false,
-          "editorMode": "code",
-          "format": "table"
+          "step": 10
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum(container_fs_usage_bytes{container!=\"\",container!=\"POD\"}) by (namespace) / sum(container_fs_limit_bytes{container!=\"\",container!=\"POD\"}) by (namespace)",
-          "refId": "C",
-          "legendFormat": "{{namespace}}",
-          "instant": true,
-          "range": false,
           "editorMode": "code",
-          "format": "table"
+          "exemplar": false,
+          "expr": "max by (namespace,persistentvolumeclaim) (kubelet_volume_stats_used_bytes{origin_prometheus=~\"$origin_prometheus\"}) /(min by (namespace,persistentvolumeclaim) (kubelet_volume_stats_available_bytes{origin_prometheus=~\"$origin_prometheus\"}) + max by (namespace,persistentvolumeclaim) (kubelet_volume_stats_used_bytes{origin_prometheus=~\"$origin_prometheus\"}))*100",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "interval": "",
+          "intervalFactor": 1,
+          "legendFormat": "{{namespace}}:{{ persistentvolumeclaim }}",
+          "metric": "container_memory_usage:sort_desc",
+          "range": false,
+          "refId": "C",
+          "step": 10
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "count by (namespace,persistentvolumeclaim)(kube_pod_spec_volumes_persistentvolumeclaims_info{origin_prometheus=~\"$origin_prometheus\"})",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "interval": "",
+          "intervalFactor": 1,
+          "legendFormat": "__auto",
+          "metric": "container_memory_usage:sort_desc",
+          "range": false,
+          "refId": "D",
+          "step": 10
         }
       ],
       "title": "PVC Storage Usage",
@@ -3102,7 +3207,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "PBFA97CFB590B2093"
       },
       "fieldConfig": {
         "defaults": {
@@ -3188,23 +3293,28 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum(irate(container_cpu_usage_seconds_total{container !=\"\",container!=\"POD\"}[2m])) by (namespace)",
-          "refId": "A",
-          "legendFormat": "{{ namespace }}",
+          "editorMode": "code",
+          "exemplar": true,
+          "expr": "sum(irate(container_cpu_usage_seconds_total{origin_prometheus=~\"$origin_prometheus\",container !=\"\",container!=\"POD\"}[2m])) by (namespace)>0.5",
+          "hide": false,
           "instant": false,
-          "range": true,
-          "editorMode": "code"
+          "interval": "",
+          "intervalFactor": 1,
+          "legendFormat": "{{ namespace }}",
+          "metric": "container_cpu",
+          "refId": "A",
+          "step": 10
         }
       ],
-      "title": "Namespaces CPU Usage",
+      "title": "Namespaces CPU Usage kernel(>0.5)",
       "type": "timeseries"
     },
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "PBFA97CFB590B2093"
       },
       "fieldConfig": {
         "defaults": {
@@ -3291,17 +3401,21 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum (container_memory_working_set_bytes{container !=\"\",container!=\"POD\"}) by (namespace)",
-          "refId": "A",
+          "editorMode": "code",
+          "exemplar": true,
+          "expr": "sum (container_memory_working_set_bytes{origin_prometheus=~\"$origin_prometheus\",container !=\"\",container!=\"POD\"}) by (namespace) > 1*1024*1024*1024",
+          "interval": "",
+          "intervalFactor": 1,
           "legendFormat": "{{namespace} {{ pod }}",
-          "instant": false,
+          "metric": "container_memory_usage:sort_desc",
           "range": true,
-          "editorMode": "code"
+          "refId": "A",
+          "step": 10
         }
       ],
-      "title": "Namespaces Memory Usage (WSS)",
+      "title": "Namespaces WSS Memory Usage (>1G)",
       "type": "timeseries"
     },
     {
@@ -3318,14 +3432,13 @@
       },
       "id": 49,
       "panels": [],
-      "title": "Pod Resource Overview\uff1aSelectedPod:\u3010$Pod\u3011",
-      "type": "row",
-      "targets": []
+      "title": "Pod Resource Overview：SelectedPod:【$Pod】",
+      "type": "row"
     },
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "PBFA97CFB590B2093"
       },
       "fieldConfig": {
         "defaults": {
@@ -3348,8 +3461,7 @@
             "mode": "percentage",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "#EAB839",
@@ -3420,8 +3532,7 @@
                   "mode": "absolute",
                   "steps": [
                     {
-                      "color": "green",
-                      "value": null
+                      "color": "green"
                     },
                     {
                       "color": "#EAB839",
@@ -3703,8 +3814,7 @@
                   "mode": "absolute",
                   "steps": [
                     {
-                      "color": "green",
-                      "value": null
+                      "color": "green"
                     },
                     {
                       "color": "orange",
@@ -3779,213 +3889,237 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum(irate(container_cpu_usage_seconds_total{pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}[2m])) by (container, pod,node,namespace) / (sum(container_spec_cpu_quota{pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}/100000) by (container, pod,node,namespace)) ",
-          "refId": "A",
-          "legendFormat": "",
-          "instant": true,
-          "range": false,
           "editorMode": "code",
-          "format": "table"
+          "exemplar": false,
+          "expr": "sum(irate(container_cpu_usage_seconds_total{origin_prometheus=~\"$origin_prometheus\",pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}[2m])) by (container, pod,node,namespace) / (sum(container_spec_cpu_quota{origin_prometheus=~\"$origin_prometheus\",pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}/100000) by (container, pod,node,namespace)) ",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "interval": "",
+          "legendFormat": "",
+          "refId": "A"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum(irate(container_cpu_usage_seconds_total{pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}[2m])) by (container, pod,node,namespace)",
-          "refId": "B",
+          "exemplar": false,
+          "expr": "sum(irate(container_cpu_usage_seconds_total{origin_prometheus=~\"$origin_prometheus\",pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}[2m])) by (container, pod,node,namespace)",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "interval": "",
           "legendFormat": "CPUKernel Usage",
-          "instant": true,
-          "range": false,
-          "editorMode": "code",
-          "format": "table"
+          "refId": "Q"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum(kube_pod_container_resource_requests{resource=\"cpu\", unit=\"core\",pod=~\"$Pod\",container =~\"$Container\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container,pod,node,namespace)",
-          "refId": "C",
+          "exemplar": false,
+          "expr": "sum(kube_pod_container_resource_requests{origin_prometheus=~\"$origin_prometheus\",resource=\"cpu\", unit=\"core\",pod=~\"$Pod\",container =~\"$Container\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container,pod,node,namespace)",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "interval": "",
           "legendFormat": "",
-          "instant": true,
-          "range": false,
-          "editorMode": "code",
-          "format": "table"
+          "refId": "B"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum(kube_pod_container_resource_limits{resource=\"cpu\", unit=\"core\",pod=~\"$Pod\",container =~\"$Container\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container,pod,node,namespace)",
-          "refId": "D",
+          "exemplar": false,
+          "expr": "sum(kube_pod_container_resource_limits{origin_prometheus=~\"$origin_prometheus\",resource=\"cpu\", unit=\"core\",pod=~\"$Pod\",container =~\"$Container\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container,pod,node,namespace)",
+          "format": "table",
+          "instant": true,
+          "interval": "",
           "legendFormat": "",
-          "instant": true,
-          "range": false,
-          "editorMode": "code",
-          "format": "table"
+          "refId": "C"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum (container_memory_working_set_bytes{pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container, pod,node,namespace)/ sum(container_spec_memory_limit_bytes{pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container, pod,node,namespace)",
-          "refId": "E",
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "sum (container_memory_working_set_bytes{origin_prometheus=~\"$origin_prometheus\",pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container, pod,node,namespace)/ sum(container_spec_memory_limit_bytes{origin_prometheus=~\"$origin_prometheus\",pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container, pod,node,namespace)",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "interval": "",
           "legendFormat": "wss%",
-          "instant": true,
-          "range": false,
-          "editorMode": "code",
-          "format": "table"
+          "refId": "I"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum (container_memory_working_set_bytes{pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container, pod,node,namespace)",
-          "refId": "F",
+          "exemplar": false,
+          "expr": "sum (container_memory_working_set_bytes{origin_prometheus=~\"$origin_prometheus\",pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container, pod,node,namespace)",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "interval": "",
           "legendFormat": "wss",
-          "instant": true,
-          "range": false,
-          "editorMode": "code",
-          "format": "table"
+          "refId": "D"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum (container_memory_rss{pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container, pod,node,namespace)/ sum(container_spec_memory_limit_bytes{pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container, pod,node,namespace)",
-          "refId": "G",
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "sum (container_memory_rss{origin_prometheus=~\"$origin_prometheus\",pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container, pod,node,namespace)/ sum(container_spec_memory_limit_bytes{origin_prometheus=~\"$origin_prometheus\",pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container, pod,node,namespace)",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "interval": "",
           "legendFormat": "rss%",
-          "instant": true,
-          "range": false,
-          "editorMode": "code",
-          "format": "table"
+          "refId": "L"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum (container_memory_rss{pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container, pod,node,namespace)",
-          "refId": "H",
+          "exemplar": false,
+          "expr": "sum (container_memory_rss{origin_prometheus=~\"$origin_prometheus\",pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container, pod,node,namespace)",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "interval": "",
           "legendFormat": "rss",
-          "instant": true,
-          "range": false,
-          "editorMode": "code",
-          "format": "table"
+          "refId": "K"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum(kube_pod_container_resource_requests{resource=\"memory\", unit=\"byte\",pod=~\"$Pod\",container =~\"$Container\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container,pod,node,namespace)",
-          "refId": "I",
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "sum(kube_pod_container_resource_requests{origin_prometheus=~\"$origin_prometheus\",resource=\"memory\", unit=\"byte\",pod=~\"$Pod\",container =~\"$Container\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container,pod,node,namespace)",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "interval": "",
           "legendFormat": "",
-          "instant": true,
-          "range": false,
-          "editorMode": "code",
-          "format": "table"
+          "refId": "E"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum(kube_pod_container_resource_limits{resource=\"memory\", unit=\"byte\",pod=~\"$Pod\",container =~\"$Container\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container,pod,node,namespace)",
-          "refId": "J",
+          "exemplar": false,
+          "expr": "sum(kube_pod_container_resource_limits{origin_prometheus=~\"$origin_prometheus\",resource=\"memory\", unit=\"byte\",pod=~\"$Pod\",container =~\"$Container\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container,pod,node,namespace)",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "interval": "",
           "legendFormat": "",
-          "instant": true,
-          "range": false,
-          "editorMode": "code",
-          "format": "table"
+          "refId": "F"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum(container_fs_usage_bytes{pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container,pod,node,namespace)",
-          "refId": "K",
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "sum(container_fs_usage_bytes{origin_prometheus=~\"$origin_prometheus\",pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container,pod,node,namespace)",
+          "format": "table",
+          "instant": true,
+          "interval": "",
           "legendFormat": "",
-          "instant": true,
-          "range": false,
-          "editorMode": "code",
-          "format": "table"
+          "refId": "J"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "kube_pod_container_status_restarts_total{pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"} * on (pod) group_left(node) kube_pod_info{pod=~\"$Pod\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}",
-          "refId": "L",
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "kube_pod_container_status_restarts_total{origin_prometheus=~\"$origin_prometheus\",pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"} * on (pod) group_left(node) kube_pod_info{origin_prometheus=~\"$origin_prometheus\",pod=~\"$Pod\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "interval": "",
           "legendFormat": "",
-          "instant": true,
-          "range": false,
-          "editorMode": "code",
-          "format": "table"
+          "refId": "H"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "time() - kube_pod_created{pod=~\"$Pod\",namespace=~\"$NameSpace\"} * on(pod) group_right kube_pod_container_info{pod=~\"$Pod\",namespace=~\"$NameSpace\",container =~\"$Container\"}",
-          "refId": "M",
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "time() - kube_pod_created{origin_prometheus=~\"$origin_prometheus\",pod=~\"$Pod\",namespace=~\"$NameSpace\"} * on(pod) group_right kube_pod_container_info{origin_prometheus=~\"$origin_prometheus\",pod=~\"$Pod\",namespace=~\"$NameSpace\",container =~\"$Container\"}",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "interval": "",
           "legendFormat": "__auto",
-          "instant": true,
-          "range": false,
-          "editorMode": "code",
-          "format": "table"
+          "refId": "R"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum(container_fs_limit_bytes{pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container,pod,node,namespace)",
-          "refId": "N",
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "sum(container_fs_limit_bytes{origin_prometheus=~\"$origin_prometheus\",pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container,pod,node,namespace)",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "interval": "",
           "legendFormat": "",
-          "instant": true,
-          "range": false,
-          "editorMode": "code",
-          "format": "table"
+          "refId": "S"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum(sum(irate(container_network_receive_bytes_total{pod=~\"$Pod\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}[2m])) by (pod)* on(pod) group_right kube_pod_container_info{pod=~\"$Pod\",namespace=~\"$NameSpace\",container =~\"$Container\"}) by(pod) *8",
-          "refId": "O",
-          "legendFormat": "__auto",
-          "instant": true,
-          "range": false,
           "editorMode": "code",
-          "format": "table"
+          "exemplar": false,
+          "expr": "sum(sum(irate(container_network_receive_bytes_total{origin_prometheus=~\"$origin_prometheus\",pod=~\"$Pod\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}[2m])) by (pod)* on(pod) group_right kube_pod_container_info{origin_prometheus=~\"$origin_prometheus\",pod=~\"$Pod\",namespace=~\"$NameSpace\",container =~\"$Container\"}) by(pod) *8",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "interval": "",
+          "legendFormat": "__auto",
+          "refId": "T"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum(sum(irate(container_network_transmit_bytes_total{pod=~\"$Pod\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}[2m])) by (pod)* on(pod) group_right kube_pod_container_info{pod=~\"$Pod\",namespace=~\"$NameSpace\",container =~\"$Container\"}) by(pod) *8",
-          "refId": "P",
-          "legendFormat": "__auto",
-          "instant": true,
-          "range": false,
           "editorMode": "code",
-          "format": "table"
+          "exemplar": false,
+          "expr": "sum(sum(irate(container_network_transmit_bytes_total{origin_prometheus=~\"$origin_prometheus\",pod=~\"$Pod\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}[2m])) by (pod)* on(pod) group_right kube_pod_container_info{origin_prometheus=~\"$origin_prometheus\",pod=~\"$Pod\",namespace=~\"$NameSpace\",container =~\"$Container\"}) by(pod) *8",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "interval": "",
+          "legendFormat": "__auto",
+          "refId": "U"
         }
       ],
-      "title": "$Node\uff1aPod Resource Detail(Associable Nodes)",
+      "title": "$Node：Pod Resource Detail(Associable Nodes)",
       "transformations": [
         {
           "id": "merge",
@@ -4179,7 +4313,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "PBFA97CFB590B2093"
       },
       "fieldConfig": {
         "defaults": {
@@ -4224,8 +4358,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -4265,14 +4398,19 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "max(irate(container_cpu_usage_seconds_total{pod=~\"$Pod\",container=~\"$Container\",container!=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}[2m])) by (container, pod) / max(kube_pod_container_resource_limits{resource=\"cpu\",unit=\"core\",pod=~\"$Pod\",container=~\"$Container\",namespace=~\"$NameSpace\"}) by (container, pod)",
-          "refId": "A",
-          "legendFormat": "{{pod}} / {{container}}",
+          "editorMode": "code",
+          "exemplar": true,
+          "expr": "max(irate(container_cpu_usage_seconds_total{origin_prometheus=~\"$origin_prometheus\",pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}[2m])) by (container, pod) / (max(container_spec_cpu_quota{origin_prometheus=~\"$origin_prometheus\",pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}/100000) by (container, pod)) * 100",
+          "hide": false,
           "instant": false,
-          "range": true,
-          "editorMode": "code"
+          "interval": "",
+          "intervalFactor": 1,
+          "legendFormat": "{{ pod }}",
+          "metric": "container_cpu",
+          "refId": "A",
+          "step": 10
         }
       ],
       "title": "Pod Containers CPU Utilization (Maximum100%Associable Nodes)",
@@ -4281,7 +4419,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "PBFA97CFB590B2093"
       },
       "fieldConfig": {
         "defaults": {
@@ -4326,8 +4464,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -4367,26 +4504,51 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "max(container_memory_working_set_bytes{pod=~\"$Pod\",container=~\"$Container\",container!=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container, pod)",
-          "refId": "A",
-          "legendFormat": "WSS {{pod}} / {{container}}",
-          "instant": false,
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "max (container_memory_working_set_bytes{origin_prometheus=~\"$origin_prometheus\",pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container, pod)/ max(container_spec_memory_limit_bytes{origin_prometheus=~\"$origin_prometheus\",pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container, pod) * 100",
+          "interval": "",
+          "intervalFactor": 1,
+          "legendFormat": "WSS：{{ pod }}",
+          "metric": "container_memory_usage:sort_desc",
           "range": true,
-          "editorMode": "code"
+          "refId": "A",
+          "step": 10
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "max(kube_pod_container_resource_limits{resource=\"memory\",unit=\"byte\",pod=~\"$Pod\",container=~\"$Container\",namespace=~\"$NameSpace\"}) by (container, pod)",
-          "refId": "B",
-          "legendFormat": "Limit {{pod}} / {{container}}",
-          "instant": false,
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "max (container_memory_rss{origin_prometheus=~\"$origin_prometheus\",pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container, pod)/ max(container_spec_memory_limit_bytes{origin_prometheus=~\"$origin_prometheus\",pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container, pod) * 100",
+          "interval": "",
+          "intervalFactor": 1,
+          "legendFormat": "RSS：{{ pod }}",
+          "metric": "container_memory_usage:sort_desc",
           "range": true,
-          "editorMode": "code"
+          "refId": "B",
+          "step": 10
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "exemplar": true,
+          "expr": "(cass_jvm_heap{service=~\"$Container\"} * on (pod_ip) group_right(service) kube_pod_info{origin_prometheus=~\"$origin_prometheus\",pod=~\"$Pod\",namespace=~\"$NameSpace\"}) / (cass_jvm_heap_max{service=~\"$Container\"} * on (pod_ip) group_right(service) kube_pod_info{origin_prometheus=~\"$origin_prometheus\",pod=~\"$Pod\",namespace=~\"$NameSpace\"}) * 100",
+          "hide": true,
+          "instant": false,
+          "interval": "",
+          "intervalFactor": 1,
+          "legendFormat": "Heap：{{ pod }}",
+          "metric": "container_memory_usage:sort_desc",
+          "refId": "C",
+          "step": 10
         }
       ],
       "title": "Pod Container Memory Usage (Associatable Nodes)",
@@ -4395,7 +4557,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "PBFA97CFB590B2093"
       },
       "fieldConfig": {
         "defaults": {
@@ -4440,8 +4602,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -4481,50 +4642,67 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "max(max(irate(container_network_receive_bytes_total{pod=~\"$Pod\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}[2m])) by (pod)* on(pod) group_right kube_pod_container_info{pod=~\"$Pod\",namespace=~\"$NameSpace\",container =~\"$Container\"}) by(pod) *8",
-          "refId": "A",
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "max(max(irate(container_network_receive_bytes_total{origin_prometheus=~\"$origin_prometheus\",pod=~\"$Pod\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}[2m])) by (pod)* on(pod) group_right kube_pod_container_info{origin_prometheus=~\"$origin_prometheus\",pod=~\"$Pod\",namespace=~\"$NameSpace\",container =~\"$Container\"}) by(pod) *8",
+          "hide": false,
+          "interval": "",
+          "intervalFactor": 1,
           "legendFormat": "Inflow:{{ pod}}",
-          "instant": false,
+          "metric": "network",
           "range": true,
-          "editorMode": "code"
+          "refId": "A",
+          "step": 10
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "max(max(irate(container_network_transmit_bytes_total{pod=~\"$Pod\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}[2m])) by (pod)* on(pod) group_right kube_pod_container_info{pod=~\"$Pod\",namespace=~\"$NameSpace\",container =~\"$Container\"}) by(pod) *8",
-          "refId": "B",
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "max(max(irate(container_network_transmit_bytes_total{origin_prometheus=~\"$origin_prometheus\",pod=~\"$Pod\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}[2m])) by (pod)* on(pod) group_right kube_pod_container_info{origin_prometheus=~\"$origin_prometheus\",pod=~\"$Pod\",namespace=~\"$NameSpace\",container =~\"$Container\"}) by(pod) *8",
+          "interval": "",
+          "intervalFactor": 1,
           "legendFormat": "Outflow:{{ pod}}",
-          "instant": false,
+          "metric": "network",
           "range": true,
-          "editorMode": "code"
+          "refId": "B",
+          "step": 10
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum(sum(irate(container_network_receive_bytes_total{pod=~\"$Pod\",image!=\"\",name=~\"^k8s_.*\",node=~\"^$Node$\",namespace=~\"$NameSpace\",pod=~\".*$Container.*\"}[2m])) by (pod)* on(pod) group_right kube_pod_container_info) by(pod) *8",
+          "editorMode": "code",
+          "expr": "sum(sum(irate(container_network_receive_bytes_total{origin_prometheus=~\"$origin_prometheus\",pod=~\"$Pod\",image!=\"\",name=~\"^k8s_.*\",node=~\"^$Node$\",namespace=~\"$NameSpace\",pod=~\".*$Container.*\"}[2m])) by (pod)* on(pod) group_right kube_pod_container_info) by(pod) *8",
+          "hide": true,
+          "interval": "",
+          "intervalFactor": 1,
+          "legendFormat": "__auto",
+          "metric": "network",
+          "range": true,
           "refId": "C",
-          "legendFormat": "__auto",
-          "instant": false,
-          "range": true,
-          "editorMode": "code"
+          "step": 10
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "sum(sum(irate(container_network_transmit_bytes_total{pod=~\"$Pod\",image!=\"\",name=~\"^k8s_.*\",node=~\"^$Node$\",namespace=~\"$NameSpace\",pod=~\".*$Container.*\"}[2m])) by (pod)* on(pod) group_right kube_pod_container_info) by(pod) *8",
-          "refId": "D",
+          "editorMode": "code",
+          "expr": "sum(sum(irate(container_network_transmit_bytes_total{origin_prometheus=~\"$origin_prometheus\",pod=~\"$Pod\",image!=\"\",name=~\"^k8s_.*\",node=~\"^$Node$\",namespace=~\"$NameSpace\",pod=~\".*$Container.*\"}[2m])) by (pod)* on(pod) group_right kube_pod_container_info) by(pod) *8",
+          "hide": true,
+          "interval": "",
+          "intervalFactor": 1,
           "legendFormat": "__auto",
-          "instant": false,
+          "metric": "network",
           "range": true,
-          "editorMode": "code"
+          "refId": "D",
+          "step": 10
         }
       ],
       "title": "Pod Network bandwidth per second (Associable Nodes)",
@@ -4533,7 +4711,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "PBFA97CFB590B2093"
       },
       "fieldConfig": {
         "defaults": {
@@ -4578,8 +4756,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -4637,26 +4814,36 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "max(irate(container_cpu_usage_seconds_total{pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}[2m])) by (container, pod,node,namespace)",
-          "refId": "A",
-          "legendFormat": "CPU Usage\uff1a{{ pod }}",
+          "editorMode": "code",
+          "exemplar": true,
+          "expr": "max(irate(container_cpu_usage_seconds_total{origin_prometheus=~\"$origin_prometheus\",pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}[2m])) by (container, pod,node,namespace)",
+          "hide": false,
           "instant": false,
-          "range": true,
-          "editorMode": "code"
+          "interval": "",
+          "intervalFactor": 1,
+          "legendFormat": "CPU Usage：{{ pod }}",
+          "metric": "container_cpu",
+          "refId": "A",
+          "step": 10
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "max(max(kube_pod_container_resource_limits{resource=\"cpu\", unit=\"core\",pod=~\"$Pod\",container =~\"$Container\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container,pod,node,namespace)) by(container)",
-          "refId": "B",
-          "legendFormat": "Pod CPU Limitations\uff1a{{ container}}",
+          "editorMode": "code",
+          "exemplar": true,
+          "expr": "max(max(kube_pod_container_resource_limits{origin_prometheus=~\"$origin_prometheus\",resource=\"cpu\", unit=\"core\",pod=~\"$Pod\",container =~\"$Container\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container,pod,node,namespace)) by(container)",
+          "hide": false,
           "instant": false,
-          "range": true,
-          "editorMode": "code"
+          "interval": "",
+          "intervalFactor": 1,
+          "legendFormat": "Pod CPU Limitations：{{ container}}",
+          "metric": "container_cpu",
+          "refId": "B",
+          "step": 10
         }
       ],
       "title": "Pod Containers CPU Core Usage",
@@ -4665,7 +4852,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "PBFA97CFB590B2093"
       },
       "fieldConfig": {
         "defaults": {
@@ -4710,8 +4897,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -4769,26 +4955,35 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "max (container_memory_working_set_bytes{pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container, pod,node,namespace)",
-          "refId": "A",
-          "legendFormat": "WSS\uff1a{{ pod }}",
-          "instant": false,
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "max (container_memory_working_set_bytes{origin_prometheus=~\"$origin_prometheus\",pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container, pod,node,namespace)",
+          "interval": "",
+          "intervalFactor": 1,
+          "legendFormat": "WSS：{{ pod }}",
+          "metric": "container_memory_usage:sort_desc",
           "range": true,
-          "editorMode": "code"
+          "refId": "A",
+          "step": 10
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "max(max(kube_pod_container_resource_limits{resource=\"memory\", unit=\"byte\",pod=~\"$Pod\",container =~\"$Container\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container,pod,node,namespace)) by(container)",
-          "refId": "B",
-          "legendFormat": "PodMemory Limits\uff1a{{ container}}",
-          "instant": false,
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "max(max(kube_pod_container_resource_limits{origin_prometheus=~\"$origin_prometheus\",resource=\"memory\", unit=\"byte\",pod=~\"$Pod\",container =~\"$Container\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container,pod,node,namespace)) by(container)",
+          "hide": false,
+          "interval": "",
+          "intervalFactor": 1,
+          "legendFormat": "PodMemory Limits：{{ container}}",
+          "metric": "container_memory_usage:sort_desc",
           "range": true,
-          "editorMode": "code"
+          "refId": "B",
+          "step": 10
         }
       ],
       "title": "Pod Containers WSS Memory Usage (Associable Nodes)",
@@ -4797,7 +4992,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "PBFA97CFB590B2093"
       },
       "fieldConfig": {
         "defaults": {
@@ -4842,8 +5037,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -4882,14 +5076,18 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "expr": "max (container_memory_rss{pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container, pod,node,namespace)",
-          "refId": "A",
-          "legendFormat": "RSS\uff1a{{ pod }}",
-          "instant": false,
+          "editorMode": "code",
+          "exemplar": true,
+          "expr": "max (container_memory_rss{origin_prometheus=~\"$origin_prometheus\",pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container, pod,node,namespace)",
+          "interval": "",
+          "intervalFactor": 1,
+          "legendFormat": "RSS：{{ pod }}",
+          "metric": "container_memory_usage:sort_desc",
           "range": true,
-          "editorMode": "code"
+          "refId": "A",
+          "step": 10
         }
       ],
       "title": "Pod Containers RSS Memory Usage (Associable Nodes)",
@@ -4912,7 +5110,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
           "fieldConfig": {
             "defaults": {
@@ -5283,171 +5481,189 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${datasource}"
+                "uid": "PBFA97CFB590B2093"
               },
-              "expr": "sum(irate(container_cpu_usage_seconds_total{container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}[2m])) by (container) / (sum(container_spec_cpu_quota{container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}/100000) by (container))",
-              "refId": "A",
-              "legendFormat": "",
-              "instant": true,
-              "range": false,
               "editorMode": "code",
-              "format": "table"
+              "exemplar": false,
+              "expr": "sum(irate(container_cpu_usage_seconds_total{origin_prometheus=~\"$origin_prometheus\",container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}[2m])) by (container) / (sum(container_spec_cpu_quota{origin_prometheus=~\"$origin_prometheus\",container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}/100000) by (container))",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
             },
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${datasource}"
+                "uid": "PBFA97CFB590B2093"
               },
-              "expr": "sum(irate(container_cpu_usage_seconds_total{container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}[2m])) by (container)",
-              "refId": "B",
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "sum(irate(container_cpu_usage_seconds_total{origin_prometheus=~\"$origin_prometheus\",container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}[2m])) by (container)",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
               "legendFormat": "Total Cores Used",
-              "instant": true,
-              "range": false,
-              "editorMode": "code",
-              "format": "table"
+              "refId": "L"
             },
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${datasource}"
+                "uid": "PBFA97CFB590B2093"
               },
-              "expr": "sum(kube_pod_container_resource_requests{resource=\"cpu\", unit=\"core\",container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)",
-              "refId": "C",
+              "exemplar": false,
+              "expr": "sum(kube_pod_container_resource_requests{origin_prometheus=~\"$origin_prometheus\",resource=\"cpu\", unit=\"core\",container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
               "legendFormat": "",
-              "instant": true,
-              "range": false,
-              "editorMode": "code",
-              "format": "table"
+              "refId": "B"
             },
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${datasource}"
+                "uid": "PBFA97CFB590B2093"
               },
-              "expr": "sum(kube_pod_container_resource_limits{resource=\"cpu\", unit=\"core\",container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)",
-              "refId": "D",
+              "exemplar": false,
+              "expr": "sum(kube_pod_container_resource_limits{origin_prometheus=~\"$origin_prometheus\",resource=\"cpu\", unit=\"core\",container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)",
+              "format": "table",
+              "instant": true,
+              "interval": "",
               "legendFormat": "",
-              "instant": true,
-              "range": false,
-              "editorMode": "code",
-              "format": "table"
+              "refId": "C"
             },
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${datasource}"
+                "uid": "PBFA97CFB590B2093"
               },
-              "expr": "sum (container_memory_working_set_bytes{container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)/ sum(container_spec_memory_limit_bytes{container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)",
-              "refId": "E",
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "sum (container_memory_working_set_bytes{origin_prometheus=~\"$origin_prometheus\",container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)/ sum(container_spec_memory_limit_bytes{origin_prometheus=~\"$origin_prometheus\",container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
               "legendFormat": "",
-              "instant": true,
-              "range": false,
-              "editorMode": "code",
-              "format": "table"
+              "refId": "I"
             },
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${datasource}"
+                "uid": "PBFA97CFB590B2093"
               },
-              "expr": "sum (container_memory_working_set_bytes{container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)",
-              "refId": "F",
+              "exemplar": false,
+              "expr": "sum (container_memory_working_set_bytes{origin_prometheus=~\"$origin_prometheus\",container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
               "legendFormat": "",
-              "instant": true,
-              "range": false,
-              "editorMode": "code",
-              "format": "table"
+              "refId": "D"
             },
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${datasource}"
+                "uid": "PBFA97CFB590B2093"
               },
-              "expr": "sum (container_memory_rss{container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)/ sum(container_spec_memory_limit_bytes{container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)",
-              "refId": "G",
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "sum (container_memory_rss{origin_prometheus=~\"$origin_prometheus\",container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)/ sum(container_spec_memory_limit_bytes{origin_prometheus=~\"$origin_prometheus\",container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
               "legendFormat": "Average Memory%(RSS)",
-              "instant": true,
-              "range": false,
-              "editorMode": "code",
-              "format": "table"
+              "refId": "H"
             },
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${datasource}"
+                "uid": "PBFA97CFB590B2093"
               },
-              "expr": "sum (container_memory_rss{container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)",
-              "refId": "H",
+              "exemplar": false,
+              "expr": "sum (container_memory_rss{origin_prometheus=~\"$origin_prometheus\",container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
               "legendFormat": "Total Memory Usage (RSS) ",
-              "instant": true,
-              "range": false,
-              "editorMode": "code",
-              "format": "table"
+              "refId": "K"
             },
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${datasource}"
+                "uid": "PBFA97CFB590B2093"
               },
-              "expr": "sum by(container) (kube_pod_container_resource_requests{resource=\"memory\", unit=\"byte\",container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"})",
-              "refId": "I",
-              "legendFormat": "",
-              "instant": true,
-              "range": false,
               "editorMode": "code",
-              "format": "table"
+              "exemplar": false,
+              "expr": "sum by(container) (kube_pod_container_resource_requests{origin_prometheus=~\"$origin_prometheus\",resource=\"memory\", unit=\"byte\",container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"})",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "E"
             },
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${datasource}"
+                "uid": "PBFA97CFB590B2093"
               },
-              "expr": "sum(kube_pod_container_resource_limits{resource=\"memory\", unit=\"byte\",container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)",
-              "refId": "J",
-              "legendFormat": "",
+              "exemplar": false,
+              "expr": "sum(kube_pod_container_resource_limits{origin_prometheus=~\"$origin_prometheus\",resource=\"memory\", unit=\"byte\",container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)",
+              "format": "table",
+              "hide": false,
               "instant": true,
-              "range": false,
-              "editorMode": "code",
-              "format": "table"
+              "interval": "",
+              "legendFormat": "",
+              "refId": "F"
             },
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${datasource}"
+                "uid": "PBFA97CFB590B2093"
               },
-              "expr": "avg(container_fs_usage_bytes{container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)",
-              "refId": "K",
-              "legendFormat": "",
-              "instant": true,
-              "range": false,
               "editorMode": "code",
-              "format": "table"
+              "exemplar": false,
+              "expr": "avg(container_fs_usage_bytes{origin_prometheus=~\"$origin_prometheus\",container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)",
+              "format": "table",
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "J"
             },
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${datasource}"
+                "uid": "PBFA97CFB590B2093"
               },
-              "expr": "count(kube_pod_container_info{container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by(container,namespace)",
-              "refId": "L",
-              "legendFormat": "",
-              "instant": true,
-              "range": false,
               "editorMode": "code",
-              "format": "table"
+              "exemplar": false,
+              "expr": "count(kube_pod_container_info{origin_prometheus=~\"$origin_prometheus\",container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by(container,namespace)",
+              "format": "table",
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "G"
             },
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${datasource}"
+                "uid": "PBFA97CFB590B2093"
               },
-              "expr": "avg(container_fs_limit_bytes{container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)",
-              "refId": "M",
-              "legendFormat": "",
-              "instant": true,
-              "range": false,
               "editorMode": "code",
-              "format": "table"
+              "exemplar": false,
+              "expr": "avg(container_fs_limit_bytes{origin_prometheus=~\"$origin_prometheus\",container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "M"
             }
           ],
           "title": "Microservices (Container Name) Resource Statistics",
@@ -5523,7 +5739,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
           "fieldConfig": {
             "defaults": {
@@ -5608,14 +5824,18 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${datasource}"
+                "uid": "PBFA97CFB590B2093"
               },
-              "expr": "sum(irate(container_cpu_usage_seconds_total{container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}[2m])) by (container) / (sum(container_spec_cpu_quota{container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}/100000) by (container)) * 100",
-              "refId": "A",
-              "legendFormat": "{{ container}}",
+              "exemplar": true,
+              "expr": "sum(irate(container_cpu_usage_seconds_total{origin_prometheus=~\"$origin_prometheus\",container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}[2m])) by (container) / (sum(container_spec_cpu_quota{origin_prometheus=~\"$origin_prometheus\",container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}/100000) by (container)) * 100",
+              "hide": false,
               "instant": false,
-              "range": true,
-              "editorMode": "code"
+              "interval": "",
+              "intervalFactor": 1,
+              "legendFormat": "{{ container}}",
+              "metric": "container_cpu",
+              "refId": "A",
+              "step": 10
             }
           ],
           "title": "Microservices (Container Name) Average CPU Usage (Maximum100%)",
@@ -5624,7 +5844,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
           "fieldConfig": {
             "defaults": {
@@ -5709,26 +5929,28 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${datasource}"
+                "uid": "PBFA97CFB590B2093"
               },
-              "expr": "sum (container_memory_working_set_bytes{container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)/ sum(container_spec_memory_limit_bytes{container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container) * 100",
+              "expr": "sum (container_memory_working_set_bytes{origin_prometheus=~\"$origin_prometheus\",container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)/ sum(container_spec_memory_limit_bytes{origin_prometheus=~\"$origin_prometheus\",container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container) * 100",
+              "interval": "",
+              "intervalFactor": 1,
+              "legendFormat": "WSS：{{ container }}",
+              "metric": "container_memory_usage:sort_desc",
               "refId": "A",
-              "legendFormat": "WSS\uff1a{{ container }}",
-              "instant": false,
-              "range": true,
-              "editorMode": "code"
+              "step": 10
             },
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${datasource}"
+                "uid": "PBFA97CFB590B2093"
               },
-              "expr": "sum (container_memory_rss{container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)/ sum(container_spec_memory_limit_bytes{container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container) * 100",
+              "expr": "sum (container_memory_rss{origin_prometheus=~\"$origin_prometheus\",container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)/ sum(container_spec_memory_limit_bytes{origin_prometheus=~\"$origin_prometheus\",container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container) * 100",
+              "interval": "",
+              "intervalFactor": 1,
+              "legendFormat": "RSS：{{ container }}",
+              "metric": "container_memory_usage:sort_desc",
               "refId": "B",
-              "legendFormat": "RSS\uff1a{{ container }}",
-              "instant": false,
-              "range": true,
-              "editorMode": "code"
+              "step": 10
             }
           ],
           "title": "Microservice (Container Name) Average Memory Utilization",
@@ -5737,7 +5959,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
           "fieldConfig": {
             "defaults": {
@@ -5822,50 +6044,63 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${datasource}"
+                "uid": "PBFA97CFB590B2093"
               },
-              "expr": "sum(sum(irate(container_network_receive_bytes_total{node=~\"^$Node$\",namespace=~\"$NameSpace\"}[2m])) by (pod)* on(pod) group_right kube_pod_container_info{namespace=~\"$NameSpace\",container =~\"$Container\"}) by(container) *8",
-              "refId": "A",
+              "editorMode": "code",
+              "exemplar": true,
+              "expr": "sum(sum(irate(container_network_receive_bytes_total{origin_prometheus=~\"$origin_prometheus\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}[2m])) by (pod)* on(pod) group_right kube_pod_container_info{origin_prometheus=~\"$origin_prometheus\",namespace=~\"$NameSpace\",container =~\"$Container\"}) by(container) *8",
+              "hide": false,
+              "interval": "",
+              "intervalFactor": 1,
               "legendFormat": "Inflow:{{ container }}",
-              "instant": false,
+              "metric": "network",
               "range": true,
-              "editorMode": "code"
+              "refId": "A",
+              "step": 10
             },
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${datasource}"
+                "uid": "PBFA97CFB590B2093"
               },
-              "expr": "sum(sum(irate(container_network_transmit_bytes_total{node=~\"^$Node$\",namespace=~\"$NameSpace\"}[2m])) by (pod)* on(pod) group_right kube_pod_container_info{namespace=~\"$NameSpace\",container =~\"$Container\"}) by(container) *8",
-              "refId": "B",
+              "editorMode": "code",
+              "exemplar": true,
+              "expr": "sum(sum(irate(container_network_transmit_bytes_total{origin_prometheus=~\"$origin_prometheus\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}[2m])) by (pod)* on(pod) group_right kube_pod_container_info{origin_prometheus=~\"$origin_prometheus\",namespace=~\"$NameSpace\",container =~\"$Container\"}) by(container) *8",
+              "interval": "",
+              "intervalFactor": 1,
               "legendFormat": "Outflow:{{ container }}",
-              "instant": false,
+              "metric": "network",
               "range": true,
-              "editorMode": "code"
+              "refId": "B",
+              "step": 10
             },
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${datasource}"
+                "uid": "PBFA97CFB590B2093"
               },
-              "expr": "sum (rate (container_network_receive_bytes_total{pod=~\"$Pod\",image!=\"\",name=~\"^k8s_.*\",node=~\"^$Node$\",namespace=~\"$NameSpace\",pod=~\".*$Container.*\"}[2m])) by (pod)",
-              "refId": "C",
+              "expr": "sum (rate (container_network_receive_bytes_total{origin_prometheus=~\"$origin_prometheus\",pod=~\"$Pod\",image!=\"\",name=~\"^k8s_.*\",node=~\"^$Node$\",namespace=~\"$NameSpace\",pod=~\".*$Container.*\"}[2m])) by (pod)",
+              "hide": true,
+              "interval": "",
+              "intervalFactor": 1,
               "legendFormat": "-> {{ pod }}",
-              "instant": false,
-              "range": true,
-              "editorMode": "code"
+              "metric": "network",
+              "refId": "C",
+              "step": 10
             },
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${datasource}"
+                "uid": "PBFA97CFB590B2093"
               },
-              "expr": "- sum (rate (container_network_transmit_bytes_total{pod=~\"$Pod\",image!=\"\",name=~\"^k8s_.*\",node=~\"^$Node$\",namespace=~\"$NameSpace\",pod=~\".*$Container.*\"}[2m])) by (pod)",
-              "refId": "D",
+              "expr": "- sum (rate (container_network_transmit_bytes_total{origin_prometheus=~\"$origin_prometheus\",pod=~\"$Pod\",image!=\"\",name=~\"^k8s_.*\",node=~\"^$Node$\",namespace=~\"$NameSpace\",pod=~\".*$Container.*\"}[2m])) by (pod)",
+              "hide": true,
+              "interval": "",
+              "intervalFactor": 1,
               "legendFormat": "<- {{ pod }}",
-              "instant": false,
-              "range": true,
-              "editorMode": "code"
+              "metric": "network",
+              "refId": "D",
+              "step": 10
             }
           ],
           "title": "Microservice (Container Name) Network bandwidth per second (Associable Nodes)",
@@ -5874,7 +6109,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
           "fieldConfig": {
             "defaults": {
@@ -5977,26 +6212,36 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${datasource}"
+                "uid": "PBFA97CFB590B2093"
               },
-              "expr": "sum(kube_pod_container_resource_limits{resource=\"cpu\", unit=\"core\",container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)",
-              "refId": "A",
-              "legendFormat": "CPU Limitations\uff1a{{ container}}",
+              "editorMode": "code",
+              "exemplar": true,
+              "expr": "sum(kube_pod_container_resource_limits{origin_prometheus=~\"$origin_prometheus\",resource=\"cpu\", unit=\"core\",container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)",
+              "hide": false,
               "instant": false,
-              "range": true,
-              "editorMode": "code"
+              "interval": "",
+              "intervalFactor": 1,
+              "legendFormat": "CPU Limitations：{{ container}}",
+              "metric": "container_cpu",
+              "refId": "A",
+              "step": 10
             },
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${datasource}"
+                "uid": "PBFA97CFB590B2093"
               },
-              "expr": "sum(irate(container_cpu_usage_seconds_total{container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}[2m])) by (container)",
-              "refId": "B",
-              "legendFormat": "CPU Core Usage\uff1a{{ container}}",
+              "editorMode": "code",
+              "exemplar": true,
+              "expr": "sum(irate(container_cpu_usage_seconds_total{origin_prometheus=~\"$origin_prometheus\",container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}[2m])) by (container)",
+              "hide": false,
               "instant": false,
-              "range": true,
-              "editorMode": "code"
+              "interval": "",
+              "intervalFactor": 1,
+              "legendFormat": "CPU Core Usage：{{ container}}",
+              "metric": "container_cpu",
+              "refId": "B",
+              "step": 10
             }
           ],
           "title": "Microservices (Container Name) Overall CPU Cores Used",
@@ -6005,7 +6250,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
           "fieldConfig": {
             "defaults": {
@@ -6108,38 +6353,48 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${datasource}"
+                "uid": "PBFA97CFB590B2093"
               },
-              "expr": "sum (container_memory_working_set_bytes{container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)",
+              "editorMode": "code",
+              "expr": "sum (container_memory_working_set_bytes{origin_prometheus=~\"$origin_prometheus\",container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)",
+              "interval": "",
+              "intervalFactor": 1,
+              "legendFormat": "WSS：{{ container }}",
+              "metric": "container_memory_usage:sort_desc",
+              "range": true,
               "refId": "A",
-              "legendFormat": "WSS\uff1a{{ container }}",
-              "instant": false,
-              "range": true,
-              "editorMode": "code"
+              "step": 10
             },
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${datasource}"
+                "uid": "PBFA97CFB590B2093"
               },
-              "expr": "max(container_memory_working_set_bytes{pod=~\"$Pod\",container=~\"$Container\",container!=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container, pod)",
+              "editorMode": "code",
+              "expr": "sum(container_spec_memory_limit_bytes{origin_prometheus=~\"$origin_prometheus\",container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)",
+              "interval": "",
+              "intervalFactor": 1,
+              "legendFormat": "Memory Limit：{{ container }}",
+              "metric": "container_memory_usage:sort_desc",
+              "range": true,
               "refId": "B",
-              "legendFormat": "Memory Limit\uff1a{{ container }}",
-              "instant": false,
-              "range": true,
-              "editorMode": "code"
+              "step": 10
             },
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${datasource}"
+                "uid": "PBFA97CFB590B2093"
               },
-              "expr": "sum (container_memory_rss{container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)",
-              "refId": "C",
-              "legendFormat": "RSS\uff1a{{ container }}",
-              "instant": false,
+              "editorMode": "code",
+              "expr": "sum (container_memory_rss{origin_prometheus=~\"$origin_prometheus\",container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)",
+              "hide": false,
+              "interval": "",
+              "intervalFactor": 1,
+              "legendFormat": "RSS：{{ container }}",
+              "metric": "container_memory_usage:sort_desc",
               "range": true,
-              "editorMode": "code"
+              "refId": "C",
+              "step": 10
             }
           ],
           "title": "Microservices (Container Name) Overall Memory Usage",
@@ -6148,7 +6403,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "PBFA97CFB590B2093"
           },
           "fieldConfig": {
             "defaults": {
@@ -6233,23 +6488,25 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${datasource}"
+                "uid": "PBFA97CFB590B2093"
               },
-              "expr": "count(kube_pod_container_info{container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by(container,namespace)",
-              "refId": "A",
-              "legendFormat": "{{namespace}}\uff1a{{ container }}",
-              "instant": false,
+              "editorMode": "code",
+              "expr": "count(kube_pod_container_info{origin_prometheus=~\"$origin_prometheus\",container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by(container,namespace)",
+              "interval": "",
+              "intervalFactor": 1,
+              "legendFormat": "{{namespace}}：{{ container }}",
+              "metric": "container_memory_usage:sort_desc",
               "range": true,
-              "editorMode": "code"
+              "refId": "A",
+              "step": 10
             }
           ],
           "title": "Microservice (Container Name) Pod Number",
           "type": "timeseries"
         }
       ],
-      "title": "Microservices (Container Name) Resource Overview\uff1aSelected Microservices:\u3010$Container\u3011",
-      "type": "row",
-      "targets": []
+      "title": "Microservices (Container Name) Resource Overview：Selected Microservices:【$Container】",
+      "type": "row"
     }
   ],
   "refresh": "",
@@ -6261,109 +6518,160 @@
   "templating": {
     "list": [
       {
-        "name": "datasource",
-        "type": "datasource",
-        "label": "Datasource",
-        "pluginId": "prometheus",
+        "allValue": "",
+        "current": {
+          "isNone": true,
+          "selected": false,
+          "text": "None",
+          "value": ""
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "PBFA97CFB590B2093"
+        },
+        "definition": "label_values(kube_node_info,origin_prometheus)",
         "hide": 0,
-        "refresh": 1,
-        "current": {}
+        "includeAll": false,
+        "label": "K8S",
+        "multi": false,
+        "name": "origin_prometheus",
+        "options": [],
+        "query": {
+          "query": "label_values(kube_node_info,origin_prometheus)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 5,
+        "tagValuesQuery": "",
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
       },
       {
         "allValue": ".*",
-        "current": {},
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "PBFA97CFB590B2093"
+        },
+        "definition": "label_values(kube_node_info{origin_prometheus=~\"$origin_prometheus\"},node)",
         "hide": 0,
         "includeAll": true,
+        "label": "Nodes",
         "multi": false,
         "name": "Node",
-        "label": "Node",
         "options": [],
+        "query": {
+          "query": "label_values(kube_node_info{origin_prometheus=~\"$origin_prometheus\"},node)",
+          "refId": "StandardVariableQuery"
+        },
         "refresh": 2,
         "regex": "",
         "skipUrlSync": false,
-        "sort": 1,
+        "sort": 5,
+        "tagValuesQuery": "",
+        "tagsQuery": "",
         "type": "query",
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "definition": "label_values(kube_node_info, node)",
-        "query": {
-          "query": "label_values(kube_node_info, node)",
-          "refId": "StandardVariableQuery"
-        }
+        "useTags": false
       },
       {
         "allValue": ".*",
-        "current": {},
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "PBFA97CFB590B2093"
+        },
+        "definition": "label_values(kube_namespace_created{origin_prometheus=~\"$origin_prometheus\"},namespace)",
         "hide": 0,
         "includeAll": true,
-        "multi": true,
-        "name": "NameSpace",
         "label": "Namespace",
+        "multi": false,
+        "name": "NameSpace",
         "options": [],
+        "query": {
+          "query": "label_values(kube_namespace_created{origin_prometheus=~\"$origin_prometheus\"},namespace)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
         "refresh": 2,
         "regex": "",
         "skipUrlSync": false,
-        "sort": 1,
+        "sort": 5,
+        "tagValuesQuery": "",
+        "tagsQuery": "",
         "type": "query",
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "definition": "label_values(kube_namespace_created, namespace)",
-        "query": {
-          "query": "label_values(kube_namespace_created, namespace)",
-          "refId": "StandardVariableQuery"
-        }
+        "useTags": false
       },
       {
         "allValue": ".*",
-        "current": {},
+        "current": {
+          "selected": true,
+          "text": "loki",
+          "value": "loki"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "PBFA97CFB590B2093"
+        },
+        "definition": "label_values(kube_pod_container_info{origin_prometheus=~\"$origin_prometheus\",namespace=~\"$NameSpace\"},container)",
         "hide": 0,
         "includeAll": true,
+        "label": "Microservice (Container Name)",
         "multi": false,
         "name": "Container",
-        "label": "Container",
         "options": [],
+        "query": {
+          "query": "label_values(kube_pod_container_info{origin_prometheus=~\"$origin_prometheus\",namespace=~\"$NameSpace\"},container)",
+          "refId": "StandardVariableQuery"
+        },
         "refresh": 2,
         "regex": "",
         "skipUrlSync": false,
-        "sort": 1,
+        "sort": 5,
+        "tagValuesQuery": "",
+        "tagsQuery": "",
         "type": "query",
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "definition": "label_values(kube_pod_container_info{namespace=~\"$NameSpace\"}, container)",
-        "query": {
-          "query": "label_values(kube_pod_container_info{namespace=~\"$NameSpace\"}, container)",
-          "refId": "StandardVariableQuery"
-        }
+        "useTags": false
       },
       {
         "allValue": ".*",
-        "current": {},
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "PBFA97CFB590B2093"
+        },
+        "definition": "label_values(kube_pod_container_info{origin_prometheus=~\"$origin_prometheus\",namespace=~\"$NameSpace\",container=~\"$Container\"},pod)",
         "hide": 0,
         "includeAll": true,
+        "label": "Pod",
         "multi": false,
         "name": "Pod",
-        "label": "Pod",
         "options": [],
+        "query": {
+          "query": "label_values(kube_pod_container_info{origin_prometheus=~\"$origin_prometheus\",namespace=~\"$NameSpace\",container=~\"$Container\"},pod)",
+          "refId": "StandardVariableQuery"
+        },
         "refresh": 2,
         "regex": "",
         "skipUrlSync": false,
-        "sort": 1,
+        "sort": 5,
+        "tagValuesQuery": "",
+        "tagsQuery": "",
         "type": "query",
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "definition": "label_values(kube_pod_container_info{namespace=~\"$NameSpace\",container=~\"$Container\"}, pod)",
-        "query": {
-          "query": "label_values(kube_pod_container_info{namespace=~\"$NameSpace\",container=~\"$Container\"}, pod)",
-          "refId": "StandardVariableQuery"
-        }
+        "useTags": false
       }
     ]
   },
@@ -6393,7 +6701,8 @@
     ]
   },
   "timezone": "browser",
-  "title": "Kubernetes Dashboard",
-  "version": 8,
-  "uid": "kubernetes-dashboard-v2"
+  "title": "K8S Dashboard",
+  "uid": "a2c47b51-ef2f-4622-a0e5-3fd73fcaa7d6",
+  "version": 1,
+  "weekStart": ""
 }
