@@ -92,6 +92,12 @@ data:
             action: replace
             target_label: kubernetes_pod_name
 
+
+      # Métricas de kube-state-metrics (kube_pod_*, kube_node_*, etc.)
+      - job_name: 'kube-state-metrics'
+        static_configs:
+          - targets: ['kube-state-metrics.kube-system.svc.cluster.local:8080']
+
       # Métricas de MariaDB
       - job_name: 'mariadb'
         static_configs:
