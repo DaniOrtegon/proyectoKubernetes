@@ -6580,118 +6580,93 @@
         "type": "datasource",
         "label": "Datasource",
         "pluginId": "prometheus",
-        "pluginName": "Prometheus",
-        "current": {},
         "hide": 0,
-        "refresh": 1
+        "refresh": 1,
+        "current": {}
       },
       {
-        "allValue": ".*",
-        "current": {},
+        "name": "Node",
+        "type": "query",
+        "label": "Node",
         "datasource": {
           "type": "prometheus",
           "uid": "${datasource}"
         },
         "definition": "label_values(kube_node_info, node)",
-        "hide": 0,
-        "includeAll": true,
-        "label": "Nodes",
-        "multi": false,
-        "name": "Node",
-        "options": [],
         "query": {
           "query": "label_values(kube_node_info, node)",
           "refId": "StandardVariableQuery"
         },
         "refresh": 2,
-        "regex": "",
-        "skipUrlSync": false,
-        "sort": 5,
-        "tagValuesQuery": "",
-        "tagsQuery": "",
-        "type": "query",
-        "useTags": false
-      },
-      {
+        "includeAll": true,
+        "multi": false,
         "allValue": ".*",
         "current": {},
+        "hide": 0,
+        "sort": 1
+      },
+      {
+        "name": "NameSpace",
+        "type": "query",
+        "label": "Namespace",
         "datasource": {
           "type": "prometheus",
           "uid": "${datasource}"
         },
         "definition": "label_values(kube_pod_info, namespace)",
-        "hide": 0,
-        "includeAll": true,
-        "label": "Namespace",
-        "multi": false,
-        "name": "NameSpace",
-        "options": [],
         "query": {
           "query": "label_values(kube_pod_info, namespace)",
           "refId": "StandardVariableQuery"
         },
         "refresh": 2,
-        "regex": "",
-        "skipUrlSync": false,
-        "sort": 5,
-        "tagValuesQuery": "",
-        "tagsQuery": "",
-        "type": "query",
-        "useTags": false
-      },
-      {
-        "allValue": ".*",
-        "current": {},
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "definition": "label_values(kube_pod_container_info{namespace=~\"$NameSpace\",pod=~\"$Pod\"}, container)",
-        "hide": 0,
         "includeAll": true,
-        "label": "Microservice (Container Name)",
-        "multi": false,
-        "name": "Container",
-        "options": [],
-        "query": {
-          "query": "label_values(kube_pod_container_info{namespace=~\"$NameSpace\",pod=~\"$Pod\"}, container)",
-          "refId": "StandardVariableQuery"
-        },
-        "refresh": 2,
-        "regex": "",
-        "skipUrlSync": false,
-        "sort": 5,
-        "tagValuesQuery": "",
-        "tagsQuery": "",
-        "type": "query",
-        "useTags": false
-      },
-      {
+        "multi": true,
         "allValue": ".*",
         "current": {},
+        "hide": 0,
+        "sort": 1
+      },
+      {
+        "name": "Pod",
+        "type": "query",
+        "label": "Pod",
         "datasource": {
           "type": "prometheus",
           "uid": "${datasource}"
         },
         "definition": "label_values(kube_pod_info{namespace=~\"$NameSpace\"}, pod)",
-        "hide": 0,
-        "includeAll": true,
-        "label": "Pod",
-        "multi": false,
-        "name": "Pod",
-        "options": [],
         "query": {
           "query": "label_values(kube_pod_info{namespace=~\"$NameSpace\"}, pod)",
           "refId": "StandardVariableQuery"
         },
         "refresh": 2,
-        "regex": "",
-        "skipUrlSync": false,
-        "sort": 5,
-        "tagValuesQuery": "",
-        "tagsQuery": "",
+        "includeAll": true,
+        "multi": false,
+        "allValue": ".*",
+        "current": {},
+        "hide": 0,
+        "sort": 1
+      },
+      {
+        "name": "Container",
         "type": "query",
-        "useTags": false
+        "label": "Container",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "definition": "label_values(kube_pod_container_info{namespace=~\"$NameSpace\",pod=~\"$Pod\"}, container)",
+        "query": {
+          "query": "label_values(kube_pod_container_info{namespace=~\"$NameSpace\",pod=~\"$Pod\"}, container)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 2,
+        "includeAll": true,
+        "multi": false,
+        "allValue": ".*",
+        "current": {},
+        "hide": 0,
+        "sort": 1
       }
     ]
   },
