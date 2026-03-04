@@ -1,53 +1,5 @@
 {
-  "__inputs": [
-    {
-      "name": "DS__VICTORIAMETRICS-PROD-ALL",
-      "label": "VictoriaMetrics-prod-all",
-      "description": "",
-      "type": "datasource",
-      "pluginId": "prometheus",
-      "pluginName": "Prometheus"
-    }
-  ],
   "__elements": {},
-  "__requires": [
-    {
-      "type": "panel",
-      "id": "bargauge",
-      "name": "Bar gauge",
-      "version": ""
-    },
-    {
-      "type": "grafana",
-      "id": "grafana",
-      "name": "Grafana",
-      "version": "10.4.1"
-    },
-    {
-      "type": "datasource",
-      "id": "prometheus",
-      "name": "Prometheus",
-      "version": "1.0.0"
-    },
-    {
-      "type": "panel",
-      "id": "stat",
-      "name": "Stat",
-      "version": ""
-    },
-    {
-      "type": "panel",
-      "id": "table",
-      "name": "Table",
-      "version": ""
-    },
-    {
-      "type": "panel",
-      "id": "timeseries",
-      "name": "Time series",
-      "version": ""
-    }
-  ],
   "annotations": {
     "list": [
       {
@@ -74,7 +26,6 @@
   "description": "\u3010English version\u30112025.01.25 Updates\uff0ckubernetesComprehensive display of resources\uff01Includes K8S Overall Resource Overview\u3001Microservices Resource Details\u3001Pod Resource Details andK8SNetwork Bandwidth\uff0cOptimization metrics\u3002https://grafana.com/orgs/starsliao/dashboards",
   "editable": true,
   "fiscalYearStartMonth": 0,
-  "gnetId": 15661,
   "graphTooltip": 0,
   "id": null,
   "links": [
@@ -117,7 +68,8 @@
       "id": 54,
       "panels": [],
       "title": "Node Resource Overview\uff1aSelected Nodes:\u3010$Node\u3011",
-      "type": "row"
+      "type": "row",
+      "targets": []
     },
     {
       "datasource": {
@@ -184,47 +136,39 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "editorMode": "code",
-          "exemplar": true,
           "expr": "sum(container_memory_working_set_bytes{container!=\"\",node=~\"^$Node$\"}) / sum(kube_node_status_allocatable{resource=\"memory\", unit=\"byte\", node=~\"^$Node$\"})",
-          "format": "time_series",
-          "hide": false,
-          "instant": true,
-          "interval": "",
+          "refId": "A",
           "legendFormat": "Memory Utilization",
-          "refId": "C"
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "time_series"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "editorMode": "code",
-          "exemplar": true,
           "expr": "sum(kube_pod_container_resource_requests{resource=\"memory\", unit=\"byte\",node=~\"^$Node$\"}) / sum(kube_node_status_allocatable{resource=\"memory\", unit=\"byte\", node=~\"^$Node$\"})",
-          "format": "time_series",
-          "hide": false,
-          "instant": true,
-          "interval": "",
+          "refId": "B",
           "legendFormat": "Memory Request Rate",
-          "refId": "A"
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "time_series"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "editorMode": "code",
-          "exemplar": true,
           "expr": "sum(kube_pod_container_resource_limits{resource=\"memory\", unit=\"byte\",node=~\"^$Node$\"}) / sum(kube_node_status_allocatable{resource=\"memory\", unit=\"byte\", node=~\"^$Node$\"})",
-          "format": "time_series",
-          "hide": false,
-          "instant": true,
-          "interval": "",
-          "intervalFactor": 1,
+          "refId": "C",
           "legendFormat": "Memory Limit Rate",
-          "refId": "B",
-          "step": 10
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "time_series"
         }
       ],
       "title": "Node Memory Ratio",
@@ -295,43 +239,39 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "editorMode": "code",
-          "exemplar": true,
           "expr": "sum (irate(container_cpu_usage_seconds_total{container!=\"\",node=~\"^$Node$\"}[2m])) / sum(kube_node_status_allocatable{resource=\"cpu\", unit=\"core\", node=~\"^$Node$\"})",
-          "format": "time_series",
-          "hide": false,
-          "instant": true,
-          "interval": "",
+          "refId": "A",
           "legendFormat": "CPU Utilization Rate",
-          "refId": "C"
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "time_series"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "editorMode": "code",
-          "exemplar": true,
           "expr": "sum(kube_pod_container_resource_requests{resource=\"cpu\", unit=\"core\",node=~\"^$Node$\"}) / sum(kube_node_status_allocatable{resource=\"cpu\", unit=\"core\", node=~\"^$Node$\"})",
-          "format": "time_series",
-          "instant": true,
-          "interval": "",
+          "refId": "B",
           "legendFormat": "CPU Request Rate",
-          "refId": "A"
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "time_series"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "editorMode": "code",
-          "exemplar": true,
           "expr": "sum(kube_pod_container_resource_limits{resource=\"cpu\", unit=\"core\",node=~\"^$Node$\"}) / sum(kube_node_status_allocatable{resource=\"cpu\", unit=\"core\", node=~\"^$Node$\"})",
-          "format": "time_series",
-          "instant": true,
-          "interval": "",
+          "refId": "C",
           "legendFormat": "CPU Limit Rate",
-          "refId": "B"
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "time_series"
         }
       ],
       "title": "Node CPU Ratio",
@@ -403,10 +343,11 @@
             "uid": "${datasource}"
           },
           "expr": "count(kube_node_info{})",
-          "instant": true,
-          "interval": "",
+          "refId": "A",
           "legendFormat": "Number of nodes",
-          "refId": "A"
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
         },
         {
           "datasource": {
@@ -414,24 +355,23 @@
             "uid": "${datasource}"
           },
           "expr": "count(kube_pod_info{created_by_kind!~\"<none>|Job\",node=~\"^$Node$\"})",
-          "hide": false,
-          "instant": true,
-          "interval": "",
+          "refId": "B",
           "legendFormat": "Pod Number of nodes",
-          "refId": "B"
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": true,
           "expr": "sum(kube_node_status_allocatable{resource=\"pods\", unit=\"integer\",node=~\"^$Node$\"})",
-          "hide": false,
-          "instant": true,
-          "interval": "",
+          "refId": "C",
           "legendFormat": "Upper limit Pod",
-          "refId": "C"
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
         }
       ],
       "title": "Nodes with Pod",
@@ -579,69 +519,65 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "editorMode": "code",
           "expr": "count(kube_pod_info{node=~\"^$Node$\"}) by (namespace)",
-          "format": "table",
-          "instant": true,
-          "interval": "",
+          "refId": "A",
           "legendFormat": "",
-          "refId": "A"
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "editorMode": "code",
           "expr": "count(kube_service_info{}) by(namespace)",
-          "format": "table",
-          "hide": false,
-          "instant": true,
-          "interval": "",
+          "refId": "B",
           "legendFormat": "",
-          "refId": "C"
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "editorMode": "code",
           "expr": "count by (namespace)({__name__=~\"kube_deployment_metadata_generation|kube_daemonset_metadata_generation|kube_statefulset_metadata_generation\"})",
-          "format": "table",
-          "hide": false,
-          "instant": true,
-          "interval": "",
+          "refId": "C",
           "legendFormat": "__auto",
-          "refId": "D"
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "editorMode": "code",
           "expr": "count(kube_configmap_info{}) by(namespace)",
-          "format": "table",
-          "hide": false,
-          "instant": true,
-          "interval": "",
+          "refId": "D",
           "legendFormat": "configmap",
-          "refId": "B"
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "editorMode": "code",
           "expr": "count(kube_secret_info{}) by(namespace)",
-          "format": "table",
-          "hide": false,
-          "instant": true,
-          "interval": "",
+          "refId": "E",
           "legendFormat": "secret",
-          "refId": "E"
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
         }
       ],
       "title": "Namespace Resource Statistics",
@@ -781,33 +717,25 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "editorMode": "code",
-          "exemplar": true,
           "expr": "sum (irate(container_network_receive_bytes_total{node=~\"^$Node$\",namespace=~\"$NameSpace\"}[2m]))*8",
-          "format": "time_series",
-          "interval": "",
-          "intervalFactor": 1,
-          "legendFormat": "Receive",
-          "metric": "network",
-          "range": true,
           "refId": "A",
-          "step": 10
+          "legendFormat": "Receive",
+          "instant": false,
+          "range": true,
+          "editorMode": "code",
+          "format": "time_series"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "editorMode": "code",
-          "exemplar": true,
           "expr": "sum (irate(container_network_transmit_bytes_total{node=~\"^$Node$\",namespace=~\"$NameSpace\"}[2m]))*8",
-          "instant": false,
-          "interval": "",
-          "intervalFactor": 1,
-          "legendFormat": "Send",
-          "metric": "network",
           "refId": "B",
-          "step": 10
+          "legendFormat": "Send",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
         }
       ],
       "title": "$NameSpace\uff1aNetwork Overview\uff08Associable nodes and namespaces\uff09",
@@ -878,48 +806,48 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": true,
           "expr": "sum(kube_node_status_allocatable{resource=\"memory\", unit=\"byte\", node=~\"^$Node$\"})",
-          "instant": true,
-          "interval": "",
+          "refId": "A",
           "legendFormat": "Total Memory",
-          "refId": "A"
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": true,
           "expr": "sum (container_memory_working_set_bytes{container!=\"\",node=~\"^$Node$\"})",
-          "instant": true,
-          "interval": "",
+          "refId": "B",
           "legendFormat": "Usage",
-          "refId": "C"
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": true,
           "expr": "sum(kube_pod_container_resource_requests{resource=\"memory\", unit=\"byte\",node=~\"^$Node$\"})",
-          "instant": true,
-          "interval": "",
+          "refId": "C",
           "legendFormat": "Requests",
-          "refId": "D"
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": true,
           "expr": "sum(kube_pod_container_resource_limits{resource=\"memory\", unit=\"byte\",node=~\"^$Node$\"})",
-          "instant": true,
-          "interval": "",
+          "refId": "D",
           "legendFormat": "Limits",
-          "refId": "B"
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
         }
       ],
       "title": "Node Memory Information",
@@ -990,48 +918,48 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": true,
           "expr": "sum(kube_node_status_allocatable{resource=\"cpu\", unit=\"core\", node=~\"^$Node$\"})",
-          "instant": true,
-          "interval": "",
+          "refId": "A",
           "legendFormat": "Total Cores",
-          "refId": "A"
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": true,
           "expr": "sum (irate(container_cpu_usage_seconds_total{id=\"/\",node=~\"^$Node$\"}[2m]))",
-          "instant": true,
-          "interval": "",
+          "refId": "B",
           "legendFormat": "Usage",
-          "refId": "C"
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": true,
           "expr": "sum(kube_pod_container_resource_requests{resource=\"cpu\", unit=\"core\",node=~\"^$Node$\"})",
-          "instant": true,
-          "interval": "",
+          "refId": "C",
           "legendFormat": "Requests",
-          "refId": "D"
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": true,
           "expr": "sum(kube_pod_container_resource_limits{resource=\"cpu\", unit=\"core\",node=~\"^$Node$\"})",
-          "instant": true,
-          "interval": "",
+          "refId": "D",
           "legendFormat": "Limit",
-          "refId": "B"
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
         }
       ],
       "title": "Node CPU Number of cores",
@@ -1155,10 +1083,11 @@
             "uid": "${datasource}"
           },
           "expr": "sum (container_fs_usage_bytes{device=~\"^/dev/.*$\",id=\"/\",node=~\"^$Node$\"}) / sum (container_fs_limit_bytes{device=~\"^/dev/.*$\",id=\"/\",node=~\"^$Node$\"})",
-          "instant": true,
-          "interval": "",
+          "refId": "A",
           "legendFormat": "Utilization Rate",
-          "refId": "C"
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
         },
         {
           "datasource": {
@@ -1166,10 +1095,11 @@
             "uid": "${datasource}"
           },
           "expr": "sum (container_fs_usage_bytes{device=~\"^/dev/.*$\",id=\"/\",node=~\"^$Node$\"})",
-          "instant": true,
-          "interval": "",
+          "refId": "B",
           "legendFormat": "Usage",
-          "refId": "A"
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
         },
         {
           "datasource": {
@@ -1177,10 +1107,11 @@
             "uid": "${datasource}"
           },
           "expr": "sum (container_fs_limit_bytes{device=~\"^/dev/.*$\",id=\"/\",node=~\"^$Node$\"})",
-          "instant": true,
-          "interval": "",
+          "refId": "C",
           "legendFormat": "Total",
-          "refId": "B"
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
         }
       ],
       "title": "Node Storage Information",
@@ -1263,85 +1194,73 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "editorMode": "code",
-          "exemplar": false,
           "expr": "count({__name__=~\"kube_deployment_metadata_generation|kube_daemonset_metadata_generation|kube_statefulset_metadata_generation\"})",
-          "hide": false,
-          "instant": true,
+          "refId": "A",
           "legendFormat": "Workload",
+          "instant": true,
           "range": false,
-          "refId": "F"
+          "editorMode": "code"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "editorMode": "code",
-          "exemplar": false,
           "expr": "count(kube_pod_info{})",
-          "hide": false,
-          "instant": true,
+          "refId": "B",
           "legendFormat": "Total Pod",
+          "instant": true,
           "range": false,
-          "refId": "E"
+          "editorMode": "code"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "editorMode": "code",
-          "exemplar": false,
           "expr": "count by(key,origin_prometheus)(kube_node_spec_taint{key=~\"node.kubernetes.io.*\"})",
-          "format": "time_series",
-          "hide": false,
-          "instant": true,
+          "refId": "C",
           "legendFormat": "{{key}}",
+          "instant": true,
           "range": false,
-          "refId": "D"
+          "editorMode": "code",
+          "format": "time_series"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "editorMode": "code",
-          "exemplar": false,
           "expr": "count by(origin_prometheus)(kube_node_info{})",
-          "hide": false,
-          "instant": true,
+          "refId": "D",
           "legendFormat": "Total Nodes",
+          "instant": true,
           "range": false,
-          "refId": "C"
+          "editorMode": "code"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "editorMode": "code",
-          "exemplar": false,
           "expr": "count by(origin_prometheus)(kube_node_info{}) - count by(origin_prometheus)(kube_node_spec_taint{key!~\"node.kubernetes.io.*\"})",
-          "hide": false,
-          "instant": true,
+          "refId": "E",
           "legendFormat": "Normal Node",
+          "instant": true,
           "range": false,
-          "refId": "B"
+          "editorMode": "code"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "editorMode": "code",
-          "exemplar": false,
           "expr": "count by(key,origin_prometheus)(kube_node_spec_taint{key!~\"node.kubernetes.io.*\"})",
-          "hide": false,
-          "instant": true,
+          "refId": "F",
           "legendFormat": "{{key}}",
+          "instant": true,
           "range": false,
-          "refId": "A"
+          "editorMode": "code"
         }
       ],
       "transformations": [
@@ -1461,51 +1380,48 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "editorMode": "code",
-          "exemplar": true,
           "expr": "sum(kube_node_status_allocatable{resource=\"memory\", unit=\"byte\", node=~\"^$Node$\"})",
-          "instant": false,
-          "interval": "",
+          "refId": "A",
           "legendFormat": "Total Memory",
-          "refId": "A"
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": true,
           "expr": "sum (container_memory_working_set_bytes{container!=\"\",node=~\"^$Node$\"})",
-          "instant": false,
-          "interval": "",
+          "refId": "B",
           "legendFormat": "Usage",
-          "refId": "C"
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": true,
           "expr": "sum(kube_pod_container_resource_requests{resource=\"memory\", unit=\"byte\",node=~\"^$Node$\"})",
-          "hide": true,
-          "instant": false,
-          "interval": "",
+          "refId": "C",
           "legendFormat": "Requests",
-          "refId": "D"
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": true,
           "expr": "sum(kube_pod_container_resource_limits{resource=\"memory\", unit=\"byte\",node=~\"^$Node$\"})",
-          "hide": true,
-          "instant": false,
-          "interval": "",
+          "refId": "D",
           "legendFormat": "Limit",
-          "refId": "B"
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
         }
       ],
       "title": "Memory Usage\u3010$Node\u3011",
@@ -1617,51 +1533,48 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "editorMode": "code",
-          "exemplar": true,
           "expr": "sum(kube_node_status_allocatable{resource=\"cpu\", unit=\"core\", node=~\"^$Node$\"})",
-          "instant": false,
-          "interval": "",
+          "refId": "A",
           "legendFormat": "Total Cores",
-          "refId": "A"
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": true,
           "expr": "sum (irate(container_cpu_usage_seconds_total{id=\"/\",node=~\"^$Node$\"}[2m]))",
-          "instant": false,
-          "interval": "",
+          "refId": "B",
           "legendFormat": "Usage",
-          "refId": "C"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "exemplar": true,
-          "expr": "sum(kube_pod_container_resource_requests{resource=\"cpu\", unit=\"core\",node=~\"^$Node$\"})",
-          "hide": true,
           "instant": false,
-          "interval": "",
-          "legendFormat": "Requests",
-          "refId": "D"
+          "range": true,
+          "editorMode": "code"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": true,
+          "expr": "sum(kube_pod_container_resource_requests{resource=\"cpu\", unit=\"core\",node=~\"^$Node$\"})",
+          "refId": "C",
+          "legendFormat": "Requests",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
           "expr": "sum(kube_pod_container_resource_limits{resource=\"cpu\", unit=\"core\",node=~\"^$Node$\"})",
-          "hide": true,
-          "instant": true,
-          "interval": "",
+          "refId": "D",
           "legendFormat": "Limit",
-          "refId": "B"
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
         }
       ],
       "title": "CPU Used Cores\u3010$Node\u3011",
@@ -1801,40 +1714,36 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": true,
           "expr": "count(kube_node_info{})",
-          "hide": false,
-          "instant": false,
-          "interval": "",
+          "refId": "A",
           "legendFormat": "Number of nodes",
-          "refId": "A"
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "editorMode": "code",
-          "exemplar": true,
           "expr": "count(kube_pod_info{created_by_kind!~\"<none>|Job\",node=~\"^$Node$\"})",
-          "hide": false,
-          "instant": false,
-          "interval": "",
+          "refId": "B",
           "legendFormat": "Pod Number",
-          "refId": "B"
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": true,
           "expr": "sum(kube_node_status_allocatable{resource=\"pods\", unit=\"integer\",node=~\"^$Node$\"})",
-          "hide": false,
-          "instant": false,
-          "interval": "",
+          "refId": "C",
           "legendFormat": "Upper Limit Pod",
-          "refId": "C"
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
         }
       ],
       "title": "Pod Number and nodes\u3010$Node\u3011",
@@ -1946,14 +1855,13 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": true,
           "expr": "sum (irate(container_cpu_usage_seconds_total{container!=\"\",node=~\"^$Node$\"}[2m]))by (node) / sum(kube_node_status_allocatable{resource=\"cpu\", unit=\"core\", node=~\"^$Node$\"})by (node)*100",
-          "format": "time_series",
-          "hide": false,
-          "instant": false,
-          "interval": "",
+          "refId": "A",
           "legendFormat": "{{node}}",
-          "refId": "I"
+          "instant": false,
+          "range": true,
+          "editorMode": "code",
+          "format": "time_series"
         }
       ],
       "title": "$Node\uff1aNodes CPU Breakdown",
@@ -2049,14 +1957,13 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": true,
           "expr": "sum (container_memory_working_set_bytes{container!=\"\",node=~\"^$Node$\"})by (node) / sum(kube_node_status_allocatable{resource=\"memory\", unit=\"byte\", node=~\"^$Node$\"})by (node)*100",
-          "format": "time_series",
-          "hide": false,
-          "instant": false,
-          "interval": "",
+          "refId": "A",
           "legendFormat": "{{node}}",
-          "refId": "I"
+          "instant": false,
+          "range": true,
+          "editorMode": "code",
+          "format": "time_series"
         }
       ],
       "title": "$Node\uff1aNode Memory Breakdown",
@@ -2166,30 +2073,25 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": true,
           "expr": "sum (irate(container_network_receive_bytes_total{node=~\"^$Node$\"}[2m]))by (node) *8",
-          "format": "time_series",
-          "interval": "",
-          "intervalFactor": 1,
-          "legendFormat": "Inflow:{{node}}",
-          "metric": "network",
           "refId": "A",
-          "step": 10
+          "legendFormat": "Inflow:{{node}}",
+          "instant": false,
+          "range": true,
+          "editorMode": "code",
+          "format": "time_series"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": true,
           "expr": "sum (irate(container_network_transmit_bytes_total{node=~\"^$Node$\"}[2m]))by (node) *8",
-          "instant": false,
-          "interval": "",
-          "intervalFactor": 1,
-          "legendFormat": "Outflows:{{node}}",
-          "metric": "network",
           "refId": "B",
-          "step": 10
+          "legendFormat": "Outflows:{{node}}",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
         }
       ],
       "title": "$Node\uff1aNode Network Overview",
@@ -2558,280 +2460,260 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": false,
           "expr": "count(kube_pod_info{created_by_kind!~\"<none>|Job\",node=~\"^$Node$\"}) by (node)",
-          "format": "table",
-          "hide": false,
-          "instant": true,
-          "interval": "",
+          "refId": "A",
           "legendFormat": "pod Number",
-          "refId": "A"
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": false,
           "expr": "kube_node_status_condition{status=\"true\",node=~\"^$Node$\"}  == 1",
-          "format": "table",
-          "hide": true,
-          "instant": true,
-          "interval": "",
+          "refId": "B",
           "legendFormat": "Status",
-          "refId": "B"
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": false,
           "expr": "sum (irate(container_cpu_usage_seconds_total{container!=\"\",node=~\"^$Node$\"}[2m])) by (node)",
-          "format": "table",
-          "hide": false,
-          "instant": true,
-          "interval": "",
+          "refId": "C",
           "legendFormat": "",
-          "refId": "I"
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": false,
           "expr": "kube_node_status_allocatable{resource=\"cpu\", unit=\"core\", node=~\"^$Node$\"} - 0",
-          "format": "table",
-          "hide": false,
-          "instant": true,
-          "interval": "",
+          "refId": "D",
           "legendFormat": "",
-          "refId": "C"
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": false,
           "expr": "sum(kube_pod_container_resource_requests{resource=\"cpu\", unit=\"core\",node=~\"^$Node$\"}) by (node)",
-          "format": "table",
-          "hide": false,
-          "instant": true,
-          "interval": "",
+          "refId": "E",
           "legendFormat": "",
-          "refId": "E"
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": false,
           "expr": "sum(kube_pod_container_resource_limits{resource=\"cpu\", unit=\"core\",node=~\"^$Node$\"}) by (node)",
-          "format": "table",
-          "hide": false,
-          "instant": true,
-          "interval": "",
+          "refId": "F",
           "legendFormat": "",
-          "refId": "F"
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": false,
           "expr": "sum (container_memory_working_set_bytes{container!=\"\",node=~\"^$Node$\"}) by (node)",
-          "format": "table",
-          "hide": false,
-          "instant": true,
-          "interval": "",
+          "refId": "G",
           "legendFormat": "",
-          "refId": "J"
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": false,
           "expr": "sum(kube_node_status_allocatable{resource=\"memory\", unit=\"byte\", node=~\"^$Node$\"}) by (node) - 0",
-          "format": "table",
-          "hide": false,
-          "instant": true,
-          "interval": "",
+          "refId": "H",
           "legendFormat": "",
-          "refId": "D"
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": false,
           "expr": "sum(kube_pod_container_resource_requests{resource=\"memory\", unit=\"byte\",node=~\"^$Node$\"}) by (node)",
-          "format": "table",
-          "hide": false,
-          "instant": true,
-          "interval": "",
+          "refId": "I",
           "legendFormat": "",
-          "refId": "G"
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": false,
           "expr": "sum(kube_pod_container_resource_limits{resource=\"memory\", unit=\"byte\",node=~\"^$Node$\"}) by (node)",
-          "format": "table",
-          "hide": false,
-          "instant": true,
-          "interval": "",
+          "refId": "J",
           "legendFormat": "",
-          "refId": "H"
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": false,
           "expr": "sum (container_fs_usage_bytes{device=~\"^/dev/.*$\",id=\"/\",node=~\"^$Node$\"}) by (node)",
-          "format": "table",
-          "hide": false,
-          "instant": true,
-          "interval": "",
+          "refId": "K",
           "legendFormat": "",
-          "refId": "K"
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": false,
           "expr": "sum (container_fs_limit_bytes{device=~\"^/dev/.*$\",id=\"/\",node=~\"^$Node$\"}) by (node)",
-          "format": "table",
-          "hide": false,
-          "instant": true,
-          "interval": "",
+          "refId": "L",
           "legendFormat": "",
-          "refId": "L"
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": false,
           "expr": "sum (container_memory_working_set_bytes{container!=\"\",node=~\"^$Node$\"})by (node) / sum(kube_node_status_allocatable{resource=\"memory\", unit=\"byte\", node=~\"^$Node$\"})by (node)",
-          "format": "table",
-          "hide": false,
-          "instant": true,
-          "interval": "",
+          "refId": "M",
           "legendFormat": "Memory Usage%",
-          "refId": "M"
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": false,
           "expr": "sum(kube_pod_container_resource_requests{resource=\"memory\", unit=\"byte\",node=~\"^$Node$\"})by (node) / sum(kube_node_status_allocatable{resource=\"memory\", unit=\"byte\", node=~\"^$Node$\"})by (node)",
-          "format": "table",
-          "hide": false,
-          "instant": true,
-          "interval": "",
+          "refId": "N",
           "legendFormat": "Memory Requests%",
-          "refId": "N"
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": false,
           "expr": "sum(kube_pod_container_resource_limits{resource=\"memory\", unit=\"byte\",node=~\"^$Node$\"})by (node) / sum(kube_node_status_allocatable{resource=\"memory\", unit=\"byte\", node=~\"^$Node$\"})by (node)",
-          "format": "table",
-          "hide": false,
-          "instant": true,
-          "interval": "",
+          "refId": "O",
           "legendFormat": "Memory Limit%",
-          "refId": "O"
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": false,
           "expr": "sum (irate(container_cpu_usage_seconds_total{container!=\"\",node=~\"^$Node$\"}[2m]))by (node) / sum(kube_node_status_allocatable{resource=\"cpu\", unit=\"core\", node=~\"^$Node$\"})by (node)",
-          "format": "table",
-          "hide": false,
-          "instant": true,
-          "interval": "",
+          "refId": "P",
           "legendFormat": "CPU Usage%",
-          "refId": "P"
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": false,
           "expr": "sum(kube_pod_container_resource_requests{resource=\"cpu\", unit=\"core\",node=~\"^$Node$\"})by (node) / sum(kube_node_status_allocatable{resource=\"cpu\", unit=\"core\", node=~\"^$Node$\"})by (node)",
-          "format": "table",
-          "hide": false,
-          "instant": true,
-          "interval": "",
+          "refId": "Q",
           "legendFormat": "CPU Requests%",
-          "refId": "Q"
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": false,
           "expr": "sum(kube_pod_container_resource_limits{resource=\"cpu\", unit=\"core\",node=~\"^$Node$\"})by (node) / sum(kube_node_status_allocatable{resource=\"cpu\", unit=\"core\", node=~\"^$Node$\"})by (node)",
-          "format": "table",
-          "hide": false,
-          "instant": true,
-          "interval": "",
+          "refId": "R",
           "legendFormat": "Memory Limit%",
-          "refId": "R"
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": false,
           "expr": "sum (container_fs_usage_bytes{device=~\"^/dev/.*$\",id=\"/\",node=~\"^$Node$\"})by (node) / sum (container_fs_limit_bytes{device=~\"^/dev/.*$\",id=\"/\",node=~\"^$Node$\"})by (node)",
-          "format": "table",
-          "hide": false,
-          "instant": true,
-          "interval": "",
+          "refId": "S",
           "legendFormat": "Disk Usage%",
-          "refId": "S"
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": false,
           "expr": "sum(kube_node_status_allocatable{resource=\"pods\", unit=\"integer\",node=~\"^$Node$\"})by (node)",
-          "format": "table",
-          "hide": false,
-          "instant": true,
-          "interval": "",
+          "refId": "T",
           "legendFormat": "PodCaps",
-          "refId": "T"
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
         }
       ],
       "title": "$Node\uff1aNode Information Detail",
@@ -3155,75 +3037,52 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "editorMode": "code",
-          "exemplar": false,
           "expr": "sum(container_fs_usage_bytes{container!=\"\", container!=\"POD\"}) by (namespace)",
-          "format": "table",
-          "instant": true,
-          "interval": "",
-          "intervalFactor": 1,
-          "legendFormat": "{{namespace}}:{{ persistentvolumeclaim }}",
-          "metric": "container_memory_usage:sort_desc",
-          "range": false,
           "refId": "A",
-          "step": 10
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "exemplar": false,
-          "expr": "sum(container_fs_limit_bytes{container!=\"\", container!=\"POD\"}) by (namespace)",
-          "format": "table",
-          "hide": false,
-          "instant": true,
-          "interval": "",
-          "intervalFactor": 1,
-          "legendFormat": "__auto",
-          "metric": "container_memory_usage:sort_desc",
-          "range": false,
-          "refId": "B",
-          "step": 10
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "exemplar": false,
-          "expr": "sum(container_fs_usage_bytes{container!=\"\",container!=\"POD\"}) by (namespace) / sum(container_fs_limit_bytes{container!=\"\",container!=\"POD\"}) by (namespace)",
-          "format": "table",
-          "hide": false,
-          "instant": true,
-          "interval": "",
-          "intervalFactor": 1,
           "legendFormat": "{{namespace}}:{{ persistentvolumeclaim }}",
-          "metric": "container_memory_usage:sort_desc",
+          "instant": true,
           "range": false,
-          "refId": "C",
-          "step": 10
+          "editorMode": "code",
+          "format": "table"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "editorMode": "code",
-          "exemplar": false,
-          "expr": "count by (namespace,persistentvolumeclaim)(kube_pod_spec_volumes_persistentvolumeclaims_info{})",
-          "format": "table",
-          "hide": false,
-          "instant": true,
-          "interval": "",
-          "intervalFactor": 1,
+          "expr": "sum(container_fs_limit_bytes{container!=\"\", container!=\"POD\"}) by (namespace)",
+          "refId": "B",
           "legendFormat": "__auto",
-          "metric": "container_memory_usage:sort_desc",
+          "instant": true,
           "range": false,
+          "editorMode": "code",
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(container_fs_usage_bytes{container!=\"\",container!=\"POD\"}) by (namespace) / sum(container_fs_limit_bytes{container!=\"\",container!=\"POD\"}) by (namespace)",
+          "refId": "C",
+          "legendFormat": "{{namespace}}:{{ persistentvolumeclaim }}",
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "count by (namespace,persistentvolumeclaim)(kube_pod_spec_volumes_persistentvolumeclaims_info{})",
           "refId": "D",
-          "step": 10
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
         }
       ],
       "title": "Storage Usage by Namespace",
@@ -3344,17 +3203,12 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "editorMode": "code",
-          "exemplar": true,
           "expr": "sum(irate(container_cpu_usage_seconds_total{container !=\"\",container!=\"POD\"}[2m])) by (namespace)",
-          "hide": false,
-          "instant": false,
-          "interval": "",
-          "intervalFactor": 1,
-          "legendFormat": "{{ namespace }}",
-          "metric": "container_cpu",
           "refId": "A",
-          "step": 10
+          "legendFormat": "{{ namespace }}",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
         }
       ],
       "title": "Namespaces CPU Usage",
@@ -3452,16 +3306,12 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "editorMode": "code",
-          "exemplar": true,
           "expr": "sum (container_memory_working_set_bytes{container !=\"\",container!=\"POD\"}) by (namespace) > 1*1024*1024*1024",
-          "interval": "",
-          "intervalFactor": 1,
-          "legendFormat": "{{namespace} {{ pod }}",
-          "metric": "container_memory_usage:sort_desc",
-          "range": true,
           "refId": "A",
-          "step": 10
+          "legendFormat": "{{namespace} {{ pod }}",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
         }
       ],
       "title": "Namespaces WSS Memory Usage (>1G)",
@@ -3482,7 +3332,8 @@
       "id": 49,
       "panels": [],
       "title": "Pod Resource Overview\uff1aSelectedPod:\u3010$Pod\u3011",
-      "type": "row"
+      "type": "row",
+      "targets": []
     },
     {
       "datasource": {
@@ -3943,232 +3794,208 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "editorMode": "code",
-          "exemplar": false,
           "expr": "sum(irate(container_cpu_usage_seconds_total{pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}[2m])) by (container, pod,node,namespace) / (sum(container_spec_cpu_quota{pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}/100000) by (container, pod,node,namespace)) ",
-          "format": "table",
-          "hide": false,
-          "instant": true,
-          "interval": "",
+          "refId": "A",
           "legendFormat": "",
-          "refId": "A"
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": false,
           "expr": "sum(irate(container_cpu_usage_seconds_total{pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}[2m])) by (container, pod,node,namespace)",
-          "format": "table",
-          "hide": false,
-          "instant": true,
-          "interval": "",
+          "refId": "B",
           "legendFormat": "CPUKernel Usage",
-          "refId": "Q"
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": false,
           "expr": "sum(kube_pod_container_resource_requests{resource=\"cpu\", unit=\"core\",pod=~\"$Pod\",container =~\"$Container\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container,pod,node,namespace)",
-          "format": "table",
-          "hide": false,
-          "instant": true,
-          "interval": "",
+          "refId": "C",
           "legendFormat": "",
-          "refId": "B"
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": false,
           "expr": "sum(kube_pod_container_resource_limits{resource=\"cpu\", unit=\"core\",pod=~\"$Pod\",container =~\"$Container\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container,pod,node,namespace)",
-          "format": "table",
-          "instant": true,
-          "interval": "",
+          "refId": "D",
           "legendFormat": "",
-          "refId": "C"
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "editorMode": "code",
-          "exemplar": false,
           "expr": "sum (container_memory_working_set_bytes{pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container, pod,node,namespace)/ sum(container_spec_memory_limit_bytes{pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container, pod,node,namespace)",
-          "format": "table",
-          "hide": false,
-          "instant": true,
-          "interval": "",
+          "refId": "E",
           "legendFormat": "wss%",
-          "refId": "I"
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": false,
           "expr": "sum (container_memory_working_set_bytes{pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container, pod,node,namespace)",
-          "format": "table",
-          "hide": false,
-          "instant": true,
-          "interval": "",
+          "refId": "F",
           "legendFormat": "wss",
-          "refId": "D"
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "editorMode": "code",
-          "exemplar": false,
           "expr": "sum (container_memory_rss{pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container, pod,node,namespace)/ sum(container_spec_memory_limit_bytes{pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container, pod,node,namespace)",
-          "format": "table",
-          "hide": false,
-          "instant": true,
-          "interval": "",
+          "refId": "G",
           "legendFormat": "rss%",
-          "refId": "L"
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": false,
           "expr": "sum (container_memory_rss{pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container, pod,node,namespace)",
-          "format": "table",
-          "hide": false,
-          "instant": true,
-          "interval": "",
+          "refId": "H",
           "legendFormat": "rss",
-          "refId": "K"
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "editorMode": "code",
-          "exemplar": false,
           "expr": "sum(kube_pod_container_resource_requests{resource=\"memory\", unit=\"byte\",pod=~\"$Pod\",container =~\"$Container\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container,pod,node,namespace)",
-          "format": "table",
-          "hide": false,
-          "instant": true,
-          "interval": "",
+          "refId": "I",
           "legendFormat": "",
-          "refId": "E"
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": false,
           "expr": "sum(kube_pod_container_resource_limits{resource=\"memory\", unit=\"byte\",pod=~\"$Pod\",container =~\"$Container\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container,pod,node,namespace)",
-          "format": "table",
-          "hide": false,
-          "instant": true,
-          "interval": "",
+          "refId": "J",
           "legendFormat": "",
-          "refId": "F"
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "editorMode": "code",
-          "exemplar": false,
           "expr": "sum(container_fs_usage_bytes{pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container,pod,node,namespace)",
-          "format": "table",
-          "instant": true,
-          "interval": "",
+          "refId": "K",
           "legendFormat": "",
-          "refId": "J"
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "editorMode": "code",
-          "exemplar": false,
           "expr": "kube_pod_container_status_restarts_total{pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"} * on (pod) group_left(node) kube_pod_info{pod=~\"$Pod\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}",
-          "format": "table",
-          "hide": false,
-          "instant": true,
-          "interval": "",
+          "refId": "L",
           "legendFormat": "",
-          "refId": "H"
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "editorMode": "code",
-          "exemplar": false,
           "expr": "time() - kube_pod_created{pod=~\"$Pod\",namespace=~\"$NameSpace\"} * on(pod) group_right kube_pod_container_info{pod=~\"$Pod\",namespace=~\"$NameSpace\",container =~\"$Container\"}",
-          "format": "table",
-          "hide": false,
-          "instant": true,
-          "interval": "",
+          "refId": "M",
           "legendFormat": "__auto",
-          "refId": "R"
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "editorMode": "code",
-          "exemplar": false,
           "expr": "sum(container_fs_limit_bytes{pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container,pod,node,namespace)",
-          "format": "table",
-          "hide": false,
-          "instant": true,
-          "interval": "",
+          "refId": "N",
           "legendFormat": "",
-          "refId": "S"
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "editorMode": "code",
-          "exemplar": false,
           "expr": "sum(sum(irate(container_network_receive_bytes_total{pod=~\"$Pod\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}[2m])) by (pod)* on(pod) group_right kube_pod_container_info{pod=~\"$Pod\",namespace=~\"$NameSpace\",container =~\"$Container\"}) by(pod) *8",
-          "format": "table",
-          "hide": false,
-          "instant": true,
-          "interval": "",
+          "refId": "O",
           "legendFormat": "__auto",
-          "refId": "T"
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "editorMode": "code",
-          "exemplar": false,
           "expr": "sum(sum(irate(container_network_transmit_bytes_total{pod=~\"$Pod\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}[2m])) by (pod)* on(pod) group_right kube_pod_container_info{pod=~\"$Pod\",namespace=~\"$NameSpace\",container =~\"$Container\"}) by(pod) *8",
-          "format": "table",
-          "hide": false,
-          "instant": true,
-          "interval": "",
+          "refId": "P",
           "legendFormat": "__auto",
-          "refId": "U"
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
         }
       ],
       "title": "$Node\uff1aPod Resource Detail(Associable Nodes)",
@@ -4453,17 +4280,12 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "editorMode": "code",
-          "exemplar": true,
           "expr": "max(irate(container_cpu_usage_seconds_total{pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}[2m])) by (container, pod) / (max(container_spec_cpu_quota{pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}/100000) by (container, pod)) * 100",
-          "hide": false,
-          "instant": false,
-          "interval": "",
-          "intervalFactor": 1,
-          "legendFormat": "{{ pod }}",
-          "metric": "container_cpu",
           "refId": "A",
-          "step": 10
+          "legendFormat": "{{ pod }}",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
         }
       ],
       "title": "Pod Containers CPU Utilization (Maximum100%Associable Nodes)",
@@ -4560,49 +4382,36 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "editorMode": "code",
-          "exemplar": false,
           "expr": "max (container_memory_working_set_bytes{pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container, pod)/ max(container_spec_memory_limit_bytes{pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container, pod) * 100",
-          "interval": "",
-          "intervalFactor": 1,
-          "legendFormat": "WSS\uff1a{{ pod }}",
-          "metric": "container_memory_usage:sort_desc",
-          "range": true,
           "refId": "A",
-          "step": 10
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "exemplar": false,
-          "expr": "max (container_memory_rss{pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container, pod)/ max(container_spec_memory_limit_bytes{pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container, pod) * 100",
-          "interval": "",
-          "intervalFactor": 1,
-          "legendFormat": "RSS\uff1a{{ pod }}",
-          "metric": "container_memory_usage:sort_desc",
-          "range": true,
-          "refId": "B",
-          "step": 10
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "exemplar": true,
-          "expr": "(cass_jvm_heap{service=~\"$Container\"} * on (pod_ip) group_right(service) kube_pod_info{pod=~\"$Pod\",namespace=~\"$NameSpace\"}) / (cass_jvm_heap_max{service=~\"$Container\"} * on (pod_ip) group_right(service) kube_pod_info{pod=~\"$Pod\",namespace=~\"$NameSpace\"}) * 100",
-          "hide": true,
+          "legendFormat": "WSS\uff1a{{ pod }}",
           "instant": false,
-          "interval": "",
-          "intervalFactor": 1,
-          "legendFormat": "Heap\uff1a{{ pod }}",
-          "metric": "container_memory_usage:sort_desc",
+          "range": true,
+          "editorMode": "code"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "max (container_memory_rss{pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container, pod)/ max(container_spec_memory_limit_bytes{pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container, pod) * 100",
+          "refId": "B",
+          "legendFormat": "RSS\uff1a{{ pod }}",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "(cass_jvm_heap{service=~\"$Container\"} * on (pod_ip) group_right(service) kube_pod_info{pod=~\"$Pod\",namespace=~\"$NameSpace\"}) / (cass_jvm_heap_max{service=~\"$Container\"} * on (pod_ip) group_right(service) kube_pod_info{pod=~\"$Pod\",namespace=~\"$NameSpace\"}) * 100",
           "refId": "C",
-          "step": 10
+          "legendFormat": "Heap\uff1a{{ pod }}",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
         }
       ],
       "title": "Pod Container Memory Usage (Associatable Nodes)",
@@ -4699,65 +4508,48 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "editorMode": "code",
-          "exemplar": false,
           "expr": "max(max(irate(container_network_receive_bytes_total{pod=~\"$Pod\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}[2m])) by (pod)* on(pod) group_right kube_pod_container_info{pod=~\"$Pod\",namespace=~\"$NameSpace\",container =~\"$Container\"}) by(pod) *8",
-          "hide": false,
-          "interval": "",
-          "intervalFactor": 1,
-          "legendFormat": "Inflow:{{ pod}}",
-          "metric": "network",
-          "range": true,
           "refId": "A",
-          "step": 10
+          "legendFormat": "Inflow:{{ pod}}",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "editorMode": "code",
-          "exemplar": false,
           "expr": "max(max(irate(container_network_transmit_bytes_total{pod=~\"$Pod\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}[2m])) by (pod)* on(pod) group_right kube_pod_container_info{pod=~\"$Pod\",namespace=~\"$NameSpace\",container =~\"$Container\"}) by(pod) *8",
-          "interval": "",
-          "intervalFactor": 1,
-          "legendFormat": "Outflow:{{ pod}}",
-          "metric": "network",
-          "range": true,
           "refId": "B",
-          "step": 10
+          "legendFormat": "Outflow:{{ pod}}",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "editorMode": "code",
           "expr": "sum(sum(irate(container_network_receive_bytes_total{pod=~\"$Pod\",image!=\"\",name=~\"^k8s_.*\",node=~\"^$Node$\",namespace=~\"$NameSpace\",pod=~\".*$Container.*\"}[2m])) by (pod)* on(pod) group_right kube_pod_container_info) by(pod) *8",
-          "hide": true,
-          "interval": "",
-          "intervalFactor": 1,
-          "legendFormat": "__auto",
-          "metric": "network",
-          "range": true,
           "refId": "C",
-          "step": 10
+          "legendFormat": "__auto",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "editorMode": "code",
           "expr": "sum(sum(irate(container_network_transmit_bytes_total{pod=~\"$Pod\",image!=\"\",name=~\"^k8s_.*\",node=~\"^$Node$\",namespace=~\"$NameSpace\",pod=~\".*$Container.*\"}[2m])) by (pod)* on(pod) group_right kube_pod_container_info) by(pod) *8",
-          "hide": true,
-          "interval": "",
-          "intervalFactor": 1,
-          "legendFormat": "__auto",
-          "metric": "network",
-          "range": true,
           "refId": "D",
-          "step": 10
+          "legendFormat": "__auto",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
         }
       ],
       "title": "Pod Network bandwidth per second (Associable Nodes)",
@@ -4872,34 +4664,24 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "editorMode": "code",
-          "exemplar": true,
           "expr": "max(irate(container_cpu_usage_seconds_total{pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}[2m])) by (container, pod,node,namespace)",
-          "hide": false,
-          "instant": false,
-          "interval": "",
-          "intervalFactor": 1,
-          "legendFormat": "CPU Usage\uff1a{{ pod }}",
-          "metric": "container_cpu",
           "refId": "A",
-          "step": 10
+          "legendFormat": "CPU Usage\uff1a{{ pod }}",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "editorMode": "code",
-          "exemplar": true,
           "expr": "max(max(kube_pod_container_resource_limits{resource=\"cpu\", unit=\"core\",pod=~\"$Pod\",container =~\"$Container\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container,pod,node,namespace)) by(container)",
-          "hide": false,
-          "instant": false,
-          "interval": "",
-          "intervalFactor": 1,
-          "legendFormat": "Pod CPU Limitations\uff1a{{ container}}",
-          "metric": "container_cpu",
           "refId": "B",
-          "step": 10
+          "legendFormat": "Pod CPU Limitations\uff1a{{ container}}",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
         }
       ],
       "title": "Pod Containers CPU Core Usage",
@@ -5014,33 +4796,24 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "editorMode": "code",
-          "exemplar": false,
           "expr": "max (container_memory_working_set_bytes{pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container, pod,node,namespace)",
-          "interval": "",
-          "intervalFactor": 1,
-          "legendFormat": "WSS\uff1a{{ pod }}",
-          "metric": "container_memory_usage:sort_desc",
-          "range": true,
           "refId": "A",
-          "step": 10
+          "legendFormat": "WSS\uff1a{{ pod }}",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "editorMode": "code",
-          "exemplar": false,
           "expr": "max(max(kube_pod_container_resource_limits{resource=\"memory\", unit=\"byte\",pod=~\"$Pod\",container =~\"$Container\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container,pod,node,namespace)) by(container)",
-          "hide": false,
-          "interval": "",
-          "intervalFactor": 1,
-          "legendFormat": "PodMemory Limits\uff1a{{ container}}",
-          "metric": "container_memory_usage:sort_desc",
-          "range": true,
           "refId": "B",
-          "step": 10
+          "legendFormat": "PodMemory Limits\uff1a{{ container}}",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
         }
       ],
       "title": "Pod Containers WSS Memory Usage (Associable Nodes)",
@@ -5136,16 +4909,12 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "editorMode": "code",
-          "exemplar": true,
           "expr": "max (container_memory_rss{pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",node=~\"^$Node$\",namespace=~\"$NameSpace\"}) by (container, pod,node,namespace)",
-          "interval": "",
-          "intervalFactor": 1,
-          "legendFormat": "RSS\uff1a{{ pod }}",
-          "metric": "container_memory_usage:sort_desc",
-          "range": true,
           "refId": "A",
-          "step": 10
+          "legendFormat": "RSS\uff1a{{ pod }}",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
         }
       ],
       "title": "Pod Containers RSS Memory Usage (Associable Nodes)",
@@ -5541,187 +5310,169 @@
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "editorMode": "code",
-              "exemplar": false,
               "expr": "sum(irate(container_cpu_usage_seconds_total{container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}[2m])) by (container) / (sum(container_spec_cpu_quota{container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}/100000) by (container))",
-              "format": "table",
-              "hide": false,
-              "instant": true,
-              "interval": "",
+              "refId": "A",
               "legendFormat": "",
-              "refId": "A"
+              "instant": true,
+              "range": false,
+              "editorMode": "code",
+              "format": "table"
             },
             {
               "datasource": {
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "editorMode": "code",
-              "exemplar": false,
               "expr": "sum(irate(container_cpu_usage_seconds_total{container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}[2m])) by (container)",
-              "format": "table",
-              "hide": false,
-              "instant": true,
-              "interval": "",
+              "refId": "B",
               "legendFormat": "Total Cores Used",
-              "refId": "L"
+              "instant": true,
+              "range": false,
+              "editorMode": "code",
+              "format": "table"
             },
             {
               "datasource": {
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "exemplar": false,
               "expr": "sum(kube_pod_container_resource_requests{resource=\"cpu\", unit=\"core\",container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)",
-              "format": "table",
-              "hide": false,
-              "instant": true,
-              "interval": "",
+              "refId": "C",
               "legendFormat": "",
-              "refId": "B"
+              "instant": true,
+              "range": false,
+              "editorMode": "code",
+              "format": "table"
             },
             {
               "datasource": {
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "exemplar": false,
               "expr": "sum(kube_pod_container_resource_limits{resource=\"cpu\", unit=\"core\",container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)",
-              "format": "table",
-              "instant": true,
-              "interval": "",
+              "refId": "D",
               "legendFormat": "",
-              "refId": "C"
+              "instant": true,
+              "range": false,
+              "editorMode": "code",
+              "format": "table"
             },
             {
               "datasource": {
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "editorMode": "code",
-              "exemplar": false,
               "expr": "sum (container_memory_working_set_bytes{container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)/ sum(container_spec_memory_limit_bytes{container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)",
-              "format": "table",
-              "hide": false,
-              "instant": true,
-              "interval": "",
+              "refId": "E",
               "legendFormat": "",
-              "refId": "I"
+              "instant": true,
+              "range": false,
+              "editorMode": "code",
+              "format": "table"
             },
             {
               "datasource": {
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "exemplar": false,
               "expr": "sum (container_memory_working_set_bytes{container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)",
-              "format": "table",
-              "hide": false,
-              "instant": true,
-              "interval": "",
+              "refId": "F",
               "legendFormat": "",
-              "refId": "D"
+              "instant": true,
+              "range": false,
+              "editorMode": "code",
+              "format": "table"
             },
             {
               "datasource": {
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "editorMode": "code",
-              "exemplar": false,
               "expr": "sum (container_memory_rss{container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)/ sum(container_spec_memory_limit_bytes{container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)",
-              "format": "table",
-              "hide": false,
-              "instant": true,
-              "interval": "",
+              "refId": "G",
               "legendFormat": "Average Memory%(RSS)",
-              "refId": "H"
+              "instant": true,
+              "range": false,
+              "editorMode": "code",
+              "format": "table"
             },
             {
               "datasource": {
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "exemplar": false,
               "expr": "sum (container_memory_rss{container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)",
-              "format": "table",
-              "hide": false,
-              "instant": true,
-              "interval": "",
+              "refId": "H",
               "legendFormat": "Total Memory Usage (RSS) ",
-              "refId": "K"
+              "instant": true,
+              "range": false,
+              "editorMode": "code",
+              "format": "table"
             },
             {
               "datasource": {
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "editorMode": "code",
-              "exemplar": false,
               "expr": "sum by(container) (kube_pod_container_resource_requests{resource=\"memory\", unit=\"byte\",container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"})",
-              "format": "table",
-              "hide": false,
-              "instant": true,
-              "interval": "",
+              "refId": "I",
               "legendFormat": "",
-              "refId": "E"
+              "instant": true,
+              "range": false,
+              "editorMode": "code",
+              "format": "table"
             },
             {
               "datasource": {
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "exemplar": false,
               "expr": "sum(kube_pod_container_resource_limits{resource=\"memory\", unit=\"byte\",container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)",
-              "format": "table",
-              "hide": false,
-              "instant": true,
-              "interval": "",
+              "refId": "J",
               "legendFormat": "",
-              "refId": "F"
+              "instant": true,
+              "range": false,
+              "editorMode": "code",
+              "format": "table"
             },
             {
               "datasource": {
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "editorMode": "code",
-              "exemplar": false,
               "expr": "avg(container_fs_usage_bytes{container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)",
-              "format": "table",
-              "instant": true,
-              "interval": "",
+              "refId": "K",
               "legendFormat": "",
-              "refId": "J"
+              "instant": true,
+              "range": false,
+              "editorMode": "code",
+              "format": "table"
             },
             {
               "datasource": {
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "editorMode": "code",
-              "exemplar": false,
               "expr": "count(kube_pod_container_info{container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by(container,namespace)",
-              "format": "table",
-              "instant": true,
-              "interval": "",
+              "refId": "L",
               "legendFormat": "",
-              "refId": "G"
+              "instant": true,
+              "range": false,
+              "editorMode": "code",
+              "format": "table"
             },
             {
               "datasource": {
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "editorMode": "code",
-              "exemplar": false,
               "expr": "avg(container_fs_limit_bytes{container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)",
-              "format": "table",
-              "hide": false,
-              "instant": true,
-              "interval": "",
+              "refId": "M",
               "legendFormat": "",
-              "refId": "M"
+              "instant": true,
+              "range": false,
+              "editorMode": "code",
+              "format": "table"
             }
           ],
           "title": "Microservices (Container Name) Resource Statistics",
@@ -5884,16 +5635,12 @@
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "exemplar": true,
               "expr": "sum(irate(container_cpu_usage_seconds_total{container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}[2m])) by (container) / (sum(container_spec_cpu_quota{container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}/100000) by (container)) * 100",
-              "hide": false,
-              "instant": false,
-              "interval": "",
-              "intervalFactor": 1,
-              "legendFormat": "{{ container}}",
-              "metric": "container_cpu",
               "refId": "A",
-              "step": 10
+              "legendFormat": "{{ container}}",
+              "instant": false,
+              "range": true,
+              "editorMode": "code"
             }
           ],
           "title": "Microservices (Container Name) Average CPU Usage (Maximum100%)",
@@ -5990,12 +5737,11 @@
                 "uid": "${datasource}"
               },
               "expr": "sum (container_memory_working_set_bytes{container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)/ sum(container_spec_memory_limit_bytes{container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container) * 100",
-              "interval": "",
-              "intervalFactor": 1,
-              "legendFormat": "WSS\uff1a{{ container }}",
-              "metric": "container_memory_usage:sort_desc",
               "refId": "A",
-              "step": 10
+              "legendFormat": "WSS\uff1a{{ container }}",
+              "instant": false,
+              "range": true,
+              "editorMode": "code"
             },
             {
               "datasource": {
@@ -6003,12 +5749,11 @@
                 "uid": "${datasource}"
               },
               "expr": "sum (container_memory_rss{container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)/ sum(container_spec_memory_limit_bytes{container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container) * 100",
-              "interval": "",
-              "intervalFactor": 1,
-              "legendFormat": "RSS\uff1a{{ container }}",
-              "metric": "container_memory_usage:sort_desc",
               "refId": "B",
-              "step": 10
+              "legendFormat": "RSS\uff1a{{ container }}",
+              "instant": false,
+              "range": true,
+              "editorMode": "code"
             }
           ],
           "title": "Microservice (Container Name) Average Memory Utilization",
@@ -6104,33 +5849,24 @@
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "editorMode": "code",
-              "exemplar": true,
               "expr": "sum(sum(irate(container_network_receive_bytes_total{node=~\"^$Node$\",namespace=~\"$NameSpace\"}[2m])) by (pod)* on(pod) group_right kube_pod_container_info{namespace=~\"$NameSpace\",container =~\"$Container\"}) by(container) *8",
-              "hide": false,
-              "interval": "",
-              "intervalFactor": 1,
-              "legendFormat": "Inflow:{{ container }}",
-              "metric": "network",
-              "range": true,
               "refId": "A",
-              "step": 10
+              "legendFormat": "Inflow:{{ container }}",
+              "instant": false,
+              "range": true,
+              "editorMode": "code"
             },
             {
               "datasource": {
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "editorMode": "code",
-              "exemplar": true,
               "expr": "sum(sum(irate(container_network_transmit_bytes_total{node=~\"^$Node$\",namespace=~\"$NameSpace\"}[2m])) by (pod)* on(pod) group_right kube_pod_container_info{namespace=~\"$NameSpace\",container =~\"$Container\"}) by(container) *8",
-              "interval": "",
-              "intervalFactor": 1,
-              "legendFormat": "Outflow:{{ container }}",
-              "metric": "network",
-              "range": true,
               "refId": "B",
-              "step": 10
+              "legendFormat": "Outflow:{{ container }}",
+              "instant": false,
+              "range": true,
+              "editorMode": "code"
             },
             {
               "datasource": {
@@ -6138,13 +5874,11 @@
                 "uid": "${datasource}"
               },
               "expr": "sum (rate (container_network_receive_bytes_total{pod=~\"$Pod\",image!=\"\",name=~\"^k8s_.*\",node=~\"^$Node$\",namespace=~\"$NameSpace\",pod=~\".*$Container.*\"}[2m])) by (pod)",
-              "hide": true,
-              "interval": "",
-              "intervalFactor": 1,
-              "legendFormat": "-> {{ pod }}",
-              "metric": "network",
               "refId": "C",
-              "step": 10
+              "legendFormat": "-> {{ pod }}",
+              "instant": false,
+              "range": true,
+              "editorMode": "code"
             },
             {
               "datasource": {
@@ -6152,13 +5886,11 @@
                 "uid": "${datasource}"
               },
               "expr": "- sum (rate (container_network_transmit_bytes_total{pod=~\"$Pod\",image!=\"\",name=~\"^k8s_.*\",node=~\"^$Node$\",namespace=~\"$NameSpace\",pod=~\".*$Container.*\"}[2m])) by (pod)",
-              "hide": true,
-              "interval": "",
-              "intervalFactor": 1,
-              "legendFormat": "<- {{ pod }}",
-              "metric": "network",
               "refId": "D",
-              "step": 10
+              "legendFormat": "<- {{ pod }}",
+              "instant": false,
+              "range": true,
+              "editorMode": "code"
             }
           ],
           "title": "Microservice (Container Name) Network bandwidth per second (Associable Nodes)",
@@ -6272,34 +6004,24 @@
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "editorMode": "code",
-              "exemplar": true,
               "expr": "sum(kube_pod_container_resource_limits{resource=\"cpu\", unit=\"core\",container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)",
-              "hide": false,
-              "instant": false,
-              "interval": "",
-              "intervalFactor": 1,
-              "legendFormat": "CPU Limitations\uff1a{{ container}}",
-              "metric": "container_cpu",
               "refId": "A",
-              "step": 10
+              "legendFormat": "CPU Limitations\uff1a{{ container}}",
+              "instant": false,
+              "range": true,
+              "editorMode": "code"
             },
             {
               "datasource": {
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "editorMode": "code",
-              "exemplar": true,
               "expr": "sum(irate(container_cpu_usage_seconds_total{container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}[2m])) by (container)",
-              "hide": false,
-              "instant": false,
-              "interval": "",
-              "intervalFactor": 1,
-              "legendFormat": "CPU Core Usage\uff1a{{ container}}",
-              "metric": "container_cpu",
               "refId": "B",
-              "step": 10
+              "legendFormat": "CPU Core Usage\uff1a{{ container}}",
+              "instant": false,
+              "range": true,
+              "editorMode": "code"
             }
           ],
           "title": "Microservices (Container Name) Overall CPU Cores Used",
@@ -6413,46 +6135,36 @@
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "editorMode": "code",
               "expr": "sum (container_memory_working_set_bytes{container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)",
-              "interval": "",
-              "intervalFactor": 1,
-              "legendFormat": "WSS\uff1a{{ container }}",
-              "metric": "container_memory_usage:sort_desc",
-              "range": true,
               "refId": "A",
-              "step": 10
+              "legendFormat": "WSS\uff1a{{ container }}",
+              "instant": false,
+              "range": true,
+              "editorMode": "code"
             },
             {
               "datasource": {
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "editorMode": "code",
               "expr": "sum(container_spec_memory_limit_bytes{container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)",
-              "interval": "",
-              "intervalFactor": 1,
-              "legendFormat": "Memory Limit\uff1a{{ container }}",
-              "metric": "container_memory_usage:sort_desc",
-              "range": true,
               "refId": "B",
-              "step": 10
+              "legendFormat": "Memory Limit\uff1a{{ container }}",
+              "instant": false,
+              "range": true,
+              "editorMode": "code"
             },
             {
               "datasource": {
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "editorMode": "code",
               "expr": "sum (container_memory_rss{container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)",
-              "hide": false,
-              "interval": "",
-              "intervalFactor": 1,
-              "legendFormat": "RSS\uff1a{{ container }}",
-              "metric": "container_memory_usage:sort_desc",
-              "range": true,
               "refId": "C",
-              "step": 10
+              "legendFormat": "RSS\uff1a{{ container }}",
+              "instant": false,
+              "range": true,
+              "editorMode": "code"
             }
           ],
           "title": "Microservices (Container Name) Overall Memory Usage",
@@ -6548,15 +6260,12 @@
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "editorMode": "code",
               "expr": "count(kube_pod_container_info{container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by(container,namespace)",
-              "interval": "",
-              "intervalFactor": 1,
-              "legendFormat": "{{namespace}}\uff1a{{ container }}",
-              "metric": "container_memory_usage:sort_desc",
-              "range": true,
               "refId": "A",
-              "step": 10
+              "legendFormat": "{{namespace}}\uff1a{{ container }}",
+              "instant": false,
+              "range": true,
+              "editorMode": "code"
             }
           ],
           "title": "Microservice (Container Name) Pod Number",
@@ -6564,7 +6273,8 @@
         }
       ],
       "title": "Microservices (Container Name) Resource Overview\uff1aSelected Microservices:\u3010$Container\u3011",
-      "type": "row"
+      "type": "row",
+      "targets": []
     }
   ],
   "refresh": "",
