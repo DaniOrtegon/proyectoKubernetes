@@ -6592,14 +6592,17 @@
           "type": "prometheus",
           "uid": "${datasource}"
         },
-        "definition": "label_values(kube_node_info{origin_prometheus=~\"$origin_prometheus\"},node)",
+        "definition": "label_values(kube_node_info, node)",
         "hide": 0,
         "includeAll": true,
         "label": "Nodes",
         "multi": false,
         "name": "Node",
         "options": [],
-        "query": "label_values(kube_node_info, node)",
+        "query": {
+          "query": "label_values(kube_node_info, node)",
+          "refId": "StandardVariableQuery"
+        },
         "refresh": 2,
         "regex": "",
         "skipUrlSync": false,
@@ -6616,14 +6619,17 @@
           "type": "prometheus",
           "uid": "${datasource}"
         },
-        "definition": "label_values(kube_namespace_created{origin_prometheus=~\"$origin_prometheus\"},namespace)",
+        "definition": "label_values(kube_pod_info, namespace)",
         "hide": 0,
         "includeAll": true,
         "label": "Namespace",
         "multi": false,
         "name": "NameSpace",
         "options": [],
-        "query": "label_values(kube_pod_info, namespace)",
+        "query": {
+          "query": "label_values(kube_pod_info, namespace)",
+          "refId": "StandardVariableQuery"
+        },
         "refresh": 2,
         "regex": "",
         "skipUrlSync": false,
@@ -6640,14 +6646,17 @@
           "type": "prometheus",
           "uid": "${datasource}"
         },
-        "definition": "label_values(kube_pod_container_info{origin_prometheus=~\"$origin_prometheus\",namespace=~\"$NameSpace\"},container)",
+        "definition": "label_values(kube_pod_container_info{namespace=~\"$NameSpace\",pod=~\"$Pod\"}, container)",
         "hide": 0,
         "includeAll": true,
         "label": "Microservice (Container Name)",
         "multi": false,
         "name": "Container",
         "options": [],
-        "query": "label_values(kube_pod_container_info{namespace=~\"$NameSpace\", pod=~\"$Pod\"}, container)",
+        "query": {
+          "query": "label_values(kube_pod_container_info{namespace=~\"$NameSpace\",pod=~\"$Pod\"}, container)",
+          "refId": "StandardVariableQuery"
+        },
         "refresh": 2,
         "regex": "",
         "skipUrlSync": false,
@@ -6664,14 +6673,17 @@
           "type": "prometheus",
           "uid": "${datasource}"
         },
-        "definition": "label_values(kube_pod_container_info{origin_prometheus=~\"$origin_prometheus\",namespace=~\"$NameSpace\",container=~\"$Container\"},pod)",
+        "definition": "label_values(kube_pod_info{namespace=~\"$NameSpace\"}, pod)",
         "hide": 0,
         "includeAll": true,
         "label": "Pod",
         "multi": false,
         "name": "Pod",
         "options": [],
-        "query": "label_values(kube_pod_info{namespace=~\"$NameSpace\"}, pod)",
+        "query": {
+          "query": "label_values(kube_pod_info{namespace=~\"$NameSpace\"}, pod)",
+          "refId": "StandardVariableQuery"
+        },
         "refresh": 2,
         "regex": "",
         "skipUrlSync": false,
