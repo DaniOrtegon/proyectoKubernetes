@@ -1,15 +1,15 @@
 # ============================================================
-# Deployment para MariaDB en el namespace 'databases'
-# Crea una instancia de MariaDB para que sea usada por WordPress.
+# StatefulSet para MariaDB en el namespace 'databases'
 # ============================================================
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: mariadb
-  namespace: databases       # Mismo namespace que el Secret y el PVC
+  namespace: databases
   labels:
     app: mariadb
 spec:
+  serviceName: mariadb
   replicas: 1
   selector:
     matchLabels:
@@ -21,11 +21,10 @@ spec:
     spec:
       containers:
         - name: mariadb
-          image: mariadb:10.6  # Versión fija recomendada, evitar 'latest' en producción
+          image: mariadb:10.6
           ports:
-            - containerPort: 3306  # Puerto estándar de MariaDB
+            - containerPort: 3306
           env:
-            # Variables tomadas del Secret 'mariadb-secret' (datos sensibles)
             - name: MYSQL_ROOT_PASSWORD
               valueFrom:
                 secretKeyRef:
@@ -36,7 +35,6 @@ spec:
                 secretKeyRef:
                   name: mariadb-secret
                   key: mariadb-user-password
-            # Variables tomadas del ConfigMap 'mariadb-config' (datos no sensibles)
             - name: MYSQL_DATABASE
               valueFrom:
                 configMapKeyRef:
@@ -49,24 +47,39 @@ spec:
                   key: MYSQL_USER
           resources:
             requests:
-              cpu: 100m        # Mínimo de CPU garantizado
-              memory: 256Mi    # Mínimo de memoria garantizada
+              cpu: 100m
+              memory: 256Mi
             limits:
-              cpu: 500m        # Máximo de CPU permitido
-              memory: 512Mi    # Máximo de memoria permitida
+              cpu: 500m
+              memory: 512Mi
+          readinessProbe:
+            exec:
+              command: ["mysqladmin", "ping", "-h", "localhost"]
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command: ["mysqladmin", "ping", "-h", "localhost"]
+            initialDelaySeconds: 40
+            periodSeconds: 20
           volumeMounts:
             - name: mariadb-storage
-              mountPath: /var/lib/mysql  # Ruta interna donde MariaDB guarda los datos
-      volumes:
-        - name: mariadb-storage
-          persistentVolumeClaim:
-            claimName: mariadb-pvc  # PVC definido en 03-pvc.yaml
+              mountPath: /var/lib/mysql
+  volumeClaimTemplates:
+    - metadata:
+        name: mariadb-storage
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: standard
+        resources:
+          requests:
+            storage: 1Gi
 
 ---
 # ============================================================
-# Servicio para MariaDB en el namespace 'databases'
-# Expone MariaDB internamente para que WordPress pueda conectarse.
-# WordPress lo alcanza via FQDN: mariadb.databases.svc.cluster.local
+# Headless Service para MariaDB
+# StatefulSet requiere clusterIP: None para identidades de red estables.
+# WordPress sigue conectándose via: mariadb.databases.svc.cluster.local
 # ============================================================
 apiVersion: v1
 kind: Service
@@ -74,10 +87,9 @@ metadata:
   name: mariadb
   namespace: databases
 spec:
+  clusterIP: None
   ports:
-    - port: 3306        # Puerto que expone el Service
-      targetPort: 3306  # Puerto del contenedor al que redirige el tráfico
+    - port: 3306
+      targetPort: 3306
   selector:
-    app: mariadb        # Envía el tráfico a los Pods con esta etiqueta
-  # clusterIP: None eliminado — usamos ClusterIP normal para mayor compatibilidad
-  # WordPress se conecta via FQDN: mariadb.databases.svc.cluster.local
+    app: mariadb
