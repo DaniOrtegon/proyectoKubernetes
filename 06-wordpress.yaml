@@ -30,16 +30,19 @@ spec:
                       values:
                         - wordpress
                 topologyKey: kubernetes.io/hostname
-
       containers:
         - name: wordpress
-          image: wordpress:6.4
+          image: wordpress:6.4  # Versión estable actual, evitamos 5.7 (desactualizada) y latest
           ports:
             - containerPort: 80
           env:
             - name: WORDPRESS_DB_HOST
-              value: "mariadb.databases.svc.cluster.local"
+              valueFrom:
+                configMapKeyRef:
+                  name: wordpress-config
+                  key: WORDPRESS_DB_HOST
 
+            # Datos no sensibles desde el ConfigMap 'wordpress-config'
             - name: WORDPRESS_DB_NAME
               valueFrom:
                 configMapKeyRef:
@@ -51,6 +54,11 @@ spec:
                   name: wordpress-config
                   key: WORDPRESS_DB_USER
 
+            # Contraseña desde el Secret 'mariadb-secret'
+            # IMPORTANTE: Este Secret está en namespace 'databases'.
+            # Para que WordPress pueda usarlo, debes crear una copia del Secret
+            # en el namespace 'wordpress' o usar External Secrets Operator.
+            # Por simplicidad en prácticas, duplicamos el Secret en 01-secrets.yaml.
             - name: WORDPRESS_DB_PASSWORD
               valueFrom:
                 secretKeyRef:
@@ -79,13 +87,11 @@ spec:
             limits:
               cpu: 500m
               memory: 512Mi
-
           volumeMounts:
             - name: wordpress-storage
               mountPath: /var/www/html
             - name: wordpress-uploads
               mountPath: /var/www/html/wp-content/uploads
-
       volumes:
         - name: wordpress-storage
           persistentVolumeClaim:
@@ -97,6 +103,7 @@ spec:
 ---
 # ============================================================
 # Servicio para WordPress en el namespace 'wordpress'
+# Usamos NodePort para acceso externo sin necesidad de LoadBalancer
 # ============================================================
 apiVersion: v1
 kind: Service
@@ -104,10 +111,10 @@ metadata:
   name: wordpress
   namespace: wordpress
 spec:
-  type: NodePort
+  type: NodePort          # Compatible con Minikube y clústeres sin LoadBalancer
   ports:
     - port: 80
       targetPort: 80
-      nodePort: 30080
+      nodePort: 30080     # Puerto accesible desde fuera del clúster: http://<IP-nodo>:30080
   selector:
     app: wordpress
