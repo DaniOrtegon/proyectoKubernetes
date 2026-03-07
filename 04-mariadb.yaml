@@ -8,6 +8,10 @@ metadata:
   namespace: databases
   labels:
     app: mariadb
+    app.kubernetes.io/name: mariadb
+    app.kubernetes.io/version: "10.6"
+    app.kubernetes.io/part-of: wordpress-ha
+    app.kubernetes.io/component: database
 spec:
   serviceName: mariadb
   replicas: 1
@@ -18,6 +22,9 @@ spec:
     metadata:
       labels:
         app: mariadb
+        app.kubernetes.io/name: mariadb
+        app.kubernetes.io/version: "10.6"
+        app.kubernetes.io/part-of: wordpress-ha
     spec:
       containers:
         - name: mariadb
@@ -86,6 +93,11 @@ kind: Service
 metadata:
   name: mariadb
   namespace: databases
+  labels:
+    app: mariadb
+    app.kubernetes.io/name: mariadb
+    app.kubernetes.io/part-of: wordpress-ha
+    app.kubernetes.io/component: database
 spec:
   clusterIP: None
   ports:
