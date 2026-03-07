@@ -8,6 +8,10 @@ metadata:
   namespace: wordpress
   labels:
     app: wordpress
+    app.kubernetes.io/name: wordpress
+    app.kubernetes.io/version: "6.4"
+    app.kubernetes.io/part-of: wordpress-ha
+    app.kubernetes.io/component: frontend
 spec:
   replicas: 1
   selector:
@@ -17,19 +21,23 @@ spec:
     metadata:
       labels:
         app: wordpress
+        app.kubernetes.io/name: wordpress
+        app.kubernetes.io/version: "6.4"
+        app.kubernetes.io/part-of: wordpress-ha
     spec:
       affinity:
         podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-            - weight: 100
-              podAffinityTerm:
-                labelSelector:
-                  matchExpressions:
-                    - key: app
-                      operator: In
-                      values:
-                        - wordpress
-                topologyKey: kubernetes.io/hostname
+          # R-6: requiredDuring garantiza separación estricta en clústeres multi-nodo.
+          # En Minikube (1 nodo) esto impide >1 réplica — el HPA queda limitado a 1 pod.
+          # Para Minikube usar preferredDuring; para producción multi-nodo usar requiredDuring.
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - wordpress
+              topologyKey: kubernetes.io/hostname
       containers:
         - name: wordpress
           image: wordpress:6.4  # Versión estable actual, evitamos 5.7 (desactualizada) y latest
@@ -88,17 +96,14 @@ spec:
               cpu: 500m
               memory: 512Mi
           volumeMounts:
+            # R-1: wordpress-uploads-pvc no existía → se usa un único PVC 'wordpress-pvc'
+            # montado en /var/www/html que cubre tanto el core de WP como wp-content/uploads.
             - name: wordpress-storage
               mountPath: /var/www/html
-            - name: wordpress-uploads
-              mountPath: /var/www/html/wp-content/uploads
       volumes:
         - name: wordpress-storage
           persistentVolumeClaim:
             claimName: wordpress-pvc
-        - name: wordpress-uploads
-          persistentVolumeClaim:
-            claimName: wordpress-uploads-pvc
 
 ---
 # ============================================================
@@ -110,6 +115,11 @@ kind: Service
 metadata:
   name: wordpress
   namespace: wordpress
+  labels:
+    app: wordpress
+    app.kubernetes.io/name: wordpress
+    app.kubernetes.io/part-of: wordpress-ha
+    app.kubernetes.io/component: frontend
 spec:
   type: NodePort          # Compatible con Minikube y clústeres sin LoadBalancer
   ports:
