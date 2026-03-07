@@ -92,23 +92,10 @@ data:
             action: replace
             target_label: kubernetes_pod_name
 
-
       # Métricas de kube-state-metrics (kube_pod_*, kube_node_*, etc.)
       - job_name: 'kube-state-metrics'
         static_configs:
           - targets: ['kube-state-metrics.kube-system.svc.cluster.local:8080']
-
-      # Métricas de MariaDB
-      - job_name: 'mariadb'
-        static_configs:
-          - targets: ['mariadb.databases.svc.cluster.local:3306']
-        metrics_path: /metrics
-
-      # Métricas de WordPress
-      - job_name: 'wordpress'
-        static_configs:
-          - targets: ['wordpress.wordpress.svc.cluster.local:80']
-        metrics_path: /metrics
 
 ---
 apiVersion: v1
@@ -152,14 +139,23 @@ data:
               summary: "Memoria alta en Pod: {{ $labels.pod }}"
               description: "El Pod {{ $labels.pod }} en {{ $labels.namespace }} supera el 80% de memoria durante más de 5 minutos."
 
-          - alert: MariaDBDown
-            expr: up{job="mariadb"} == 0
+          - alert: MariaDBPodDown
+            expr: kube_pod_status_phase{namespace="databases",pod=~"mariadb-.*",phase!~"Running|Succeeded"} == 1
             for: 1m
             labels:
               severity: critical
             annotations:
-              summary: "MariaDB no responde"
-              description: "El job de Prometheus no puede conectar con MariaDB desde hace más de 1 minuto."
+              summary: "Pod de MariaDB caído: {{ $labels.pod }}"
+              description: "El pod {{ $labels.pod }} lleva más de 1 minuto fuera del estado Running."
+
+          - alert: OOMKill
+            expr: kube_pod_container_status_last_terminated_reason{reason="OOMKilled"} == 1
+            for: 0m
+            labels:
+              severity: warning
+            annotations:
+              summary: "OOMKill en {{ $labels.pod }}"
+              description: "El contenedor {{ $labels.container }} fue terminado por falta de memoria."
 
 ---
 apiVersion: v1
