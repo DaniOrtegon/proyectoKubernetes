@@ -1,0 +1,15 @@
+# ============================================================
+# PodDisruptionBudget para WordPress
+# Garantiza que siempre hay al menos 1 pod disponible durante
+# operaciones de mantenimiento (kubectl drain, rolling updates).
+# ============================================================
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: wordpress-pdb
+  namespace: wordpress
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: wordpress
