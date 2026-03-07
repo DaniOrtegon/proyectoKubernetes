@@ -5,6 +5,12 @@
 # Si tu clúster es anterior, añade las etiquetas manualmente:
 #   kubectl label namespace wordpress kubernetes.io/metadata.name=wordpress
 #   kubectl label namespace databases kubernetes.io/metadata.name=databases
+#
+# REQUISITO: estas políticas solo tienen efecto con un CNI compatible.
+# Minikube usa kindnet por defecto, que NO implementa NetworkPolicies.
+# Para activar Calico:
+#   minikube delete
+#   minikube start --cni=calico --driver=docker
 # ============================================================
 
 # ------------------------------------------------------------
@@ -26,10 +32,10 @@ spec:
     - from:
         - namespaceSelector:
             matchLabels:
-              kubernetes.io/metadata.name: wordpress  # Solo tráfico del namespace 'wordpress'
+              kubernetes.io/metadata.name: wordpress
           podSelector:
             matchLabels:
-              app: wordpress  # Y además solo de los Pods de WordPress (doble restricción)
+              app: wordpress
       ports:
         - protocol: TCP
           port: 3306
@@ -64,7 +70,7 @@ spec:
 
 ---
 # ------------------------------------------------------------
-# POLÍTICA 3: WordPress puede salir hacia databases (MariaDB y Redis)
+# POLÍTICA 3: WordPress puede salir hacia databases y recibir HTTP
 # También permite salida al exterior para DNS (puerto 53)
 # Namespace: wordpress
 # ------------------------------------------------------------
@@ -83,9 +89,8 @@ spec:
   ingress:
     - ports:
         - protocol: TCP
-          port: 80  # Permite tráfico HTTP entrante (desde el Ingress Controller)
+          port: 80
   egress:
-    # Permite salida hacia MariaDB en namespace 'databases'
     - to:
         - namespaceSelector:
             matchLabels:
@@ -96,7 +101,6 @@ spec:
       ports:
         - protocol: TCP
           port: 3306
-    # Permite salida hacia Redis en namespace 'databases'
     - to:
         - namespaceSelector:
             matchLabels:
@@ -107,9 +111,104 @@ spec:
       ports:
         - protocol: TCP
           port: 6379
-    # Permite resolución DNS (sin esto WordPress no puede resolver FQDNs)
     - ports:
         - protocol: UDP
           port: 53
         - protocol: TCP
           port: 53
+
+---
+# ------------------------------------------------------------
+# POLÍTICA 4: Default-deny para namespace 'databases'
+# Todo el tráfico no permitido explícitamente queda bloqueado.
+# Las políticas 1 y 2 añaden las excepciones necesarias.
+# ------------------------------------------------------------
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-databases
+  namespace: databases
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+  egress:
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+
+---
+# ------------------------------------------------------------
+# POLÍTICA 5: Default-deny para namespace 'wordpress'
+# La política 3 añade las excepciones necesarias.
+# ------------------------------------------------------------
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-wordpress
+  namespace: wordpress
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+  egress:
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+
+---
+# ------------------------------------------------------------
+# POLÍTICA 6: Prometheus puede hacer scrape en namespace 'wordpress'
+# Necesaria porque default-deny bloquearía las conexiones de Prometheus.
+# ------------------------------------------------------------
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-prometheus-scrape
+  namespace: wordpress
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+          podSelector:
+            matchLabels:
+              app: prometheus
+      ports:
+        - protocol: TCP
+          port: 80
+
+---
+# ------------------------------------------------------------
+# POLÍTICA 7: Prometheus puede hacer scrape en namespace 'databases'
+# ------------------------------------------------------------
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-prometheus-scrape
+  namespace: databases
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+          podSelector:
+            matchLabels:
+              app: prometheus
+      ports:
+        - protocol: TCP
+          port: 9104   # Puerto de mysqld_exporter cuando se despliegue
