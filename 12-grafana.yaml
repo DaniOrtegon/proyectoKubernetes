@@ -68,7 +68,7 @@ data:
         orgId: 1
         folder: 'Kubernetes'
         type: file
-        disableDeletion: false
+        disableDeletion: true
         updateIntervalSeconds: 30
         options:
           path: /var/lib/grafana/dashboards
