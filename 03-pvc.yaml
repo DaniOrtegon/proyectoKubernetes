@@ -28,7 +28,14 @@ metadata:
   namespace: wordpress       # Mismo namespace que el Deployment de WordPress
 spec:
   accessModes:
-    - ReadWriteOnce          # El volumen será montado solo por un nodo a la vez
+    # R-8: ReadWriteOnce solo permite montar el volumen en UN único nodo.
+    # Con HPA (minReplicas:2) en clúster MULTI-NODO esto impide que réplicas
+    # en nodos distintos compartan el mismo PVC → pods quedarán en Pending.
+    # SOLUCIÓN para producción multi-nodo:
+    #   - Cambiar a ReadWriteMany con una StorageClass que lo soporte (NFS, CephFS, EFS…)
+    #   - O usar un Object Storage externo (S3 + plugin wp-offload-media) para uploads.
+    # En Minikube (1 nodo) ReadWriteOnce funciona con múltiples réplicas en el mismo nodo.
+    - ReadWriteOnce
   resources:
     requests:
       storage: 2Gi           # Más espacio que MariaDB, WordPress almacena media y plugins
