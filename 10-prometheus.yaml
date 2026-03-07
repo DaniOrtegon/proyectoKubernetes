@@ -1,293 +1,60 @@
 # ============================================================
-# PROMETHEUS - Namespace: monitoring
+# Ingress para exponer WordPress, Grafana y Prometheus
+# Requiere un Ingress Controller instalado en el clúster.
 # ============================================================
-
-apiVersion: v1
-kind: ConfigMap
+apiVersion: networking.k8s.io/v1
+kind: Ingress
 metadata:
-  name: prometheus-config
-  namespace: monitoring
-data:
-  prometheus.yml: |
-    global:
-      scrape_interval: 15s
-      evaluation_interval: 15s
-
-    alerting:
-      alertmanagers:
-        - static_configs:
-            - targets: []
-
-    rule_files:
-      - "/etc/prometheus/rules/*.yml"
-
-    scrape_configs:
-      # Métricas del propio Prometheus
-      - job_name: 'prometheus'
-        static_configs:
-          - targets: ['localhost:9090']
-
-      # Métricas de cAdvisor via kubelet (container_cpu, container_memory, etc.)
-      # Estas son las métricas que usa el dashboard de Kubernetes
-      - job_name: 'kubernetes-cadvisor'
-        scheme: https
-        tls_config:
-          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-          insecure_skip_verify: true
-        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
-        kubernetes_sd_configs:
-          - role: node
-        relabel_configs:
-          - action: labelmap
-            regex: __meta_kubernetes_node_label_(.+)
-          - target_label: __address__
-            replacement: kubernetes.default.svc:443
-          - source_labels: [__meta_kubernetes_node_name]
-            regex: (.+)
-            target_label: __metrics_path__
-            replacement: /api/v1/nodes/$1/proxy/metrics/cadvisor
-
-      # Métricas de los nodos via kubelet
-      - job_name: 'kubernetes-nodes'
-        scheme: https
-        tls_config:
-          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-          insecure_skip_verify: true
-        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
-        kubernetes_sd_configs:
-          - role: node
-        relabel_configs:
-          - action: labelmap
-            regex: __meta_kubernetes_node_label_(.+)
-          - target_label: __address__
-            replacement: kubernetes.default.svc:443
-          - source_labels: [__meta_kubernetes_node_name]
-            regex: (.+)
-            target_label: __metrics_path__
-            replacement: /api/v1/nodes/$1/proxy/metrics
-
-      # Métricas de todos los Pods via anotaciones
-      - job_name: 'kubernetes-pods'
-        kubernetes_sd_configs:
-          - role: pod
-        relabel_configs:
-          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
-            action: keep
-            regex: true
-          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
-            action: replace
-            target_label: __metrics_path__
-            regex: (.+)
-          - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
-            action: replace
-            regex: ([^:]+)(?::\d+)?;(\d+)
-            replacement: $1:$2
-            target_label: __address__
-          - action: labelmap
-            regex: __meta_kubernetes_pod_label_(.+)
-          - source_labels: [__meta_kubernetes_namespace]
-            action: replace
-            target_label: kubernetes_namespace
-          - source_labels: [__meta_kubernetes_pod_name]
-            action: replace
-            target_label: kubernetes_pod_name
-
-      # Métricas de kube-state-metrics (kube_pod_*, kube_node_*, etc.)
-      - job_name: 'kube-state-metrics'
-        static_configs:
-          - targets: ['kube-state-metrics.kube-system.svc.cluster.local:8080']
-
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: prometheus-rules
-  namespace: monitoring
-data:
-  alerts.yml: |
-    groups:
-      - name: kubernetes-alerts
-        rules:
-          - alert: PodDown
-            expr: kube_pod_status_phase{phase!~"Running|Succeeded"} == 1
-            for: 2m
-            labels:
-              severity: critical
-            annotations:
-              summary: "Pod caído: {{ $labels.pod }}"
-              description: "El Pod {{ $labels.pod }} en namespace {{ $labels.namespace }} lleva más de 2 minutos sin estar Running."
-
-          - alert: HighCPUUsage
-            expr: |
-              (sum(rate(container_cpu_usage_seconds_total{container!=""}[5m])) by (pod, namespace)
-              / sum(kube_pod_container_resource_limits{resource="cpu"}) by (pod, namespace)) * 100 > 80
-            for: 5m
-            labels:
-              severity: warning
-            annotations:
-              summary: "CPU alta en Pod: {{ $labels.pod }}"
-              description: "El Pod {{ $labels.pod }} en {{ $labels.namespace }} supera el 80% de CPU durante más de 5 minutos."
-
-          - alert: HighMemoryUsage
-            expr: |
-              (sum(container_memory_working_set_bytes{container!=""}) by (pod, namespace)
-              / sum(kube_pod_container_resource_limits{resource="memory"}) by (pod, namespace)) * 100 > 80
-            for: 5m
-            labels:
-              severity: warning
-            annotations:
-              summary: "Memoria alta en Pod: {{ $labels.pod }}"
-              description: "El Pod {{ $labels.pod }} en {{ $labels.namespace }} supera el 80% de memoria durante más de 5 minutos."
-
-          - alert: MariaDBPodDown
-            expr: kube_pod_status_phase{namespace="databases",pod=~"mariadb-.*",phase!~"Running|Succeeded"} == 1
-            for: 1m
-            labels:
-              severity: critical
-            annotations:
-              summary: "Pod de MariaDB caído: {{ $labels.pod }}"
-              description: "El pod {{ $labels.pod }} lleva más de 1 minuto fuera del estado Running."
-
-          - alert: OOMKill
-            expr: kube_pod_container_status_last_terminated_reason{reason="OOMKilled"} == 1
-            for: 0m
-            labels:
-              severity: warning
-            annotations:
-              summary: "OOMKill en {{ $labels.pod }}"
-              description: "El contenedor {{ $labels.container }} fue terminado por falta de memoria."
-
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: prometheus-pvc
-  namespace: monitoring
+  name: wordpress-ingress
+  namespace: wordpress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/proxy-body-size: "64m"
 spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 10Gi
-  storageClassName: standard
+  ingressClassName: nginx
+  rules:
+    - host: wp-k8s.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: wordpress
+                port:
+                  number: 80
 
 ---
-apiVersion: v1
-kind: ServiceAccount
+# ============================================================
+# Ingress para Grafana y Prometheus en namespace 'monitoring'
+# ============================================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
 metadata:
-  name: prometheus
+  name: monitoring-ingress
   namespace: monitoring
-
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: prometheus
-rules:
-  - apiGroups: [""]
-    resources: ["nodes", "nodes/proxy", "nodes/metrics", "services", "endpoints", "pods", "namespaces"]
-    verbs: ["get", "list", "watch"]
-  - apiGroups: ["extensions", "networking.k8s.io"]
-    resources: ["ingresses"]
-    verbs: ["get", "list", "watch"]
-  - nonResourceURLs: ["/metrics", "/metrics/cadvisor"]
-    verbs: ["get"]
-
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: prometheus
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: prometheus
-subjects:
-  - kind: ServiceAccount
-    name: prometheus
-    namespace: monitoring
-
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: prometheus
-  namespace: monitoring
-  labels:
-    app: prometheus
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: prometheus
-  template:
-    metadata:
-      labels:
-        app: prometheus
-    spec:
-      serviceAccountName: prometheus
-      securityContext:
-        fsGroup: 65534
-        runAsUser: 65534
-        runAsNonRoot: true
-      containers:
-        - name: prometheus
-          image: prom/prometheus:v2.48.0
-          args:
-            - "--config.file=/etc/prometheus/prometheus.yml"
-            - "--storage.tsdb.path=/prometheus"
-            - "--storage.tsdb.retention.time=15d"
-            - "--web.enable-lifecycle"
-          ports:
-            - containerPort: 9090
-          resources:
-            requests:
-              cpu: 200m
-              memory: 512Mi
-            limits:
-              cpu: 1000m
-              memory: 1Gi
-          volumeMounts:
-            - name: config
-              mountPath: /etc/prometheus
-            - name: rules
-              mountPath: /etc/prometheus/rules
-            - name: prometheus-storage
-              mountPath: /prometheus
-          readinessProbe:
-            httpGet:
-              path: /-/ready
-              port: 9090
-            initialDelaySeconds: 10
-            periodSeconds: 10
-          livenessProbe:
-            httpGet:
-              path: /-/healthy
-              port: 9090
-            initialDelaySeconds: 30
-            periodSeconds: 15
-      volumes:
-        - name: config
-          configMap:
-            name: prometheus-config
-        - name: rules
-          configMap:
-            name: prometheus-rules
-        - name: prometheus-storage
-          persistentVolumeClaim:
-            claimName: prometheus-pvc
-
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: prometheus
-  namespace: monitoring
-spec:
-  type: NodePort
-  ports:
-    - port: 9090
-      targetPort: 9090
-      nodePort: 30090
-  selector:
-    app: prometheus
+  ingressClassName: nginx
+  rules:
+    - host: grafana.monitoring.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: grafana
+                port:
+                  number: 3000
+    - host: prometheus.monitoring.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: prometheus
+                port:
+                  number: 9090
