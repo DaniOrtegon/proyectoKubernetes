@@ -1,95 +1,60 @@
 # ============================================================
-# StatefulSet para MariaDB en el namespace 'databases'
+# Ingress para exponer WordPress, Grafana y Prometheus
+# Requiere un Ingress Controller instalado en el clúster.
 # ============================================================
-apiVersion: apps/v1
-kind: StatefulSet
+apiVersion: networking.k8s.io/v1
+kind: Ingress
 metadata:
-  name: mariadb
-  namespace: databases
-  labels:
-    app: mariadb
+  name: wordpress-ingress
+  namespace: wordpress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/proxy-body-size: "64m"
 spec:
-  serviceName: mariadb
-  replicas: 1
-  selector:
-    matchLabels:
-      app: mariadb
-  template:
-    metadata:
-      labels:
-        app: mariadb
-    spec:
-      containers:
-        - name: mariadb
-          image: mariadb:10.6
-          ports:
-            - containerPort: 3306
-          env:
-            - name: MYSQL_ROOT_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: mariadb-secret
-                  key: mariadb-root-password
-            - name: MYSQL_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: mariadb-secret
-                  key: mariadb-user-password
-            - name: MYSQL_DATABASE
-              valueFrom:
-                configMapKeyRef:
-                  name: mariadb-config
-                  key: MYSQL_DATABASE
-            - name: MYSQL_USER
-              valueFrom:
-                configMapKeyRef:
-                  name: mariadb-config
-                  key: MYSQL_USER
-          resources:
-            requests:
-              cpu: 100m
-              memory: 256Mi
-            limits:
-              cpu: 500m
-              memory: 512Mi
-          readinessProbe:
-            exec:
-              command: ["mysqladmin", "ping", "-h", "localhost"]
-            initialDelaySeconds: 20
-            periodSeconds: 10
-          livenessProbe:
-            exec:
-              command: ["mysqladmin", "ping", "-h", "localhost"]
-            initialDelaySeconds: 40
-            periodSeconds: 20
-          volumeMounts:
-            - name: mariadb-storage
-              mountPath: /var/lib/mysql
-  volumeClaimTemplates:
-    - metadata:
-        name: mariadb-storage
-      spec:
-        accessModes: ["ReadWriteOnce"]
-        storageClassName: standard
-        resources:
-          requests:
-            storage: 1Gi
+  ingressClassName: nginx
+  rules:
+    - host: wp-k8s.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: wordpress
+                port:
+                  number: 80
 
 ---
 # ============================================================
-# Headless Service para MariaDB
-# StatefulSet requiere clusterIP: None para identidades de red estables.
-# WordPress sigue conectándose via: mariadb.databases.svc.cluster.local
+# Ingress para Grafana y Prometheus en namespace 'monitoring'
 # ============================================================
-apiVersion: v1
-kind: Service
+apiVersion: networking.k8s.io/v1
+kind: Ingress
 metadata:
-  name: mariadb
-  namespace: databases
+  name: monitoring-ingress
+  namespace: monitoring
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
-  clusterIP: None
-  ports:
-    - port: 3306
-      targetPort: 3306
-  selector:
-    app: mariadb
+  ingressClassName: nginx
+  rules:
+    - host: grafana.monitoring.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: grafana
+                port:
+                  number: 3000
+    - host: prometheus.monitoring.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: prometheus
+                port:
+                  number: 9090
