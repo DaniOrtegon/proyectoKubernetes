@@ -238,3 +238,29 @@ spec:
           port: 3100
         - protocol: TCP
           port: 9096
+
+---
+# ------------------------------------------------------------
+# POLÍTICA 9 (N-3): Prometheus puede alcanzar Alertmanager
+# Sin esta regla el default-deny del namespace 'monitoring'
+# bloquea el envío de alertas de Prometheus a Alertmanager.
+# ------------------------------------------------------------
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-prometheus-to-alertmanager
+  namespace: monitoring
+spec:
+  podSelector:
+    matchLabels:
+      app: alertmanager
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: prometheus
+      ports:
+        - protocol: TCP
+          port: 9093
