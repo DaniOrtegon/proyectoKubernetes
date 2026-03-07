@@ -27,17 +27,23 @@ spec:
     spec:
       affinity:
         podAntiAffinity:
-          # R-6: requiredDuring garantiza separación estricta en clústeres multi-nodo.
-          # En Minikube (1 nodo) esto impide >1 réplica — el HPA queda limitado a 1 pod.
-          # Para Minikube usar preferredDuring; para producción multi-nodo usar requiredDuring.
-          requiredDuringSchedulingIgnoredDuringExecution:
-            - labelSelector:
-                matchExpressions:
-                  - key: app
-                    operator: In
-                    values:
-                      - wordpress
-              topologyKey: kubernetes.io/hostname
+          # ENTORNO: preferredDuringSchedulingIgnoredDuringExecution es la opción correcta
+          # para Minikube (1 nodo). Con 'required' el HPA no puede programar el 2º pod
+          # porque no hay un segundo nodo con topologyKey kubernetes.io/hostname distinto,
+          # dejando permanentemente 1 pod en Pending y rompiendo la HA.
+          #
+          # En producción multi-nodo: cambiar a requiredDuringSchedulingIgnoredDuringExecution
+          # para garantizar separación estricta entre réplicas.
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - wordpress
+                topologyKey: kubernetes.io/hostname
       containers:
         - name: wordpress
           image: wordpress:6.4  # Versión estable actual, evitamos 5.7 (desactualizada) y latest
