@@ -56,7 +56,7 @@
       "collapsed": false,
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "gridPos": {
         "h": 1,
@@ -72,7 +72,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -132,7 +132,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(container_memory_working_set_bytes{kubernetes_io_hostname=~\"$Node\"}) / sum(kube_node_status_allocatable{resource=\"memory\", unit=\"byte\", kubernetes_io_hostname=~\"$Node\"})",
@@ -145,7 +145,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(kube_pod_container_resource_requests{resource=\"memory\", unit=\"byte\",kubernetes_io_hostname=~\"$Node\"}) / sum(kube_node_status_allocatable{resource=\"memory\", unit=\"byte\", kubernetes_io_hostname=~\"$Node\"})",
@@ -158,7 +158,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(kube_pod_container_resource_limits{resource=\"memory\", unit=\"byte\",kubernetes_io_hostname=~\"$Node\"}) / sum(kube_node_status_allocatable{resource=\"memory\", unit=\"byte\", kubernetes_io_hostname=~\"$Node\"})",
@@ -175,7 +175,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -235,7 +235,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum (irate(container_cpu_usage_seconds_total{kubernetes_io_hostname=~\"$Node\"}[2m])) / sum(kube_node_status_allocatable{resource=\"cpu\", unit=\"core\", kubernetes_io_hostname=~\"$Node\"})",
@@ -248,7 +248,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(kube_pod_container_resource_requests{resource=\"cpu\", unit=\"core\",kubernetes_io_hostname=~\"$Node\"}) / sum(kube_node_status_allocatable{resource=\"cpu\", unit=\"core\", kubernetes_io_hostname=~\"$Node\"})",
@@ -261,7 +261,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(kube_pod_container_resource_limits{resource=\"cpu\", unit=\"core\",kubernetes_io_hostname=~\"$Node\"}) / sum(kube_node_status_allocatable{resource=\"cpu\", unit=\"core\", kubernetes_io_hostname=~\"$Node\"})",
@@ -278,7 +278,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "description": "Number of cluster nodes，Nodes POD Number of，NodesPODUpper Limit",
       "fieldConfig": {
@@ -338,7 +338,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "count(kube_node_info{})",
@@ -350,7 +350,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "count(kube_pod_info{created_by_kind!~\"<none>|Job\",kubernetes_io_hostname=~\"$Node\"})",
@@ -362,7 +362,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(kube_node_status_allocatable{resource=\"pods\", unit=\"integer\",kubernetes_io_hostname=~\"$Node\"})",
@@ -378,7 +378,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -515,7 +515,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "count(kube_pod_info{kubernetes_io_hostname=~\"$Node\"}) by (namespace)",
@@ -528,7 +528,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "count(kube_service_info{}) by(namespace)",
@@ -541,7 +541,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "count by (namespace)({__name__=~\"kube_deployment_metadata_generation|kube_daemonset_metadata_generation|kube_statefulset_metadata_generation\"})",
@@ -554,7 +554,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "count(kube_configmap_info{}) by(namespace)",
@@ -567,7 +567,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "count(kube_secret_info{}) by(namespace)",
@@ -625,7 +625,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -713,7 +713,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum (irate(container_network_receive_bytes_total{kubernetes_io_hostname=~\"$Node\",namespace=~\"$NameSpace\"}[2m]))*8",
@@ -726,7 +726,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum (irate(container_network_transmit_bytes_total{kubernetes_io_hostname=~\"$Node\",namespace=~\"$NameSpace\"}[2m]))*8",
@@ -742,7 +742,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -802,7 +802,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(kube_node_status_allocatable{resource=\"memory\", unit=\"byte\", kubernetes_io_hostname=~\"$Node\"})",
@@ -814,7 +814,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum (container_memory_working_set_bytes{kubernetes_io_hostname=~\"$Node\"})",
@@ -826,7 +826,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(kube_pod_container_resource_requests{resource=\"memory\", unit=\"byte\",kubernetes_io_hostname=~\"$Node\"})",
@@ -838,7 +838,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(kube_pod_container_resource_limits{resource=\"memory\", unit=\"byte\",kubernetes_io_hostname=~\"$Node\"})",
@@ -854,7 +854,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -914,7 +914,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(kube_node_status_allocatable{resource=\"cpu\", unit=\"core\", kubernetes_io_hostname=~\"$Node\"})",
@@ -926,7 +926,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum (irate(container_cpu_usage_seconds_total{id=\"/\",kubernetes_io_hostname=~\"$Node\"}[2m]))",
@@ -938,7 +938,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(kube_pod_container_resource_requests{resource=\"cpu\", unit=\"core\",kubernetes_io_hostname=~\"$Node\"})",
@@ -950,7 +950,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(kube_pod_container_resource_limits{resource=\"cpu\", unit=\"core\",kubernetes_io_hostname=~\"$Node\"})",
@@ -966,7 +966,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -1078,7 +1078,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum (container_fs_usage_bytes{device=~\"^/dev/.*$\",id=\"/\",kubernetes_io_hostname=~\"$Node\"}) / sum (container_fs_limit_bytes{device=~\"^/dev/.*$\",id=\"/\",kubernetes_io_hostname=~\"$Node\"})",
@@ -1090,7 +1090,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum (container_fs_usage_bytes{device=~\"^/dev/.*$\",id=\"/\",kubernetes_io_hostname=~\"$Node\"})",
@@ -1102,7 +1102,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum (container_fs_limit_bytes{device=~\"^/dev/.*$\",id=\"/\",kubernetes_io_hostname=~\"$Node\"})",
@@ -1118,7 +1118,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -1190,7 +1190,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "count({__name__=~\"kube_deployment_metadata_generation|kube_daemonset_metadata_generation|kube_statefulset_metadata_generation\"})",
@@ -1202,7 +1202,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "count(kube_pod_info{})",
@@ -1214,7 +1214,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "count by(key,origin_prometheus)(kube_node_spec_taint{key=~\"node.kubernetes.io.*\"})",
@@ -1227,7 +1227,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "count by(origin_prometheus)(kube_node_info{})",
@@ -1239,7 +1239,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "count by(origin_prometheus)(kube_node_info{}) - count by(origin_prometheus)(kube_node_spec_taint{key!~\"node.kubernetes.io.*\"})",
@@ -1251,7 +1251,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "count by(key,origin_prometheus)(kube_node_spec_taint{key!~\"node.kubernetes.io.*\"})",
@@ -1275,7 +1275,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -1376,7 +1376,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(kube_node_status_allocatable{resource=\"memory\", unit=\"byte\", kubernetes_io_hostname=~\"$Node\"})",
@@ -1388,7 +1388,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum (container_memory_working_set_bytes{kubernetes_io_hostname=~\"$Node\"})",
@@ -1400,7 +1400,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(kube_pod_container_resource_requests{resource=\"memory\", unit=\"byte\",kubernetes_io_hostname=~\"$Node\"})",
@@ -1412,7 +1412,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(kube_pod_container_resource_limits{resource=\"memory\", unit=\"byte\",kubernetes_io_hostname=~\"$Node\"})",
@@ -1428,7 +1428,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -1529,7 +1529,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(kube_node_status_allocatable{resource=\"cpu\", unit=\"core\", kubernetes_io_hostname=~\"$Node\"})",
@@ -1541,7 +1541,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum (irate(container_cpu_usage_seconds_total{id=\"/\",kubernetes_io_hostname=~\"$Node\"}[2m]))",
@@ -1553,7 +1553,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(kube_pod_container_resource_requests{resource=\"cpu\", unit=\"core\",kubernetes_io_hostname=~\"$Node\"})",
@@ -1565,7 +1565,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(kube_pod_container_resource_limits{resource=\"cpu\", unit=\"core\",kubernetes_io_hostname=~\"$Node\"})",
@@ -1581,7 +1581,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "description": "Number of Cluster Nodes，Nodes POD Number of，Nodes POD Upper Limit",
       "fieldConfig": {
@@ -1710,7 +1710,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "count(kube_node_info{})",
@@ -1722,7 +1722,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "count(kube_pod_info{created_by_kind!~\"<none>|Job\",kubernetes_io_hostname=~\"$Node\"})",
@@ -1734,7 +1734,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(kube_node_status_allocatable{resource=\"pods\", unit=\"integer\",kubernetes_io_hostname=~\"$Node\"})",
@@ -1750,7 +1750,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -1851,7 +1851,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum (irate(container_cpu_usage_seconds_total{kubernetes_io_hostname=~\"$Node\"}[2m]))by (kubernetes_io_hostname) / scalar(sum(kube_node_status_allocatable{resource=\"cpu\",unit=\"core\"}))*100",
@@ -1868,7 +1868,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -1953,7 +1953,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum (container_memory_working_set_bytes{kubernetes_io_hostname=~\"$Node\"})by (kubernetes_io_hostname) / scalar(sum(kube_node_status_allocatable{resource=\"memory\",unit=\"byte\"}))*100",
@@ -1970,7 +1970,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -2069,7 +2069,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum (irate(container_network_receive_bytes_total{kubernetes_io_hostname=~\"$Node\"}[2m]))by (kubernetes_io_hostname) *8",
@@ -2082,7 +2082,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum (irate(container_network_transmit_bytes_total{kubernetes_io_hostname=~\"$Node\"}[2m]))by (kubernetes_io_hostname) *8",
@@ -2098,7 +2098,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -2456,7 +2456,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "count(kube_pod_info{created_by_kind!~\"<none>|Job\",kubernetes_io_hostname=~\"$Node\"}) by (kubernetes_io_hostname)",
@@ -2469,7 +2469,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "kube_node_status_condition{status=\"true\",kubernetes_io_hostname=~\"$Node\"}  == 1",
@@ -2482,7 +2482,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum (irate(container_cpu_usage_seconds_total{kubernetes_io_hostname=~\"$Node\"}[2m])) by (kubernetes_io_hostname)",
@@ -2495,7 +2495,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "kube_node_status_allocatable{resource=\"cpu\", unit=\"core\", kubernetes_io_hostname=~\"$Node\"} - 0",
@@ -2508,7 +2508,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(kube_pod_container_resource_requests{resource=\"cpu\", unit=\"core\",kubernetes_io_hostname=~\"$Node\"}) by (kubernetes_io_hostname)",
@@ -2521,7 +2521,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(kube_pod_container_resource_limits{resource=\"cpu\", unit=\"core\",kubernetes_io_hostname=~\"$Node\"}) by (kubernetes_io_hostname)",
@@ -2534,7 +2534,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum (container_memory_working_set_bytes{kubernetes_io_hostname=~\"$Node\"}) by (kubernetes_io_hostname)",
@@ -2547,7 +2547,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(kube_node_status_allocatable{resource=\"memory\", unit=\"byte\", kubernetes_io_hostname=~\"$Node\"}) by (kubernetes_io_hostname) - 0",
@@ -2560,7 +2560,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(kube_pod_container_resource_requests{resource=\"memory\", unit=\"byte\",kubernetes_io_hostname=~\"$Node\"}) by (kubernetes_io_hostname)",
@@ -2573,7 +2573,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(kube_pod_container_resource_limits{resource=\"memory\", unit=\"byte\",kubernetes_io_hostname=~\"$Node\"}) by (kubernetes_io_hostname)",
@@ -2586,7 +2586,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum (container_fs_usage_bytes{device=~\"^/dev/.*$\",id=\"/\",kubernetes_io_hostname=~\"$Node\"}) by (kubernetes_io_hostname)",
@@ -2599,7 +2599,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum (container_fs_limit_bytes{device=~\"^/dev/.*$\",id=\"/\",kubernetes_io_hostname=~\"$Node\"}) by (kubernetes_io_hostname)",
@@ -2612,7 +2612,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum (container_memory_working_set_bytes{kubernetes_io_hostname=~\"$Node\"})by (kubernetes_io_hostname) / scalar(sum(kube_node_status_allocatable{resource=\"memory\",unit=\"byte\"}))",
@@ -2625,7 +2625,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(kube_pod_container_resource_requests{resource=\"memory\", unit=\"byte\",kubernetes_io_hostname=~\"$Node\"})by (kubernetes_io_hostname) / sum(kube_node_status_allocatable{resource=\"memory\", unit=\"byte\", kubernetes_io_hostname=~\"$Node\"})by (kubernetes_io_hostname)",
@@ -2638,7 +2638,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(kube_pod_container_resource_limits{resource=\"memory\", unit=\"byte\",kubernetes_io_hostname=~\"$Node\"})by (kubernetes_io_hostname) / sum(kube_node_status_allocatable{resource=\"memory\", unit=\"byte\", kubernetes_io_hostname=~\"$Node\"})by (kubernetes_io_hostname)",
@@ -2651,7 +2651,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum (irate(container_cpu_usage_seconds_total{kubernetes_io_hostname=~\"$Node\"}[2m]))by (kubernetes_io_hostname) / scalar(sum(kube_node_status_allocatable{resource=\"cpu\",unit=\"core\"}))",
@@ -2664,7 +2664,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(kube_pod_container_resource_requests{resource=\"cpu\", unit=\"core\",kubernetes_io_hostname=~\"$Node\"})by (kubernetes_io_hostname) / sum(kube_node_status_allocatable{resource=\"cpu\", unit=\"core\", kubernetes_io_hostname=~\"$Node\"})by (kubernetes_io_hostname)",
@@ -2677,7 +2677,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(kube_pod_container_resource_limits{resource=\"cpu\", unit=\"core\",kubernetes_io_hostname=~\"$Node\"})by (kubernetes_io_hostname) / sum(kube_node_status_allocatable{resource=\"cpu\", unit=\"core\", kubernetes_io_hostname=~\"$Node\"})by (kubernetes_io_hostname)",
@@ -2690,7 +2690,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum (container_fs_usage_bytes{device=~\"^/dev/.*$\",id=\"/\",kubernetes_io_hostname=~\"$Node\"})by (kubernetes_io_hostname) / sum (container_fs_limit_bytes{device=~\"^/dev/.*$\",id=\"/\",kubernetes_io_hostname=~\"$Node\"})by (kubernetes_io_hostname)",
@@ -2703,7 +2703,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(kube_node_status_allocatable{resource=\"pods\", unit=\"integer\",kubernetes_io_hostname=~\"$Node\"})by (kubernetes_io_hostname)",
@@ -2846,7 +2846,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -3033,7 +3033,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(container_fs_usage_bytes{}) by (namespace)",
@@ -3046,7 +3046,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(container_fs_limit_bytes{}) by (namespace)",
@@ -3059,7 +3059,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(container_fs_usage_bytes{}) by (namespace) / sum(container_fs_limit_bytes{}) by (namespace)",
@@ -3100,7 +3100,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -3186,7 +3186,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(irate(container_cpu_usage_seconds_total{}[2m])) by (namespace)",
@@ -3202,7 +3202,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -3289,7 +3289,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum (container_memory_working_set_bytes{}) by (namespace)",
@@ -3306,7 +3306,7 @@
       "collapsed": false,
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "gridPos": {
         "h": 1,
@@ -3322,7 +3322,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -3773,7 +3773,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(irate(container_cpu_usage_seconds_total{id=~\"/kubepods.*slice$\",namespace=~\"$NameSpace\",pod=~\"$Pod\"}[2m])) by (pod, namespace) / scalar(sum(kube_node_status_allocatable{resource=\"cpu\",unit=\"core\"})) * 100",
@@ -3786,7 +3786,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(irate(container_cpu_usage_seconds_total{pod=~\"$Pod\",kubernetes_io_hostname=~\"$Node\",namespace=~\"$NameSpace\"}[2m])) by (container, pod,namespace)",
@@ -3799,7 +3799,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(kube_pod_container_resource_requests{resource=\"cpu\", unit=\"core\",pod=~\"$Pod\",container =~\"$Container\",kubernetes_io_hostname=~\"$Node\",namespace=~\"$NameSpace\"}) by (container,pod,namespace)",
@@ -3812,7 +3812,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(kube_pod_container_resource_limits{resource=\"cpu\", unit=\"core\",pod=~\"$Pod\",container =~\"$Container\",kubernetes_io_hostname=~\"$Node\",namespace=~\"$NameSpace\"}) by (container,pod,namespace)",
@@ -3825,7 +3825,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(container_memory_working_set_bytes{id=~\"/kubepods.*slice$\",namespace=~\"$NameSpace\",pod=~\"$Pod\"}) by (pod, namespace)",
@@ -3838,7 +3838,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum (container_memory_working_set_bytes{pod=~\"$Pod\",kubernetes_io_hostname=~\"$Node\",namespace=~\"$NameSpace\"}) by (container, pod,namespace)",
@@ -3851,7 +3851,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(container_memory_working_set_bytes{id=~\"/kubepods.*slice$\",namespace=~\"$NameSpace\",pod=~\"$Pod\"}) by (pod, namespace)",
@@ -3864,7 +3864,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum (container_memory_working_set_bytes{pod=~\"$Pod\",kubernetes_io_hostname=~\"$Node\",namespace=~\"$NameSpace\"}) by (container, pod,namespace)",
@@ -3877,7 +3877,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(kube_pod_container_resource_requests{resource=\"memory\", unit=\"byte\",pod=~\"$Pod\",container =~\"$Container\",kubernetes_io_hostname=~\"$Node\",namespace=~\"$NameSpace\"}) by (container,pod,namespace)",
@@ -3890,7 +3890,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(kube_pod_container_resource_limits{resource=\"memory\", unit=\"byte\",pod=~\"$Pod\",container =~\"$Container\",kubernetes_io_hostname=~\"$Node\",namespace=~\"$NameSpace\"}) by (container,pod,namespace)",
@@ -3903,7 +3903,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(container_fs_usage_bytes{pod=~\"$Pod\",kubernetes_io_hostname=~\"$Node\",namespace=~\"$NameSpace\"}) by (container,pod,namespace)",
@@ -3916,7 +3916,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "kube_pod_container_status_restarts_total{pod=~\"$Pod\",container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"} * on (pod) group_left(node) kube_pod_info{pod=~\"$Pod\",kubernetes_io_hostname=~\"$Node\",namespace=~\"$NameSpace\"}",
@@ -3929,7 +3929,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "time() - kube_pod_created{pod=~\"$Pod\",namespace=~\"$NameSpace\"} * on(pod) group_right kube_pod_container_info{pod=~\"$Pod\",namespace=~\"$NameSpace\",container =~\"$Container\"}",
@@ -3942,7 +3942,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(container_fs_limit_bytes{pod=~\"$Pod\",kubernetes_io_hostname=~\"$Node\",namespace=~\"$NameSpace\"}) by (container,pod,namespace)",
@@ -3955,7 +3955,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(sum(irate(container_network_receive_bytes_total{pod=~\"$Pod\",kubernetes_io_hostname=~\"$Node\",namespace=~\"$NameSpace\"}[2m])) by (pod)* on(pod) group_right kube_pod_container_info{pod=~\"$Pod\",namespace=~\"$NameSpace\",container =~\"$Container\"}) by(pod) *8",
@@ -3968,7 +3968,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(sum(irate(container_network_transmit_bytes_total{pod=~\"$Pod\",kubernetes_io_hostname=~\"$Node\",namespace=~\"$NameSpace\"}[2m])) by (pod)* on(pod) group_right kube_pod_container_info{pod=~\"$Pod\",namespace=~\"$NameSpace\",container =~\"$Container\"}) by(pod) *8",
@@ -4173,7 +4173,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -4276,7 +4276,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "max(irate(container_cpu_usage_seconds_total{pod=~\"$Pod\",kubernetes_io_hostname=~\"$Node\",namespace=~\"$NameSpace\"}[2m])) by (container, pod,namespace)",
@@ -4288,7 +4288,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "max(max(kube_pod_container_resource_limits{resource=\"cpu\", unit=\"core\",pod=~\"$Pod\",container =~\"$Container\",kubernetes_io_hostname=~\"$Node\",namespace=~\"$NameSpace\"}) by (container,pod,namespace)) by(container)",
@@ -4304,7 +4304,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -4389,7 +4389,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "max(container_memory_working_set_bytes{pod=~\"$Pod\",namespace=~\"$NameSpace\"}) by (container, pod)",
@@ -4401,7 +4401,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "max(kube_pod_container_resource_limits{resource=\"memory\",unit=\"byte\",pod=~\"$Pod\",container=~\"$Container\",namespace=~\"$NameSpace\"}) by (container, pod)",
@@ -4417,7 +4417,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -4501,7 +4501,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "max (container_memory_working_set_bytes{pod=~\"$Pod\",kubernetes_io_hostname=~\"$Node\",namespace=~\"$NameSpace\"}) by (container, pod,namespace)",
@@ -4517,7 +4517,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -4620,7 +4620,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "max (container_memory_working_set_bytes{pod=~\"$Pod\",kubernetes_io_hostname=~\"$Node\",namespace=~\"$NameSpace\"}) by (container, pod,namespace)",
@@ -4632,7 +4632,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "max(max(kube_pod_container_resource_limits{resource=\"memory\", unit=\"byte\",pod=~\"$Pod\",container =~\"$Container\",kubernetes_io_hostname=~\"$Node\",namespace=~\"$NameSpace\"}) by (container,pod,namespace)) by(container)",
@@ -4649,7 +4649,7 @@
       "collapsed": false,
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "gridPos": {
         "h": 1,
@@ -4665,7 +4665,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -5036,7 +5036,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(irate(container_cpu_usage_seconds_total{id=~\"/kubepods.*slice$\",namespace=~\"$NameSpace\",pod=~\"$Pod\"}[2m])) by (pod, namespace) / scalar(sum(kube_node_status_allocatable{resource=\"cpu\",unit=\"core\"})) * 100",
@@ -5049,7 +5049,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(irate(container_cpu_usage_seconds_total{namespace=~\"$NameSpace\"}[2m])) by (container)",
@@ -5062,7 +5062,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(kube_pod_container_resource_requests{resource=\"cpu\", unit=\"core\",container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)",
@@ -5075,7 +5075,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(kube_pod_container_resource_limits{resource=\"cpu\", unit=\"core\",container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)",
@@ -5088,7 +5088,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(container_memory_working_set_bytes{id=~\"/kubepods.*slice$\",namespace=~\"$NameSpace\",pod=~\"$Pod\"}) by (pod, namespace)",
@@ -5101,7 +5101,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum (container_memory_working_set_bytes{namespace=~\"$NameSpace\"}) by (container)",
@@ -5114,7 +5114,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(container_memory_working_set_bytes{id=~\"/kubepods.*slice$\",namespace=~\"$NameSpace\",pod=~\"$Pod\"}) by (pod, namespace)",
@@ -5127,7 +5127,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum (container_memory_working_set_bytes{namespace=~\"$NameSpace\"}) by (container)",
@@ -5140,7 +5140,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum by(container) (kube_pod_container_resource_requests{resource=\"memory\", unit=\"byte\",container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"})",
@@ -5153,7 +5153,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(kube_pod_container_resource_limits{resource=\"memory\", unit=\"byte\",container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)",
@@ -5166,7 +5166,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "avg(container_fs_usage_bytes{namespace=~\"$NameSpace\"}) by (container)",
@@ -5179,7 +5179,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "count(kube_pod_container_info{container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by(container,namespace)",
@@ -5192,7 +5192,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "avg(container_fs_limit_bytes{namespace=~\"$NameSpace\"}) by (container)",
@@ -5276,7 +5276,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -5361,7 +5361,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(irate(container_cpu_usage_seconds_total{id=~\"/kubepods.*slice$\",namespace=~\"$NameSpace\",pod=~\"$Pod\"}[2m])) by (pod, namespace) / scalar(sum(kube_node_status_allocatable{resource=\"cpu\",unit=\"core\"})) * 100",
@@ -5377,7 +5377,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -5462,7 +5462,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(container_memory_working_set_bytes{id=~\"/kubepods.*slice$\",namespace=~\"$NameSpace\",pod=~\"$Pod\"}) by (pod, namespace)",
@@ -5474,7 +5474,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(container_memory_working_set_bytes{id=~\"/kubepods.*slice$\",namespace=~\"$NameSpace\",pod=~\"$Pod\"}) by (pod, namespace)",
@@ -5490,7 +5490,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -5575,7 +5575,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(sum(irate(container_network_receive_bytes_total{kubernetes_io_hostname=~\"$Node\",namespace=~\"$NameSpace\"}[2m])) by (pod)* on(pod) group_right kube_pod_container_info{namespace=~\"$NameSpace\",container =~\"$Container\"}) by(container) *8",
@@ -5587,7 +5587,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(sum(irate(container_network_transmit_bytes_total{kubernetes_io_hostname=~\"$Node\",namespace=~\"$NameSpace\"}[2m])) by (pod)* on(pod) group_right kube_pod_container_info{namespace=~\"$NameSpace\",container =~\"$Container\"}) by(container) *8",
@@ -5599,7 +5599,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum (rate (container_network_receive_bytes_total{pod=~\"$Pod\",kubernetes_io_hostname=~\"$Node\",namespace=~\"$NameSpace\"}[2m])) by (pod)",
@@ -5611,7 +5611,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "- sum (rate (container_network_transmit_bytes_total{pod=~\"$Pod\",kubernetes_io_hostname=~\"$Node\",namespace=~\"$NameSpace\"}[2m])) by (pod)",
@@ -5627,7 +5627,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -5730,7 +5730,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(kube_pod_container_resource_limits{resource=\"cpu\", unit=\"core\",container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by (container)",
@@ -5742,7 +5742,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(irate(container_cpu_usage_seconds_total{namespace=~\"$NameSpace\"}[2m])) by (container)",
@@ -5758,7 +5758,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -5861,7 +5861,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum (container_memory_working_set_bytes{namespace=~\"$NameSpace\"}) by (container)",
@@ -5873,7 +5873,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "max(container_memory_working_set_bytes{pod=~\"$Pod\",namespace=~\"$NameSpace\"}) by (container, pod)",
@@ -5885,7 +5885,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum (container_memory_working_set_bytes{namespace=~\"$NameSpace\"}) by (container)",
@@ -5901,7 +5901,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -5986,7 +5986,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "count(kube_pod_container_info{container =~\"$Container\",container !=\"\",container!=\"POD\",namespace=~\"$NameSpace\"}) by(container,namespace)",
@@ -6011,8 +6011,8 @@
       {
         "current": {
           "selected": false,
-          "text": "Prometheus",
-          "value": "PBFA97CFB590B2093"
+          "text": "",
+          "value": ""
         },
         "hide": 0,
         "includeAll": false,
@@ -6036,7 +6036,7 @@
         },
         "datasource": {
           "type": "prometheus",
-          "uid": "PBFA97CFB590B2093"
+          "uid": "${datasource}"
         },
         "definition": "label_values(kube_node_info, node)",
         "hide": 0,
@@ -6064,7 +6064,7 @@
         },
         "datasource": {
           "type": "prometheus",
-          "uid": "PBFA97CFB590B2093"
+          "uid": "${datasource}"
         },
         "definition": "label_values(kube_namespace_created, namespace)",
         "hide": 0,
@@ -6092,7 +6092,7 @@
         },
         "datasource": {
           "type": "prometheus",
-          "uid": "PBFA97CFB590B2093"
+          "uid": "${datasource}"
         },
         "definition": "label_values(kube_pod_container_info{namespace=~\"$NameSpace\"}, container)",
         "hide": 0,
@@ -6120,7 +6120,7 @@
         },
         "datasource": {
           "type": "prometheus",
-          "uid": "PBFA97CFB590B2093"
+          "uid": "${datasource}"
         },
         "definition": "label_values(kube_pod_container_info{namespace=~\"$NameSpace\",container=~\"$Container\"}, pod)",
         "hide": 0,
