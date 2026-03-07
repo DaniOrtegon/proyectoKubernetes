@@ -189,6 +189,37 @@ data:
             action: keep
 
 ---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: promtail
+  namespace: monitoring
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: promtail
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "namespaces", "nodes"]
+    verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: promtail
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: promtail
+subjects:
+  - kind: ServiceAccount
+    name: promtail
+    namespace: monitoring
+
+---
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -205,10 +236,10 @@ spec:
       labels:
         app: promtail
     spec:
-      serviceAccountName: prometheus   # Reutilizamos el ServiceAccount de Prometheus (mismo RBAC)
+      serviceAccountName: promtail
       tolerations:
         - key: node-role.kubernetes.io/master
-          effect: NoSchedule           # También corre en el nodo master para recoger sus logs
+          effect: NoSchedule
       containers:
         - name: promtail
           image: grafana/promtail:2.9.3
@@ -227,11 +258,11 @@ spec:
             - name: config
               mountPath: /etc/promtail
             - name: varlog
-              mountPath: /var/log          # Logs del sistema del nodo
+              mountPath: /var/log
               readOnly: true
             - name: varlibdockercontainers
               mountPath: /var/lib/docker/containers
-              readOnly: true               # Logs de todos los contenedores Docker
+              readOnly: true
       volumes:
         - name: config
           configMap:
