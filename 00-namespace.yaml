@@ -14,3 +14,11 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: monitoring  # Namespace para herramientas de monitoreo (Prometheus, Grafana, Loki)
+
+---
+# R-2: Namespace 'security' añadido — referenciado en Promtail (11-loki.yaml)
+# y en el dashboard de Grafana (wordpress-k8s.json) como namespace del stack.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: security  # Namespace para componentes de seguridad (WAF, cert-manager, etc.)
