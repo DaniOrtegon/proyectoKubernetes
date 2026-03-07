@@ -232,7 +232,8 @@ update_hosts() {
 cleanup() {
   echo ""
   log_warn "Deshaciendo todo el despliegue..."
-  for file in 12-grafana.yaml 11-loki.yaml 10-prometheus.yaml \
+  for file in 14-resource-quota.yaml 13-pdb.yaml \
+              12-grafana.yaml 11-loki.yaml 10-prometheus.yaml \
               09-hpa-wordpress.yaml 08-ingress.yaml 07-network-policy.yaml \
               06-wordpress.yaml 05-redis.yaml 04-mariadb.yaml \
               03-pvc.yaml 02-configmap.yaml 01-secrets.yaml 00-namespace.yaml; do
@@ -316,6 +317,12 @@ apply_file "08-ingress.yaml" "Ingress (wp-k8s.local + monitoring.local)"
 # 15. HPA
 apply_file "09-hpa-wordpress.yaml" "HorizontalPodAutoscaler de WordPress"
 
+# 15b. PDB
+apply_file "13-pdb.yaml" "PodDisruptionBudget de WordPress"
+
+# 15c. ResourceQuota
+apply_file "14-resource-quota.yaml" "ResourceQuota y LimitRange"
+
 # 16. Prometheus
 apply_file "10-prometheus.yaml" "Prometheus (RBAC + ConfigMap + Deployment + Service)"
 wait_for_deployment "monitoring" "prometheus" 120
@@ -334,7 +341,7 @@ wait_for_deployment "monitoring" "grafana" 120
 echo ""
 log_warn "PASO FINAL: Abre una terminal nueva y ejecuta:"
 echo ""
-echo -e "   ${GREEN}sudo minikube tunnel${NC}"
+echo -e "   ${GREEN}minikube tunnel${NC}"
 echo ""
 log_info "Esperando a que el tunnel asigne IP y actualizando /etc/hosts..."
 echo ""
@@ -349,7 +356,7 @@ echo -e "${GREEN}============================================================${N
 echo -e "${GREEN}   ✅ Despliegue completado con éxito${NC}"
 echo -e "${GREEN}============================================================${NC}"
 echo ""
-echo -e "${BLUE}📌 URLs de acceso (mantén 'sudo minikube tunnel' activo):${NC}"
+echo -e "${BLUE}📌 URLs de acceso (mantén 'minikube tunnel' activo):${NC}"
 echo -e "   WordPress:  http://wp-k8s.local"
 echo -e "   Grafana:    http://grafana.monitoring.local  (admin / admin123)"
 echo -e "   Prometheus: http://prometheus.monitoring.local"
