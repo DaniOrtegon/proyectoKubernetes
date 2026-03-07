@@ -60,8 +60,12 @@ load_images() {
     else
       log_success "Ya existe en host: $IMAGE"
     fi
-    log_info "Cargando en Minikube: $IMAGE"
-    minikube image load "$IMAGE" && log_success "Cargada en Minikube: $IMAGE"
+    if minikube image ls 2>/dev/null | grep -q "$(echo "$IMAGE" | sed 's/:.*//')"; then
+      log_success "Ya existe en Minikube: $IMAGE"
+    else
+      log_info "Cargando en Minikube: $IMAGE"
+      minikube image load "$IMAGE" && log_success "Cargada en Minikube: $IMAGE"
+    fi
   done
 
   echo ""
