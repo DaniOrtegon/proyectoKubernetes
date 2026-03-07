@@ -45,6 +45,7 @@ load_images() {
     "redis:6.2-alpine"
     "wordpress:6.4"
     "prom/prometheus:v2.48.0"
+    "prom/alertmanager:v0.26.0"
     "grafana/grafana:10.2.3"
     "grafana/loki:2.9.3"
     "grafana/promtail:2.9.3"
@@ -185,6 +186,21 @@ wait_for_deployment() {
 }
 
 # ============================================================
+# R-9: FUNCIÓN separada para StatefulSets (MariaDB es StatefulSet, no Deployment)
+# kubectl rollout status deployment/mariadb fallaba silenciosamente.
+# ============================================================
+wait_for_statefulset() {
+  local namespace=$1
+  local sts=$2
+  local timeout=${3:-120}
+
+  log_info "Esperando a que StatefulSet '$sts' esté Ready en namespace '$namespace'..."
+  kubectl rollout status statefulset/$sts -n $namespace --timeout=${timeout}s \
+    && log_success "StatefulSet $sts está Ready" \
+    || log_error "StatefulSet $sts no arrancó en ${timeout}s. Revisa: kubectl describe pod -n $namespace"
+}
+
+# ============================================================
 # FUNCIÓN: Desplegar un archivo YAML
 # ============================================================
 apply_file() {
@@ -297,8 +313,8 @@ apply_file "02-configmap.yaml" "ConfigMaps (mariadb-config + wordpress-config)"
 apply_file "03-pvc.yaml" "PersistentVolumeClaims (mariadb-pvc + wordpress-pvc)"
 
 # 10. MariaDB
-apply_file "04-mariadb.yaml" "Deployment + Service de MariaDB"
-wait_for_deployment "databases" "mariadb" 120
+apply_file "04-mariadb.yaml" "StatefulSet + Headless Service de MariaDB"
+wait_for_statefulset "databases" "mariadb" 120
 
 # 11. Redis
 apply_file "05-redis.yaml" "Deployment + Service de Redis"
@@ -324,8 +340,9 @@ apply_file "13-pdb.yaml" "PodDisruptionBudget de WordPress"
 apply_file "14-resource-quota.yaml" "ResourceQuota y LimitRange"
 
 # 16. Prometheus
-apply_file "10-prometheus.yaml" "Prometheus (RBAC + ConfigMap + Deployment + Service)"
+apply_file "10-prometheus.yaml" "Prometheus + Alertmanager (RBAC + ConfigMap + Deployment + Service)"
 wait_for_deployment "monitoring" "prometheus" 120
+wait_for_deployment "monitoring" "alertmanager" 60
 
 # 17. Loki + Promtail
 apply_file "11-loki.yaml" "Loki + Promtail (Deployment + DaemonSet)"
