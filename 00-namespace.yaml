@@ -1,22 +1,16 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: security   # Namespace para recursos relacionados con la seguridad (RBAC, Network Policies, etc.)
-
----
-apiVersion: v1
-kind: Namespace
-metadata:
   name: wordpress  # Namespace para los recursos de WordPress (Deployment, Service, PVCs, etc.)
 
 ---
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: databases  # Namespace para bases de datos (MariaDB, PostgreSQL, etc.)
+  name: databases  # Namespace para bases de datos (MariaDB, Redis)
 
 ---
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: monitoring  # Namespace para herramientas de monitoreo (Prometheus, Grafana, Alertmanager, etc.)
+  name: monitoring  # Namespace para herramientas de monitoreo (Prometheus, Grafana, Loki)
