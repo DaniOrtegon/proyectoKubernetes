@@ -25,9 +25,11 @@ spec:
 # ============================================================
 # ResourceQuota para namespace 'wordpress'
 # Techo total de recursos que puede consumir el namespace.
-# Con HPA maxReplicas: 5 y limits 500m/512Mi por pod:
-#   CPU máx:    5 * 500m  = 2500m  → techo en 3
-#   Mem máx:    5 * 512Mi = 2560Mi → techo en 3Gi
+# Con HPA maxReplicas: 5 y resources por pod:
+#   requests.cpu:    5 * 100m  =  500m  → techo en 1 (1000m)
+#   requests.memory: 5 * 256Mi = 1280Mi → techo en 2Gi  ← CORREGIDO (antes 1Gi bloqueaba el 5º pod)
+#   limits.cpu:      5 * 500m  = 2500m  → techo en 3
+#   limits.memory:   5 * 512Mi = 2560Mi → techo en 3Gi
 # ============================================================
 apiVersion: v1
 kind: ResourceQuota
@@ -37,7 +39,7 @@ metadata:
 spec:
   hard:
     requests.cpu: "1"
-    requests.memory: 1Gi
+    requests.memory: 2Gi
     limits.cpu: "3"
     limits.memory: 3Gi
     pods: "10"
