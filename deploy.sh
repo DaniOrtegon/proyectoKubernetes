@@ -52,6 +52,7 @@ load_images() {
     "registry.k8s.io/ingress-nginx/controller:v1.14.1"
     "registry.k8s.io/ingress-nginx/kube-webhook-certgen:v1.6.5"
     "registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.10.0"
+    "registry.k8s.io/metrics-server/metrics-server:v0.7.2"
   )
 
   for IMAGE in "${IMAGES[@]}"; do
@@ -159,16 +160,25 @@ install_kube_state_metrics() {
 }
 
 # ============================================================
-# FUNCIÓN: Metrics Server
+# FUNCIÓN: Metrics Server (forzando imagen local)
 # ============================================================
 install_metrics_server() {
-  if ! minikube addons list | grep -q "metrics-server.*enabled"; then
-    log_warn "Metrics Server no habilitado. Habilitando..."
-    minikube addons enable metrics-server
-    log_success "Metrics Server habilitado"
+  log_info "Configurando Metrics Server..."
+
+  if minikube addons list | grep -q "metrics-server.*enabled"; then
+    log_info "Metrics Server ya habilitado, asegurando estado Ready..."
   else
-    log_success "Metrics Server ya está habilitado"
+    log_info "Habilitando addon metrics-server..."
+    minikube addons enable metrics-server
   fi
+
+  log_info "Esperando a que Metrics Server esté operativo..."
+  kubectl patch deployment metrics-server -n kube-system --type=json \
+    -p='[{"op":"replace","path":"/spec/template/spec/containers/0/imagePullPolicy","value":"Never"}]' 2>/dev/null || true
+
+  kubectl rollout status deployment/metrics-server -n kube-system --timeout=120s \
+    && log_success "Metrics Server está listo y funcionando" \
+    || log_warn "Metrics Server tarda en responder, pero el despliegue continuará."
 }
 
 # ============================================================
@@ -257,6 +267,8 @@ cleanup() {
   done
   log_warn "Eliminando Ingress Controller..."
   kubectl delete namespace ingress-nginx --ignore-not-found=true 2>/dev/null
+  log_warn "Deshabilitando Metrics Server..."
+  minikube addons disable metrics-server 2>/dev/null || true
   log_warn "Eliminando kube-state-metrics..."
   kubectl delete deployment kube-state-metrics -n kube-system --ignore-not-found=true 2>/dev/null
   kubectl delete service kube-state-metrics -n kube-system --ignore-not-found=true 2>/dev/null
