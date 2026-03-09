@@ -169,6 +169,128 @@ install_metrics_server() {
 }
 
 # ============================================================
+# FUNCIÓN: Instalar Sealed Secrets Controller
+# Gestiona los SealedSecrets cifrando/descifrando con clave
+# privada almacenada en kube-system (nunca sale del clúster).
+# ============================================================
+install_sealed_secrets() {
+  if kubectl get deployment sealed-secrets-controller -n kube-system &>/dev/null; then
+    log_success "Sealed Secrets Controller ya está instalado"
+    return
+  fi
+
+  local VERSION="0.26.3"
+  log_info "Instalando Sealed Secrets Controller v${VERSION}..."
+  kubectl apply -f "https://github.com/bitnami-labs/sealed-secrets/releases/download/v${VERSION}/controller.yaml" \
+    || log_error "No se pudo instalar Sealed Secrets Controller."
+
+  log_info "Esperando a que Sealed Secrets Controller esté listo..."
+  local retries=0
+  until kubectl get pods -n kube-system -l app.kubernetes.io/name=sealed-secrets-controller 2>/dev/null | grep -q "Running"; do
+    retries=$((retries + 1))
+    [ $retries -ge 18 ] && log_error "Sealed Secrets Controller no arrancó en 3 minutos."
+    echo -n "."
+    sleep 10
+  done
+  echo ""
+  log_success "Sealed Secrets Controller está listo"
+}
+
+# ============================================================
+# FUNCIÓN: Instalar kubeseal CLI
+# Herramienta de línea de comandos para cifrar Secrets con la
+# clave pública del clúster → genera SealedSecrets commiteables.
+# ============================================================
+install_kubeseal() {
+  if command -v kubeseal &>/dev/null; then
+    log_success "kubeseal ya está instalado: $(kubeseal --version 2>&1)"
+    return
+  fi
+
+  local VERSION="0.26.3"
+  local ARCH="amd64"
+  log_info "Instalando kubeseal CLI v${VERSION}..."
+  curl -sL "https://github.com/bitnami-labs/sealed-secrets/releases/download/v${VERSION}/kubeseal-${VERSION}-linux-${ARCH}.tar.gz" \
+    | tar xz kubeseal \
+    && sudo mv kubeseal /usr/local/bin/kubeseal \
+    && sudo chmod +x /usr/local/bin/kubeseal \
+    || log_error "No se pudo instalar kubeseal."
+
+  log_success "kubeseal instalado: $(kubeseal --version 2>&1)"
+}
+
+# ============================================================
+# FUNCIÓN: Generar SealedSecrets si no existen ya
+# Se llama tras instalar el controller (necesita su clave pública).
+# Los ficheros generados son seguros para commitear al repo.
+# Si el clúster se recrea (minikube delete), hay que regenerarlos.
+# ============================================================
+generate_sealed_secrets() {
+  local SEALED_FILES=(
+    "sealed-mariadb-secret-databases.yaml"
+    "sealed-mariadb-secret-wordpress.yaml"
+    "sealed-redis-secret-databases.yaml"
+    "sealed-redis-secret-wordpress.yaml"
+  )
+
+  # Comprobar si ya existen todos los ficheros sellados
+  local all_exist=true
+  for f in "${SEALED_FILES[@]}"; do
+    [ ! -f "$f" ] && all_exist=false && break
+  done
+
+  if $all_exist; then
+    log_success "SealedSecrets ya existen — usando los ficheros actuales"
+    log_warn "Si recreaste el clúster (minikube delete), borra los sealed-*.yaml y vuelve a ejecutar deploy.sh"
+    return
+  fi
+
+  log_info "Generando SealedSecrets con kubeseal..."
+
+  # MariaDB — namespace databases (root + user password)
+  kubectl create secret generic mariadb-secret \
+    --namespace databases \
+    --from-literal=mariadb-root-password='RootDB#2024!' \
+    --from-literal=mariadb-user-password='WpUser#2024!' \
+    --dry-run=client -o yaml \
+    | kubeseal --format yaml > sealed-mariadb-secret-databases.yaml \
+    || log_error "Error generando sealed-mariadb-secret-databases.yaml"
+  log_success "sealed-mariadb-secret-databases.yaml generado"
+
+  # MariaDB — namespace wordpress (solo user password, WP no necesita root)
+  kubectl create secret generic mariadb-secret \
+    --namespace wordpress \
+    --from-literal=mariadb-user-password='WpUser#2024!' \
+    --dry-run=client -o yaml \
+    | kubeseal --format yaml > sealed-mariadb-secret-wordpress.yaml \
+    || log_error "Error generando sealed-mariadb-secret-wordpress.yaml"
+  log_success "sealed-mariadb-secret-wordpress.yaml generado"
+
+  # Redis — namespace databases
+  kubectl create secret generic redis-secret \
+    --namespace databases \
+    --from-literal=redis-password='Redis#2024!' \
+    --dry-run=client -o yaml \
+    | kubeseal --format yaml > sealed-redis-secret-databases.yaml \
+    || log_error "Error generando sealed-redis-secret-databases.yaml"
+  log_success "sealed-redis-secret-databases.yaml generado"
+
+  # Redis — namespace wordpress
+  kubectl create secret generic redis-secret \
+    --namespace wordpress \
+    --from-literal=redis-password='Redis#2024!' \
+    --dry-run=client -o yaml \
+    | kubeseal --format yaml > sealed-redis-secret-wordpress.yaml \
+    || log_error "Error generando sealed-redis-secret-wordpress.yaml"
+  log_success "sealed-redis-secret-wordpress.yaml generado"
+
+  log_success "Todos los SealedSecrets generados"
+  log_warn "IMPORTANTE: Haz backup de la clave privada del clúster:"
+  log_warn "  kubectl get secret -n kube-system -l sealedsecrets.bitnami.com/sealed-secrets-key -o yaml > sealed-secrets-master-key-backup.yaml"
+  log_warn "  Guarda ese fichero en lugar seguro y NUNCA lo subas al repo."
+}
+
+# ============================================================
 # FUNCIÓN: Esperar a que un Deployment esté Ready
 # ============================================================
 wait_for_deployment() {
@@ -387,56 +509,71 @@ echo ""
 install_metrics_server
 echo ""
 
-# 6. Namespaces
+# 6. Sealed Secrets Controller
+install_sealed_secrets
+echo ""
+
+# 7. kubeseal CLI
+install_kubeseal
+echo ""
+
+# 8. Namespaces
 apply_file "00-namespace.yaml" "Namespaces (security, wordpress, databases, monitoring)"
 sleep 2
 
-# 7. Secrets
-apply_file "01-secrets.yaml" "Secrets de MariaDB y Redis"
+# 9. Generar SealedSecrets (requiere namespaces y controller activos)
+generate_sealed_secrets
+echo ""
 
-# 8. ConfigMaps
+# 10. Aplicar SealedSecrets (el controller los descifra y crea los Secrets reales)
+apply_file "sealed-mariadb-secret-databases.yaml" "SealedSecret MariaDB (databases)"
+apply_file "sealed-mariadb-secret-wordpress.yaml"  "SealedSecret MariaDB (wordpress)"
+apply_file "sealed-redis-secret-databases.yaml"    "SealedSecret Redis (databases)"
+apply_file "sealed-redis-secret-wordpress.yaml"    "SealedSecret Redis (wordpress)"
+
+# 11. ConfigMaps
 apply_file "02-configmap.yaml" "ConfigMaps (mariadb-config + wordpress-config)"
 
-# 9. PVCs
+# 12. PVCs
 apply_file "03-pvc.yaml" "PersistentVolumeClaims (wordpress-pvc)"
 
-# 10. MariaDB
+# 13. MariaDB
 apply_file "04-mariadb.yaml" "StatefulSet + Headless Service de MariaDB"
 wait_for_statefulset "databases" "mariadb" 120
 
-# 11. Redis
+# 14. Redis
 apply_file "05-redis.yaml" "PVC + Deployment + Service de Redis"
 wait_for_deployment "databases" "redis" 60
 
-# 12. WordPress
+# 15. WordPress
 apply_file "06-wordpress.yaml" "Deployment + Service de WordPress"
 wait_for_deployment "wordpress" "wordpress" 120
 
-# 13. NetworkPolicies
+# 16. NetworkPolicies
 apply_file "07-network-policy.yaml" "NetworkPolicies (databases + wordpress + monitoring)"
 
-# 14. Ingress
+# 17. Ingress
 apply_file "08-ingress.yaml" "Ingress (wp-k8s.local + monitoring.local)"
 
-# 15. HPA
+# 18. HPA
 apply_file "09-hpa-wordpress.yaml" "HorizontalPodAutoscaler de WordPress"
 
-# 16. PDB
+# 19. PDB
 apply_file "13-pdb.yaml" "PodDisruptionBudget de WordPress"
 
-# 17. ResourceQuota + LimitRange
+# 20. ResourceQuota + LimitRange
 apply_file "14-resource-quota.yaml" "ResourceQuota y LimitRange"
 
-# 18. Prometheus + Alertmanager
+# 21. Prometheus + Alertmanager
 apply_file "10-prometheus.yaml" "Prometheus + Alertmanager (RBAC + ConfigMap + Deployment + Service)"
 wait_for_deployment "monitoring" "prometheus" 120
 wait_for_deployment "monitoring" "alertmanager" 60
 
-# 19. Loki + Promtail
+# 22. Loki + Promtail
 apply_file "11-loki.yaml" "Loki + Promtail (Deployment + DaemonSet)"
 wait_for_deployment "monitoring" "loki" 120
 
-# 20. Grafana
+# 23. Grafana
 apply_file "12-grafana.yaml" "Grafana (Deployment + Service)"
 wait_for_deployment "monitoring" "grafana" 120
 
