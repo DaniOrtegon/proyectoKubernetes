@@ -233,7 +233,6 @@ generate_sealed_secrets() {
     "sealed-redis-secret-wordpress.yaml"
   )
 
-  # Comprobar si ya existen todos los ficheros sellados
   local all_exist=true
   for f in "${SEALED_FILES[@]}"; do
     [ ! -f "$f" ] && all_exist=false && break
@@ -416,7 +415,17 @@ cleanup() {
   kubectl delete clusterrolebinding kube-state-metrics --ignore-not-found=true 2>/dev/null || true
   log_success "kube-state-metrics eliminado"
 
-  # 6. Eliminar ClusterRoles del proyecto
+  # 6. Eliminar Sealed Secrets Controller
+  # NOTA: Los ficheros sealed-*.yaml NO se borran automáticamente.
+  # Están ligados a la clave del clúster. Si haces 'minikube delete',
+  # bórralos manualmente y regenerarán solos en el siguiente deploy.sh
+  log_info "Eliminando Sealed Secrets Controller..."
+  local SS_VERSION="0.26.3"
+  kubectl delete -f "https://github.com/bitnami-labs/sealed-secrets/releases/download/v${SS_VERSION}/controller.yaml" \
+    --ignore-not-found=true 2>/dev/null || true
+  log_success "Sealed Secrets Controller eliminado"
+
+  # 7. Eliminar ClusterRoles del proyecto
   log_info "Eliminando ClusterRoles y ClusterRoleBindings del proyecto..."
   kubectl delete clusterrole        prometheus --ignore-not-found=true 2>/dev/null || true
   kubectl delete clusterrolebinding prometheus --ignore-not-found=true 2>/dev/null || true
@@ -424,7 +433,7 @@ cleanup() {
   kubectl delete clusterrolebinding promtail   --ignore-not-found=true 2>/dev/null || true
   log_success "ClusterRoles eliminados"
 
-  # 7. Eliminar PersistentVolumes huérfanos
+  # 8. Eliminar PersistentVolumes huérfanos
   log_info "Eliminando PersistentVolumes huérfanos..."
   for pv in $(kubectl get pv -o name 2>/dev/null); do
     kubectl patch $pv -p '{"metadata":{"finalizers":[]}}' --type=merge 2>/dev/null || true
@@ -432,19 +441,19 @@ cleanup() {
   done
   log_success "PersistentVolumes eliminados"
 
-  # 8. Limpiar datos de Prometheus en Minikube (evita lockfile en redespliegue)
+  # 9. Limpiar datos de Prometheus en Minikube (evita lockfile en redespliegue)
   log_info "Limpiando datos de Prometheus en Minikube..."
   minikube ssh "sudo rm -rf /tmp/hostpath-provisioner/monitoring/ 2>/dev/null; echo ok" 2>/dev/null || true
   log_success "Datos de Prometheus limpiados"
 
-  # 9. Limpiar /etc/hosts
+  # 10. Limpiar /etc/hosts
   log_info "Limpiando /etc/hosts..."
   sudo sed -i '/wp-k8s\.local/d' /etc/hosts
   sudo sed -i '/grafana\.monitoring\.local/d' /etc/hosts
   sudo sed -i '/prometheus\.monitoring\.local/d' /etc/hosts
   log_success "/etc/hosts limpiado"
 
-  # 10. Esperar a que los namespaces desaparezcan (máx 30s, luego forzar)
+  # 11. Esperar a que los namespaces desaparezcan (máx 30s, luego forzar)
   log_info "Verificando que los namespaces han desaparecido..."
   local TIMEOUT=30
   local ELAPSED=0
