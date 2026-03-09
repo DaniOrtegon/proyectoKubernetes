@@ -26,9 +26,36 @@ spec:
         app.kubernetes.io/version: "10.6"
         app.kubernetes.io/part-of: wordpress-ha
     spec:
+      # R-SEC-1: initContainer que ajusta permisos del volumen antes de que
+      # MariaDB arranque. Necesario porque el PVC puede crearse con uid 0 (root)
+      # y MariaDB no puede escribir en /var/lib/mysql si no es su propietario.
+      # Solo este init necesita root; el contenedor principal corre como uid 999.
+      initContainers:
+        - name: fix-perms
+          image: mariadb:10.6
+          command: ["chown", "-R", "999:999", "/var/lib/mysql"]
+          securityContext:
+            runAsUser: 0              # root solo para el chown inicial
+            allowPrivilegeEscalation: false
+          volumeMounts:
+            - name: mariadb-storage
+              mountPath: /var/lib/mysql
       containers:
         - name: mariadb
           image: mariadb:10.6
+          # R-SEC-1: SecurityContext a nivel de contenedor.
+          # uid 999 = mysql en la imagen oficial de MariaDB.
+          # allowPrivilegeEscalation: false impide escalar privilegios dentro del proceso.
+          # capabilities drop ALL elimina todos los privilegios de kernel innecesarios.
+          # NOTA: readOnlyRootFilesystem no se aplica aquí porque MariaDB necesita
+          # escribir en /run/mysqld (socket) y /tmp. En producción se puede añadir
+          # montando emptyDir en esas rutas, pero aumenta la complejidad del pod.
+          securityContext:
+            runAsUser: 999
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
           ports:
             - containerPort: 3306
           env:
