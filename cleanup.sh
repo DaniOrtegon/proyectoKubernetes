@@ -44,43 +44,44 @@ done
 log_success "PVCs eliminados"
 
 # ============================================================
-# 3. Eliminar namespaces del proyecto
-# Estrategia: kubectl delete primero. Solo forzar finalizers si se atasca en Terminating.
+# 3. Quitar finalizers y forzar borrado de namespaces del proyecto
 # ============================================================
 log_info "Eliminando namespaces del proyecto..."
 for ns in wordpress databases monitoring security; do
-  kubectl delete namespace $ns --ignore-not-found=true 2>/dev/null || true
+  # Quitar finalizers
+  kubectl get namespace $ns -o json 2>/dev/null \
+    | python3 -c "import sys,json; d=json.load(sys.stdin); d['spec']['finalizers']=[]; print(json.dumps(d))" 2>/dev/null \
+    | kubectl replace --raw "/api/v1/namespaces/$ns/finalize" -f - 2>/dev/null || true
+
+  kubectl delete namespace $ns --grace-period=0 --force 2>/dev/null || true
 done
-FORCE_TIMEOUT=20
-FORCE_ELAPSED=0
-while kubectl get namespaces 2>/dev/null | grep -E "wordpress|databases|monitoring|security" | grep -q "Terminating"; do
-  if [ $FORCE_ELAPSED -ge $FORCE_TIMEOUT ]; then
-    log_warn "Namespaces atascados en Terminating — forzando finalizers..."
-    for ns in wordpress databases monitoring security; do
-      PHASE=$(kubectl get namespace $ns -o jsonpath='{.status.phase}' 2>/dev/null || echo "")
-      if [ "$PHASE" = "Terminating" ]; then
-        kubectl get namespace $ns -o json 2>/dev/null \
-          | python3 -c "import sys,json; d=json.load(sys.stdin); d['spec']['finalizers']=[]; print(json.dumps(d))" 2>/dev/null \
-          | kubectl replace --raw "/api/v1/namespaces/$ns/finalize" -f - 2>/dev/null || true
-      fi
-    done
-    break
-  fi
-  echo -n "."
-  sleep 2
-  FORCE_ELAPSED=$((FORCE_ELAPSED + 2))
-done
-echo ""
 log_success "Namespaces eliminados"
 
 # ============================================================
 # 4. Eliminar Ingress Controller
+# Estrategia: kubectl delete primero. Solo forzar finalizers si
+# se queda atascado en Terminating (nunca sobre namespace Active).
 # ============================================================
 log_info "Eliminando Ingress Controller..."
-kubectl get namespace ingress-nginx -o json 2>/dev/null \
-  | python3 -c "import sys,json; d=json.load(sys.stdin); d['spec']['finalizers']=[]; print(json.dumps(d))" 2>/dev/null \
-  | kubectl replace --raw "/api/v1/namespaces/ingress-nginx/finalize" -f - 2>/dev/null || true
-kubectl delete namespace ingress-nginx --grace-period=0 --force 2>/dev/null || true
+kubectl delete namespace ingress-nginx --ignore-not-found=true 2>/dev/null || true
+
+INGRESS_TIMEOUT=20
+INGRESS_ELAPSED=0
+while true; do
+  PHASE=$(kubectl get namespace ingress-nginx -o jsonpath='{.status.phase}' 2>/dev/null || echo "")
+  [ -z "$PHASE" ] && break
+  if [ "$PHASE" = "Terminating" ] && [ $INGRESS_ELAPSED -ge $INGRESS_TIMEOUT ]; then
+    log_warn "ingress-nginx atascado en Terminating — forzando finalizers..."
+    kubectl get namespace ingress-nginx -o json 2>/dev/null \
+      | python3 -c "import sys,json; d=json.load(sys.stdin); d['spec']['finalizers']=[]; print(json.dumps(d))" 2>/dev/null \
+      | kubectl replace --raw "/api/v1/namespaces/ingress-nginx/finalize" -f - 2>/dev/null || true
+    break
+  fi
+  echo -n "."
+  sleep 2
+  INGRESS_ELAPSED=$((INGRESS_ELAPSED + 2))
+done
+echo ""
 log_success "Ingress Controller eliminado"
 
 # ============================================================
@@ -102,8 +103,8 @@ log_success "kube-state-metrics eliminado"
 # manualmente y regenerarlos con: ./deploy.sh
 # ============================================================
 log_info "Eliminando Sealed Secrets Controller..."
-SS_VERSION="0.26.3"
-kubectl delete -f "https://github.com/bitnami-labs/sealed-secrets/releases/download/v${SS_VERSION}/controller.yaml" \
+local VERSION="0.26.3"
+kubectl delete -f "https://github.com/bitnami-labs/sealed-secrets/releases/download/v${VERSION}/controller.yaml" \
   --ignore-not-found=true 2>/dev/null || true
 log_success "Sealed Secrets Controller eliminado"
 
@@ -144,21 +145,18 @@ sudo sed -i '/prometheus\.monitoring\.local/d' /etc/hosts
 log_success "/etc/hosts limpiado"
 
 # ============================================================
-# 11. Verificación final de namespaces
+# 11. Esperar a que los namespaces desaparezcan (máx 30s)
 # ============================================================
 log_info "Verificando que los namespaces han desaparecido..."
 TIMEOUT=30
 ELAPSED=0
-while kubectl get namespaces 2>/dev/null | grep -qE "^(wordpress|databases|monitoring|security) "; do
+while kubectl get namespaces 2>/dev/null | grep -qE "wordpress|databases|monitoring|security"; do
   if [ $ELAPSED -ge $TIMEOUT ]; then
-    log_warn "Forzando finalizers en namespaces restantes..."
+    log_warn "Algunos namespaces siguen en Terminating — forzando finalizers..."
     for ns in wordpress databases monitoring security; do
-      PHASE=$(kubectl get namespace $ns -o jsonpath='{.status.phase}' 2>/dev/null || echo "")
-      if [ "$PHASE" = "Terminating" ]; then
-        kubectl get namespace $ns -o json 2>/dev/null \
-          | python3 -c "import sys,json; d=json.load(sys.stdin); d['spec']['finalizers']=[]; print(json.dumps(d))" 2>/dev/null \
-          | kubectl replace --raw "/api/v1/namespaces/$ns/finalize" -f - 2>/dev/null || true
-      fi
+      kubectl get namespace $ns -o json 2>/dev/null \
+        | python3 -c "import sys,json; d=json.load(sys.stdin); d['spec']['finalizers']=[]; print(json.dumps(d))" 2>/dev/null \
+        | kubectl replace --raw "/api/v1/namespaces/$ns/finalize" -f - 2>/dev/null || true
     done
     break
   fi
