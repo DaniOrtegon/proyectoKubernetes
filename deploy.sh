@@ -4,8 +4,6 @@
 # Entorno: Minikube + Kubernetes v1.35 + StorageClass: standard
 # ============================================================
 
-set -e
-
 # --- Colores ---
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -23,10 +21,12 @@ log_error()   { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
 # ============================================================
 check_requirements() {
   log_info "Verificando requisitos previos..."
-  command -v kubectl &>/dev/null || log_error "kubectl no encontrado."
+  command -v kubectl &>/dev/null  || log_error "kubectl no encontrado."
   log_success "kubectl encontrado"
-  command -v docker &>/dev/null || log_error "docker no encontrado en el host."
+  command -v docker &>/dev/null   || log_error "docker no encontrado en el host."
   log_success "docker encontrado"
+  command -v python3 &>/dev/null  || log_error "python3 no encontrado (necesario para cleanup)."
+  log_success "python3 encontrado"
   minikube status | grep -q "Running" || log_error "Minikube no está corriendo. Ejecuta: minikube start"
   log_success "Minikube está activo"
   kubectl get storageclass standard &>/dev/null || log_error "StorageClass 'standard' no encontrada."
@@ -120,7 +120,6 @@ install_ingress_controller() {
 
 # ============================================================
 # FUNCIÓN: Instalar kube-state-metrics
-# Necesario para métricas kube_pod_*, kube_node_*, etc.
 # ============================================================
 install_kube_state_metrics() {
   if kubectl get deployment kube-state-metrics -n kube-system &>/dev/null; then
@@ -129,22 +128,20 @@ install_kube_state_metrics() {
   fi
 
   log_info "Instalando kube-state-metrics..."
-
   local BASE_URL="https://raw.githubusercontent.com/kubernetes/kube-state-metrics/v2.10.0/examples/standard"
 
-  curl -sL "$BASE_URL/cluster-role.yaml"         | kubectl apply -f - || log_error "Error aplicando ClusterRole de kube-state-metrics"
-  curl -sL "$BASE_URL/cluster-role-binding.yaml" | kubectl apply -f - || log_error "Error aplicando ClusterRoleBinding de kube-state-metrics"
-  curl -sL "$BASE_URL/service-account.yaml"      | kubectl apply -f - || log_error "Error aplicando ServiceAccount de kube-state-metrics"
-  curl -sL "$BASE_URL/service.yaml"              | kubectl apply -f - || log_error "Error aplicando Service de kube-state-metrics"
+  curl -sL "$BASE_URL/cluster-role.yaml"         | kubectl apply -f - || log_error "Error ClusterRole kube-state-metrics"
+  curl -sL "$BASE_URL/cluster-role-binding.yaml" | kubectl apply -f - || log_error "Error ClusterRoleBinding kube-state-metrics"
+  curl -sL "$BASE_URL/service-account.yaml"      | kubectl apply -f - || log_error "Error ServiceAccount kube-state-metrics"
+  curl -sL "$BASE_URL/service.yaml"              | kubectl apply -f - || log_error "Error Service kube-state-metrics"
   curl -sL "$BASE_URL/deployment.yaml" \
     | sed 's/@sha256:[a-f0-9]*//g' \
-    | kubectl apply -f - || log_error "Error aplicando Deployment de kube-state-metrics"
+    | kubectl apply -f - || log_error "Error Deployment kube-state-metrics"
 
-  # Fuerza imagePullPolicy: Never para usar imagen local
   sleep 5
   kubectl patch deployment kube-state-metrics -n kube-system --type=json \
     -p='[{"op":"replace","path":"/spec/template/spec/containers/0/imagePullPolicy","value":"Never"}]' \
-    2>/dev/null && log_success "kube-state-metrics parcheado para usar imagen local"
+    2>/dev/null && log_success "kube-state-metrics parcheado para imagen local"
 
   log_info "Esperando a que kube-state-metrics esté listo..."
   local retries=0
@@ -186,8 +183,7 @@ wait_for_deployment() {
 }
 
 # ============================================================
-# R-9: FUNCIÓN separada para StatefulSets (MariaDB es StatefulSet, no Deployment)
-# kubectl rollout status deployment/mariadb fallaba silenciosamente.
+# FUNCIÓN: Esperar a que un StatefulSet esté Ready
 # ============================================================
 wait_for_statefulset() {
   local namespace=$1
@@ -235,36 +231,125 @@ update_hosts() {
   sudo sed -i '/grafana\.monitoring\.local/d' /etc/hosts
   sudo sed -i '/prometheus\.monitoring\.local/d' /etc/hosts
 
-  echo "$EXTERNAL_IP wp-k8s.local" | sudo tee -a /etc/hosts > /dev/null
-  echo "$EXTERNAL_IP grafana.monitoring.local" | sudo tee -a /etc/hosts > /dev/null
+  echo "$EXTERNAL_IP wp-k8s.local"               | sudo tee -a /etc/hosts > /dev/null
+  echo "$EXTERNAL_IP grafana.monitoring.local"    | sudo tee -a /etc/hosts > /dev/null
   echo "$EXTERNAL_IP prometheus.monitoring.local" | sudo tee -a /etc/hosts > /dev/null
 
   log_success "/etc/hosts actualizado correctamente"
 }
 
 # ============================================================
-# FUNCIÓN: Deshacer todo (cleanup)
+# FUNCIÓN: CLEANUP robusto (no se queda colgado en Terminating)
 # ============================================================
 cleanup() {
   echo ""
-  log_warn "Deshaciendo todo el despliegue..."
-  for file in 14-resource-quota.yaml 13-pdb.yaml \
-              12-grafana.yaml 11-loki.yaml 10-prometheus.yaml \
-              09-hpa-wordpress.yaml 08-ingress.yaml 07-network-policy.yaml \
-              06-wordpress.yaml 05-redis.yaml 04-mariadb.yaml \
-              03-pvc.yaml 02-configmap.yaml 01-secrets.yaml 00-namespace.yaml; do
-    [ -f "$file" ] && kubectl delete -f $file --ignore-not-found=true && log_success "$file eliminado"
+  echo -e "${RED}============================================================${NC}"
+  echo -e "${RED}   CLEANUP - Eliminando todo el despliegue${NC}"
+  echo -e "${RED}============================================================${NC}"
+  echo ""
+
+  # 1. Bajar replicas a 0 para liberar PVCs antes de borrarlos
+  log_info "Bajando replicas a 0 en todos los namespaces..."
+  for ns in wordpress databases monitoring; do
+    kubectl scale deployment  --all -n $ns --replicas=0 2>/dev/null || true
+    kubectl scale statefulset --all -n $ns --replicas=0 2>/dev/null || true
   done
-  log_warn "Eliminando Ingress Controller..."
-  kubectl delete namespace ingress-nginx --ignore-not-found=true 2>/dev/null
-  log_warn "Eliminando kube-state-metrics..."
-  kubectl delete deployment kube-state-metrics -n kube-system --ignore-not-found=true 2>/dev/null
-  kubectl delete service kube-state-metrics -n kube-system --ignore-not-found=true 2>/dev/null
-  log_warn "Limpiando /etc/hosts..."
+  sleep 5
+  log_success "Replicas a 0"
+
+  # 2. Eliminar PVCs (quitar finalizers primero)
+  log_info "Eliminando PVCs..."
+  for ns in wordpress databases monitoring; do
+    for pvc in $(kubectl get pvc -n $ns -o name 2>/dev/null); do
+      kubectl patch $pvc -n $ns -p '{"metadata":{"finalizers":[]}}' --type=merge 2>/dev/null || true
+      kubectl delete $pvc -n $ns --grace-period=0 --force 2>/dev/null || true
+    done
+  done
+  log_success "PVCs eliminados"
+
+  # 3. Quitar finalizers y forzar borrado de namespaces del proyecto
+  log_info "Eliminando namespaces del proyecto..."
+  for ns in wordpress databases monitoring security; do
+    kubectl get namespace $ns -o json 2>/dev/null \
+      | python3 -c "import sys,json; d=json.load(sys.stdin); d['spec']['finalizers']=[]; print(json.dumps(d))" 2>/dev/null \
+      | kubectl replace --raw "/api/v1/namespaces/$ns/finalize" -f - 2>/dev/null || true
+    kubectl delete namespace $ns --grace-period=0 --force 2>/dev/null || true
+  done
+  log_success "Namespaces eliminados"
+
+  # 4. Eliminar Ingress Controller
+  log_info "Eliminando Ingress Controller..."
+  kubectl get namespace ingress-nginx -o json 2>/dev/null \
+    | python3 -c "import sys,json; d=json.load(sys.stdin); d['spec']['finalizers']=[]; print(json.dumps(d))" 2>/dev/null \
+    | kubectl replace --raw "/api/v1/namespaces/ingress-nginx/finalize" -f - 2>/dev/null || true
+  kubectl delete namespace ingress-nginx --grace-period=0 --force 2>/dev/null || true
+  log_success "Ingress Controller eliminado"
+
+  # 5. Eliminar kube-state-metrics
+  log_info "Eliminando kube-state-metrics..."
+  kubectl delete deployment    kube-state-metrics -n kube-system --ignore-not-found=true 2>/dev/null || true
+  kubectl delete service       kube-state-metrics -n kube-system --ignore-not-found=true 2>/dev/null || true
+  kubectl delete serviceaccount kube-state-metrics -n kube-system --ignore-not-found=true 2>/dev/null || true
+  kubectl delete clusterrole        kube-state-metrics --ignore-not-found=true 2>/dev/null || true
+  kubectl delete clusterrolebinding kube-state-metrics --ignore-not-found=true 2>/dev/null || true
+  log_success "kube-state-metrics eliminado"
+
+  # 6. Eliminar ClusterRoles del proyecto
+  log_info "Eliminando ClusterRoles y ClusterRoleBindings del proyecto..."
+  kubectl delete clusterrole        prometheus --ignore-not-found=true 2>/dev/null || true
+  kubectl delete clusterrolebinding prometheus --ignore-not-found=true 2>/dev/null || true
+  kubectl delete clusterrole        promtail   --ignore-not-found=true 2>/dev/null || true
+  kubectl delete clusterrolebinding promtail   --ignore-not-found=true 2>/dev/null || true
+  log_success "ClusterRoles eliminados"
+
+  # 7. Eliminar PersistentVolumes huérfanos
+  log_info "Eliminando PersistentVolumes huérfanos..."
+  for pv in $(kubectl get pv -o name 2>/dev/null); do
+    kubectl patch $pv -p '{"metadata":{"finalizers":[]}}' --type=merge 2>/dev/null || true
+    kubectl delete $pv --grace-period=0 --force 2>/dev/null || true
+  done
+  log_success "PersistentVolumes eliminados"
+
+  # 8. Limpiar datos de Prometheus en Minikube (evita lockfile en redespliegue)
+  log_info "Limpiando datos de Prometheus en Minikube..."
+  minikube ssh "sudo rm -rf /tmp/hostpath-provisioner/monitoring/ 2>/dev/null; echo ok" 2>/dev/null || true
+  log_success "Datos de Prometheus limpiados"
+
+  # 9. Limpiar /etc/hosts
+  log_info "Limpiando /etc/hosts..."
   sudo sed -i '/wp-k8s\.local/d' /etc/hosts
   sudo sed -i '/grafana\.monitoring\.local/d' /etc/hosts
   sudo sed -i '/prometheus\.monitoring\.local/d' /etc/hosts
-  log_success "Cleanup completado."
+  log_success "/etc/hosts limpiado"
+
+  # 10. Esperar a que los namespaces desaparezcan (máx 30s, luego forzar)
+  log_info "Verificando que los namespaces han desaparecido..."
+  local TIMEOUT=30
+  local ELAPSED=0
+  while kubectl get namespaces 2>/dev/null | grep -qE "wordpress|databases|monitoring|security"; do
+    if [ $ELAPSED -ge $TIMEOUT ]; then
+      log_warn "Forzando finalizers en namespaces restantes..."
+      for ns in wordpress databases monitoring security; do
+        kubectl get namespace $ns -o json 2>/dev/null \
+          | python3 -c "import sys,json; d=json.load(sys.stdin); d['spec']['finalizers']=[]; print(json.dumps(d))" 2>/dev/null \
+          | kubectl replace --raw "/api/v1/namespaces/$ns/finalize" -f - 2>/dev/null || true
+      done
+      break
+    fi
+    echo -n "."
+    sleep 2
+    ELAPSED=$((ELAPSED + 2))
+  done
+  echo ""
+
+  echo ""
+  echo -e "${GREEN}============================================================${NC}"
+  echo -e "${GREEN}   ✅ Cleanup completado${NC}"
+  echo -e "${GREEN}============================================================${NC}"
+  echo ""
+  echo -e "${BLUE}Para volver a desplegar:${NC}  ./deploy.sh"
+  echo -e "${BLUE}Para reset completo:${NC}      minikube stop && minikube delete && minikube start"
+  echo ""
   exit 0
 }
 
@@ -279,11 +364,14 @@ echo ""
 
 [ "$1" == "--cleanup" ] && cleanup
 
+# set -e solo en el deploy (no en cleanup, donde los errores son esperados)
+set -e
+
 # 1. Verificaciones previas
 check_requirements
 echo ""
 
-# 2. Cargar imágenes en Minikube (incluye kube-state-metrics)
+# 2. Cargar imágenes en Minikube
 load_images
 echo ""
 
@@ -304,20 +392,20 @@ apply_file "00-namespace.yaml" "Namespaces (security, wordpress, databases, moni
 sleep 2
 
 # 7. Secrets
-apply_file "01-secrets.yaml" "Secrets de MariaDB (databases + wordpress)"
+apply_file "01-secrets.yaml" "Secrets de MariaDB y Redis"
 
 # 8. ConfigMaps
 apply_file "02-configmap.yaml" "ConfigMaps (mariadb-config + wordpress-config)"
 
 # 9. PVCs
-apply_file "03-pvc.yaml" "PersistentVolumeClaims (mariadb-pvc + wordpress-pvc)"
+apply_file "03-pvc.yaml" "PersistentVolumeClaims (wordpress-pvc)"
 
 # 10. MariaDB
 apply_file "04-mariadb.yaml" "StatefulSet + Headless Service de MariaDB"
 wait_for_statefulset "databases" "mariadb" 120
 
 # 11. Redis
-apply_file "05-redis.yaml" "Deployment + Service de Redis"
+apply_file "05-redis.yaml" "PVC + Deployment + Service de Redis"
 wait_for_deployment "databases" "redis" 60
 
 # 12. WordPress
@@ -325,7 +413,7 @@ apply_file "06-wordpress.yaml" "Deployment + Service de WordPress"
 wait_for_deployment "wordpress" "wordpress" 120
 
 # 13. NetworkPolicies
-apply_file "07-network-policy.yaml" "NetworkPolicies (databases + wordpress)"
+apply_file "07-network-policy.yaml" "NetworkPolicies (databases + wordpress + monitoring)"
 
 # 14. Ingress
 apply_file "08-ingress.yaml" "Ingress (wp-k8s.local + monitoring.local)"
@@ -333,22 +421,22 @@ apply_file "08-ingress.yaml" "Ingress (wp-k8s.local + monitoring.local)"
 # 15. HPA
 apply_file "09-hpa-wordpress.yaml" "HorizontalPodAutoscaler de WordPress"
 
-# 15b. PDB
+# 16. PDB
 apply_file "13-pdb.yaml" "PodDisruptionBudget de WordPress"
 
-# 15c. ResourceQuota
+# 17. ResourceQuota + LimitRange
 apply_file "14-resource-quota.yaml" "ResourceQuota y LimitRange"
 
-# 16. Prometheus
+# 18. Prometheus + Alertmanager
 apply_file "10-prometheus.yaml" "Prometheus + Alertmanager (RBAC + ConfigMap + Deployment + Service)"
 wait_for_deployment "monitoring" "prometheus" 120
 wait_for_deployment "monitoring" "alertmanager" 60
 
-# 17. Loki + Promtail
+# 19. Loki + Promtail
 apply_file "11-loki.yaml" "Loki + Promtail (Deployment + DaemonSet)"
 wait_for_deployment "monitoring" "loki" 120
 
-# 18. Grafana
+# 20. Grafana
 apply_file "12-grafana.yaml" "Grafana (Deployment + Service)"
 wait_for_deployment "monitoring" "grafana" 120
 
@@ -356,9 +444,9 @@ wait_for_deployment "monitoring" "grafana" 120
 # TUNNEL Y /etc/hosts
 # ============================================================
 echo ""
-log_warn "PASO FINAL: Abre una terminal nueva y ejecuta:"
+log_warn "PASO FINAL: Si no tienes minikube tunnel activo, ábrelo en otra terminal:"
 echo ""
-echo -e "   ${GREEN}minikube tunnel${NC}"
+echo -e "   ${GREEN}sudo minikube tunnel${NC}"
 echo ""
 log_info "Esperando a que el tunnel asigne IP y actualizando /etc/hosts..."
 echo ""
@@ -373,7 +461,7 @@ echo -e "${GREEN}============================================================${N
 echo -e "${GREEN}   ✅ Despliegue completado con éxito${NC}"
 echo -e "${GREEN}============================================================${NC}"
 echo ""
-echo -e "${BLUE}📌 URLs de acceso (mantén 'minikube tunnel' activo):${NC}"
+echo -e "${BLUE}📌 URLs de acceso (mantén 'sudo minikube tunnel' activo):${NC}"
 echo -e "   WordPress:  http://wp-k8s.local"
 echo -e "   Grafana:    http://grafana.monitoring.local  (admin / admin123)"
 echo -e "   Prometheus: http://prometheus.monitoring.local"
@@ -383,5 +471,6 @@ echo -e "   Ver todos los pods:     kubectl get pods -A"
 echo -e "   Ver estado del HPA:     kubectl get hpa -n wordpress"
 echo -e "   Ver logs de WordPress:  kubectl logs -n wordpress -l app=wordpress -f"
 echo -e "   Ver logs de MariaDB:    kubectl logs -n databases -l app=mariadb -f"
+echo -e "   Prometheus lockfile:    kubectl scale deploy prometheus -n monitoring --replicas=0 && minikube ssh 'sudo rm -f /tmp/hostpath-provisioner/monitoring/prometheus-pvc/lock' && kubectl scale deploy prometheus -n monitoring --replicas=1"
 echo -e "   Deshacer todo:          ./deploy.sh --cleanup"
 echo ""
