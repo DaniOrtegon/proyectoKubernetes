@@ -52,6 +52,7 @@ load_images() {
     "registry.k8s.io/ingress-nginx/controller:v1.14.1"
     "registry.k8s.io/ingress-nginx/kube-webhook-certgen:v1.6.5"
     "registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.10.0"
+    "docker.io/bitnami/sealed-secrets-controller:v0.26.3"
   )
 
   for IMAGE in "${IMAGES[@]}"; do
@@ -170,8 +171,6 @@ install_metrics_server() {
 
 # ============================================================
 # FUNCIÓN: Instalar Sealed Secrets Controller
-# Gestiona los SealedSecrets cifrando/descifrando con clave
-# privada almacenada en kube-system (nunca sale del clúster).
 # ============================================================
 install_sealed_secrets() {
   if kubectl get deployment sealed-secrets-controller -n kube-system &>/dev/null; then
@@ -183,6 +182,12 @@ install_sealed_secrets() {
   log_info "Instalando Sealed Secrets Controller v${VERSION}..."
   kubectl apply -f "https://github.com/bitnami-labs/sealed-secrets/releases/download/v${VERSION}/controller.yaml" \
     || log_error "No se pudo instalar Sealed Secrets Controller."
+
+  log_info "Parcheando imagePullPolicy a Never..."
+  sleep 3
+  kubectl patch deployment sealed-secrets-controller -n kube-system --type=json \
+    -p='[{"op":"replace","path":"/spec/template/spec/containers/0/imagePullPolicy","value":"Never"}]' \
+    2>/dev/null && log_success "sealed-secrets-controller parcheado para imagen local"
 
   log_info "Esperando a que Sealed Secrets Controller esté listo..."
   local retries=0
@@ -198,32 +203,27 @@ install_sealed_secrets() {
 
 # ============================================================
 # FUNCIÓN: Instalar kubeseal CLI
-# Herramienta de línea de comandos para cifrar Secrets con la
-# clave pública del clúster → genera SealedSecrets commiteables.
 # ============================================================
 install_kubeseal() {
   if command -v kubeseal &>/dev/null; then
-    log_success "kubeseal ya está instalado: $(kubeseal --version 2>&1)"
+    log_success "kubeseal ya está instalado: \$(kubeseal --version 2>&1)"
     return
   fi
 
   local VERSION="0.26.3"
   local ARCH="amd64"
-  log_info "Instalando kubeseal CLI v${VERSION}..."
-  curl -sL "https://github.com/bitnami-labs/sealed-secrets/releases/download/v${VERSION}/kubeseal-${VERSION}-linux-${ARCH}.tar.gz" \
+  log_info "Instalando kubeseal CLI v\${VERSION}..."
+  curl -sL "https://github.com/bitnami-labs/sealed-secrets/releases/download/v\${VERSION}/kubeseal-\${VERSION}-linux-\${ARCH}.tar.gz" \
     | tar xz kubeseal \
     && sudo mv kubeseal /usr/local/bin/kubeseal \
     && sudo chmod +x /usr/local/bin/kubeseal \
     || log_error "No se pudo instalar kubeseal."
 
-  log_success "kubeseal instalado: $(kubeseal --version 2>&1)"
+  log_success "kubeseal instalado: \$(kubeseal --version 2>&1)"
 }
 
 # ============================================================
 # FUNCIÓN: Generar SealedSecrets si no existen ya
-# Se llama tras instalar el controller (necesita su clave pública).
-# Los ficheros generados son seguros para commitear al repo.
-# Si el clúster se recrea (minikube delete), hay que regenerarlos.
 # ============================================================
 generate_sealed_secrets() {
   local SEALED_FILES=(
@@ -234,11 +234,11 @@ generate_sealed_secrets() {
   )
 
   local all_exist=true
-  for f in "${SEALED_FILES[@]}"; do
-    [ ! -f "$f" ] && all_exist=false && break
+  for f in "\${SEALED_FILES[@]}"; do
+    [ ! -f "\$f" ] && all_exist=false && break
   done
 
-  if $all_exist; then
+  if \$all_exist; then
     log_success "SealedSecrets ya existen — usando los ficheros actuales"
     log_warn "Si recreaste el clúster (minikube delete), borra los sealed-*.yaml y vuelve a ejecutar deploy.sh"
     return
@@ -246,7 +246,6 @@ generate_sealed_secrets() {
 
   log_info "Generando SealedSecrets con kubeseal..."
 
-  # MariaDB — namespace databases (root + user password)
   kubectl create secret generic mariadb-secret \
     --namespace databases \
     --from-literal=mariadb-root-password='RootDB#2024!' \
@@ -256,7 +255,6 @@ generate_sealed_secrets() {
     || log_error "Error generando sealed-mariadb-secret-databases.yaml"
   log_success "sealed-mariadb-secret-databases.yaml generado"
 
-  # MariaDB — namespace wordpress (solo user password, WP no necesita root)
   kubectl create secret generic mariadb-secret \
     --namespace wordpress \
     --from-literal=mariadb-user-password='WpUser#2024!' \
@@ -265,7 +263,6 @@ generate_sealed_secrets() {
     || log_error "Error generando sealed-mariadb-secret-wordpress.yaml"
   log_success "sealed-mariadb-secret-wordpress.yaml generado"
 
-  # Redis — namespace databases
   kubectl create secret generic redis-secret \
     --namespace databases \
     --from-literal=redis-password='Redis#2024!' \
@@ -274,7 +271,6 @@ generate_sealed_secrets() {
     || log_error "Error generando sealed-redis-secret-databases.yaml"
   log_success "sealed-redis-secret-databases.yaml generado"
 
-  # Redis — namespace wordpress
   kubectl create secret generic redis-secret \
     --namespace wordpress \
     --from-literal=redis-password='Redis#2024!' \
@@ -388,14 +384,32 @@ cleanup() {
   done
   log_success "PVCs eliminados"
 
-  # 3. Quitar finalizers y forzar borrado de namespaces del proyecto
+  # 3. Eliminar namespaces del proyecto
+  # Estrategia: kubectl delete primero. Solo forzar finalizers si se atasca en Terminating.
   log_info "Eliminando namespaces del proyecto..."
   for ns in wordpress databases monitoring security; do
-    kubectl get namespace $ns -o json 2>/dev/null \
-      | python3 -c "import sys,json; d=json.load(sys.stdin); d['spec']['finalizers']=[]; print(json.dumps(d))" 2>/dev/null \
-      | kubectl replace --raw "/api/v1/namespaces/$ns/finalize" -f - 2>/dev/null || true
-    kubectl delete namespace $ns --grace-period=0 --force 2>/dev/null || true
+    kubectl delete namespace $ns --ignore-not-found=true 2>/dev/null || true
   done
+  FORCE_TIMEOUT=20
+  FORCE_ELAPSED=0
+  while kubectl get namespaces 2>/dev/null | grep -E "wordpress|databases|monitoring|security" | grep -q "Terminating"; do
+    if [ $FORCE_ELAPSED -ge $FORCE_TIMEOUT ]; then
+      log_warn "Namespaces atascados en Terminating — forzando finalizers..."
+      for ns in wordpress databases monitoring security; do
+        PHASE=$(kubectl get namespace $ns -o jsonpath='{.status.phase}' 2>/dev/null || echo "")
+        if [ "$PHASE" = "Terminating" ]; then
+          kubectl get namespace $ns -o json 2>/dev/null \
+            | python3 -c "import sys,json; d=json.load(sys.stdin); d['spec']['finalizers']=[]; print(json.dumps(d))" 2>/dev/null \
+            | kubectl replace --raw "/api/v1/namespaces/$ns/finalize" -f - 2>/dev/null || true
+        fi
+      done
+      break
+    fi
+    echo -n "."
+    sleep 2
+    FORCE_ELAPSED=$((FORCE_ELAPSED + 2))
+  done
+  echo ""
   log_success "Namespaces eliminados"
 
   # 4. Eliminar Ingress Controller
@@ -417,10 +431,9 @@ cleanup() {
 
   # 6. Eliminar Sealed Secrets Controller
   # NOTA: Los ficheros sealed-*.yaml NO se borran automáticamente.
-  # Están ligados a la clave del clúster. Si haces 'minikube delete',
-  # bórralos manualmente y regenerarán solos en el siguiente deploy.sh
+  # Si haces 'minikube delete', bórralos manualmente antes del siguiente deploy.sh
   log_info "Eliminando Sealed Secrets Controller..."
-  local SS_VERSION="0.26.3"
+  SS_VERSION="0.26.3"
   kubectl delete -f "https://github.com/bitnami-labs/sealed-secrets/releases/download/v${SS_VERSION}/controller.yaml" \
     --ignore-not-found=true 2>/dev/null || true
   log_success "Sealed Secrets Controller eliminado"
@@ -585,6 +598,7 @@ wait_for_deployment "monitoring" "loki" 120
 # 23. Grafana
 apply_file "12-grafana.yaml" "Grafana (Deployment + Service)"
 wait_for_deployment "monitoring" "grafana" 120
+
 
 # ============================================================
 # TUNNEL Y /etc/hosts
