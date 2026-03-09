@@ -44,11 +44,30 @@ spec:
                       values:
                         - wordpress
                 topologyKey: kubernetes.io/hostname
+      # R-SEC-1: SecurityContext a nivel de Pod.
+      # runAsUser 33 = www-data en Debian (usuario del servidor web).
+      # fsGroup 33 garantiza que el volumen montado sea legible por www-data.
+      # seccompProfile RuntimeDefault filtra syscalls peligrosas sin coste operacional.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 33
+        fsGroup: 33
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: wordpress
           image: wordpress:6.4  # Versión estable actual, evitamos 5.7 (desactualizada) y latest
           ports:
             - containerPort: 80
+          # R-SEC-1: SecurityContext a nivel de contenedor.
+          # readOnlyRootFilesystem impide que un atacante escriba en el FS del contenedor.
+          # allowPrivilegeEscalation: false bloquea sudo/setuid dentro del proceso.
+          # capabilities drop ALL elimina todos los privilegios de kernel innecesarios.
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
           env:
             - name: WORDPRESS_DB_HOST
               valueFrom:
@@ -101,15 +120,57 @@ spec:
             limits:
               cpu: 500m
               memory: 512Mi
+          # R-SEC-2: Probes necesarias para que el Service no envíe tráfico
+          # a pods que aún están arrancando o que han quedado en estado zombie.
+          # startupProbe da hasta 5 minutos al primer arranque de PHP-FPM+WP
+          # antes de que readiness/liveness empiecen a evaluarse.
+          startupProbe:
+            httpGet:
+              path: /wp-login.php
+              port: 80
+              httpHeaders:
+                - name: Host
+                  value: wp-k8s.local
+            failureThreshold: 30
+            periodSeconds: 10          # hasta 5 minutos para el primer startup
+          readinessProbe:
+            httpGet:
+              path: /wp-login.php
+              port: 80
+              httpHeaders:
+                - name: Host
+                  value: wp-k8s.local
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
+            successThreshold: 1
+          livenessProbe:
+            httpGet:
+              path: /wp-login.php
+              port: 80
+              httpHeaders:
+                - name: Host
+                  value: wp-k8s.local
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            failureThreshold: 5        # tolerante a picos de carga
           volumeMounts:
             # R-1: wordpress-uploads-pvc no existía → se usa un único PVC 'wordpress-pvc'
             # montado en /var/www/html que cubre tanto el core de WP como wp-content/uploads.
             - name: wordpress-storage
               mountPath: /var/www/html
+            # R-SEC-1: Con readOnlyRootFilesystem: true, PHP necesita /tmp escribible
+            # para ficheros temporales, sesiones y compilación de plantillas.
+            - name: tmp-dir
+              mountPath: /tmp
       volumes:
         - name: wordpress-storage
           persistentVolumeClaim:
             claimName: wordpress-pvc
+        # R-SEC-1: emptyDir proporciona /tmp efímero y escribible por www-data (uid 33).
+        # Se vacía automáticamente al terminar el pod, sin coste de almacenamiento persistente.
+        - name: tmp-dir
+          emptyDir: {}
 
 ---
 # ============================================================
