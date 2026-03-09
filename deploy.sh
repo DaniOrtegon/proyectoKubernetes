@@ -52,7 +52,7 @@ load_images() {
     "registry.k8s.io/ingress-nginx/controller:v1.14.1"
     "registry.k8s.io/ingress-nginx/kube-webhook-certgen:v1.6.5"
     "registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.10.0"
-    "docker.io/bitnami/sealed-secrets-controller:v0.26.3"
+    "ghcr.io/bitnami-labs/sealed-secrets-controller:0.26.3"
   )
 
   for IMAGE in "${IMAGES[@]}"; do
