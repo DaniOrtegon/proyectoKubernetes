@@ -181,14 +181,30 @@ install_sealed_secrets() {
   local VERSION="0.26.3"
   log_info "Instalando Sealed Secrets Controller v${VERSION}..."
 
-  # Descargar el manifest, forzar imagePullPolicy: Never ANTES de aplicar
-  # y eliminar los digest @sha256 para que use el tag local exacto
-  curl -sL "https://github.com/bitnami-labs/sealed-secrets/releases/download/v${VERSION}/controller.yaml" \
-    | sed 's/@sha256:[a-f0-9]*//g' \
-    | sed 's/imagePullPolicy: Always/imagePullPolicy: Never/g' \
-    | sed 's/imagePullPolicy: IfNotPresent/imagePullPolicy: Never/g' \
-    | kubectl apply -f - \
+  # Borrar Services huérfanos de instalaciones anteriores para evitar conflictos
+  kubectl delete service sealed-secrets-controller sealed-secrets-controller-metrics \
+    -n kube-system --ignore-not-found=true 2>/dev/null || true
+
+  kubectl apply -f "https://github.com/bitnami-labs/sealed-secrets/releases/download/v${VERSION}/controller.yaml" \
     || log_error "No se pudo instalar Sealed Secrets Controller."
+
+  # CRÍTICO: parchear imagePullPolicy=Never INMEDIATAMENTE tras el apply,
+  # antes de que el pod intente hacer pull y entre en ImagePullBackOff.
+  # Reintentar hasta 10 veces (el deployment puede tardar unos segundos en crearse).
+  log_info "Parcheando imagePullPolicy a Never (antes de que el pod arranque)..."
+  local patch_retries=0
+  until kubectl patch deployment sealed-secrets-controller -n kube-system --type=json \
+    -p='[{"op":"replace","path":"/spec/template/spec/containers/0/imagePullPolicy","value":"Never"}]' \
+    2>/dev/null; do
+    patch_retries=$((patch_retries + 1))
+    [ $patch_retries -ge 10 ] && log_error "No se pudo parchear sealed-secrets-controller tras 10 intentos."
+    sleep 2
+  done
+  log_success "sealed-secrets-controller parcheado para imagen local"
+
+  # Si el pod ya entró en ImagePullBackOff antes del parche, forzar recreación
+  kubectl delete pod -n kube-system -l app.kubernetes.io/name=sealed-secrets-controller \
+    --ignore-not-found=true 2>/dev/null || true
 
   log_info "Esperando a que Sealed Secrets Controller esté listo..."
   local retries=0
