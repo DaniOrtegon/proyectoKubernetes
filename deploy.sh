@@ -173,49 +173,28 @@ install_metrics_server() {
 # FUNCIÓN: Instalar Sealed Secrets Controller
 # ============================================================
 install_sealed_secrets() {
-  local VERSION="0.26.3"
-
-  # Si el deployment ya existe y tiene pods Running, no hacer nada
-  if kubectl get pods -n kube-system -l name=sealed-secrets-controller 2>/dev/null | grep -q "Running"; then
-    log_success "Sealed Secrets Controller ya está corriendo"
+  if kubectl get deployment sealed-secrets-controller -n kube-system &>/dev/null; then
+    log_success "Sealed Secrets Controller ya está instalado"
     return
   fi
 
-  # Limpiar restos de instalaciones anteriores (services/deployments huérfanos)
-  # que pueden quedar si el deploy anterior falló a medias
-  log_info "Limpiando restos de instalaciones anteriores de Sealed Secrets..."
-  kubectl delete deployment sealed-secrets-controller -n kube-system --ignore-not-found=true 2>/dev/null || true
-  kubectl delete service sealed-secrets-controller sealed-secrets-controller-metrics -n kube-system --ignore-not-found=true 2>/dev/null || true
-  # Esperar a que los pods anteriores mueran del todo
-  kubectl wait --for=delete pod -n kube-system -l name=sealed-secrets-controller --timeout=30s 2>/dev/null || true
-  sleep 2
-
+  local VERSION="0.26.3"
   log_info "Instalando Sealed Secrets Controller v${VERSION}..."
-  kubectl apply -f "https://github.com/bitnami-labs/sealed-secrets/releases/download/v${VERSION}/controller.yaml" \
-    || log_error "No se pudo instalar Sealed Secrets Controller."
 
-  # CRÍTICO: parchear imagePullPolicy a Never INMEDIATAMENTE después del apply,
-  # antes de que Kubernetes intente hacer pull y el pod entre en ImagePullBackOff.
-  # Un sleep 3 es suficiente para que el deployment exista pero el pod aún no haya
-  # intentado descargar la imagen.
-  log_info "Parcheando imagePullPolicy a Never (antes de que el pod arranque)..."
-  sleep 3
-  local patch_retries=0
-  until kubectl patch deployment sealed-secrets-controller -n kube-system --type=json \
-    -p='[{"op":"replace","path":"/spec/template/spec/containers/0/imagePullPolicy","value":"Never"}]' \
-    2>/dev/null; do
-    patch_retries=$((patch_retries + 1))
-    [ $patch_retries -ge 10 ] && log_error "No se pudo parchear sealed-secrets-controller."
-    echo -n "."
-    sleep 2
-  done
-  log_success "sealed-secrets-controller parcheado para imagen local"
+  # Descargar el manifest, forzar imagePullPolicy: Never ANTES de aplicar
+  # y eliminar los digest @sha256 para que use el tag local exacto
+  curl -sL "https://github.com/bitnami-labs/sealed-secrets/releases/download/v${VERSION}/controller.yaml" \
+    | sed 's/@sha256:[a-f0-9]*//g' \
+    | sed 's/imagePullPolicy: Always/imagePullPolicy: Never/g' \
+    | sed 's/imagePullPolicy: IfNotPresent/imagePullPolicy: Never/g' \
+    | kubectl apply -f - \
+    || log_error "No se pudo instalar Sealed Secrets Controller."
 
   log_info "Esperando a que Sealed Secrets Controller esté listo..."
   local retries=0
-  until kubectl get pods -n kube-system -l name=sealed-secrets-controller 2>/dev/null | grep -q "Running"; do
+  until kubectl get pods -n kube-system -l app.kubernetes.io/name=sealed-secrets-controller 2>/dev/null | grep -q "Running"; do
     retries=$((retries + 1))
-    [ $retries -ge 18 ] && log_error "Sealed Secrets Controller no arrancó en 3 minutos. Revisa: kubectl get pods -n kube-system | grep sealed"
+    [ $retries -ge 18 ] && log_error "Sealed Secrets Controller no arrancó en 3 minutos."
     echo -n "."
     sleep 10
   done
