@@ -21,6 +21,36 @@ echo -e "${RED}============================================================${NC}
 echo ""
 
 # ============================================================
+# FUNCIÓN auxiliar: eliminar namespace de forma segura
+# - Hace kubectl delete primero
+# - Solo fuerza finalizers si se atasca en Terminating
+# - Nunca actúa sobre namespaces en phase Active
+# ============================================================
+delete_namespace() {
+  local ns=$1
+  local timeout=${2:-20}
+
+  kubectl delete namespace "$ns" --ignore-not-found=true 2>/dev/null || true
+
+  local elapsed=0
+  while true; do
+    local phase
+    phase=$(kubectl get namespace "$ns" -o jsonpath='{.status.phase}' 2>/dev/null || echo "")
+    [ -z "$phase" ] && return  # ya no existe
+    if [ "$phase" = "Terminating" ] && [ $elapsed -ge $timeout ]; then
+      log_warn "Namespace '$ns' atascado en Terminating — forzando finalizers..."
+      kubectl get namespace "$ns" -o json 2>/dev/null \
+        | python3 -c "import sys,json; d=json.load(sys.stdin); d['spec']['finalizers']=[]; print(json.dumps(d))" 2>/dev/null \
+        | kubectl replace --raw "/api/v1/namespaces/$ns/finalize" -f - 2>/dev/null || true
+      return
+    fi
+    echo -n "."
+    sleep 2
+    elapsed=$((elapsed + 2))
+  done
+}
+
+# ============================================================
 # 1. Bajar replicas a 0 para liberar PVCs antes de borrarlos
 # ============================================================
 log_info "Bajando replicas a 0 en todos los namespaces..."
@@ -44,43 +74,20 @@ done
 log_success "PVCs eliminados"
 
 # ============================================================
-# 3. Quitar finalizers y forzar borrado de namespaces del proyecto
+# 3. Eliminar namespaces del proyecto
 # ============================================================
 log_info "Eliminando namespaces del proyecto..."
 for ns in wordpress databases monitoring security; do
-  # Quitar finalizers
-  kubectl get namespace $ns -o json 2>/dev/null \
-    | python3 -c "import sys,json; d=json.load(sys.stdin); d['spec']['finalizers']=[]; print(json.dumps(d))" 2>/dev/null \
-    | kubectl replace --raw "/api/v1/namespaces/$ns/finalize" -f - 2>/dev/null || true
-
-  kubectl delete namespace $ns --grace-period=0 --force 2>/dev/null || true
+  delete_namespace "$ns" 20
 done
+echo ""
 log_success "Namespaces eliminados"
 
 # ============================================================
 # 4. Eliminar Ingress Controller
-# Estrategia: kubectl delete primero. Solo forzar finalizers si
-# se queda atascado en Terminating (nunca sobre namespace Active).
 # ============================================================
 log_info "Eliminando Ingress Controller..."
-kubectl delete namespace ingress-nginx --ignore-not-found=true 2>/dev/null || true
-
-INGRESS_TIMEOUT=20
-INGRESS_ELAPSED=0
-while true; do
-  PHASE=$(kubectl get namespace ingress-nginx -o jsonpath='{.status.phase}' 2>/dev/null || echo "")
-  [ -z "$PHASE" ] && break
-  if [ "$PHASE" = "Terminating" ] && [ $INGRESS_ELAPSED -ge $INGRESS_TIMEOUT ]; then
-    log_warn "ingress-nginx atascado en Terminating — forzando finalizers..."
-    kubectl get namespace ingress-nginx -o json 2>/dev/null \
-      | python3 -c "import sys,json; d=json.load(sys.stdin); d['spec']['finalizers']=[]; print(json.dumps(d))" 2>/dev/null \
-      | kubectl replace --raw "/api/v1/namespaces/ingress-nginx/finalize" -f - 2>/dev/null || true
-    break
-  fi
-  echo -n "."
-  sleep 2
-  INGRESS_ELAPSED=$((INGRESS_ELAPSED + 2))
-done
+delete_namespace "ingress-nginx" 20
 echo ""
 log_success "Ingress Controller eliminado"
 
@@ -103,8 +110,8 @@ log_success "kube-state-metrics eliminado"
 # manualmente y regenerarlos con: ./deploy.sh
 # ============================================================
 log_info "Eliminando Sealed Secrets Controller..."
-local VERSION="0.26.3"
-kubectl delete -f "https://github.com/bitnami-labs/sealed-secrets/releases/download/v${VERSION}/controller.yaml" \
+SS_VERSION="0.26.3"
+kubectl delete -f "https://github.com/bitnami-labs/sealed-secrets/releases/download/v${SS_VERSION}/controller.yaml" \
   --ignore-not-found=true 2>/dev/null || true
 log_success "Sealed Secrets Controller eliminado"
 
@@ -145,18 +152,21 @@ sudo sed -i '/prometheus\.monitoring\.local/d' /etc/hosts
 log_success "/etc/hosts limpiado"
 
 # ============================================================
-# 11. Esperar a que los namespaces desaparezcan (máx 30s)
+# 11. Verificación final — asegurar que no queda ningún namespace
 # ============================================================
 log_info "Verificando que los namespaces han desaparecido..."
 TIMEOUT=30
 ELAPSED=0
-while kubectl get namespaces 2>/dev/null | grep -qE "wordpress|databases|monitoring|security"; do
+while kubectl get namespaces 2>/dev/null | grep -qE "^(wordpress|databases|monitoring|security) "; do
   if [ $ELAPSED -ge $TIMEOUT ]; then
-    log_warn "Algunos namespaces siguen en Terminating — forzando finalizers..."
+    log_warn "Forzando finalizers en namespaces restantes..."
     for ns in wordpress databases monitoring security; do
-      kubectl get namespace $ns -o json 2>/dev/null \
-        | python3 -c "import sys,json; d=json.load(sys.stdin); d['spec']['finalizers']=[]; print(json.dumps(d))" 2>/dev/null \
-        | kubectl replace --raw "/api/v1/namespaces/$ns/finalize" -f - 2>/dev/null || true
+      PHASE=$(kubectl get namespace $ns -o jsonpath='{.status.phase}' 2>/dev/null || echo "")
+      if [ "$PHASE" = "Terminating" ]; then
+        kubectl get namespace $ns -o json 2>/dev/null \
+          | python3 -c "import sys,json; d=json.load(sys.stdin); d['spec']['finalizers']=[]; print(json.dumps(d))" 2>/dev/null \
+          | kubectl replace --raw "/api/v1/namespaces/$ns/finalize" -f - 2>/dev/null || true
+      fi
     done
     break
   fi
@@ -165,7 +175,7 @@ while kubectl get namespaces 2>/dev/null | grep -qE "wordpress|databases|monitor
   ELAPSED=$((ELAPSED + 2))
 done
 echo ""
-log_success "Namespaces eliminados"
+log_success "Verificación completada"
 
 # ============================================================
 # RESUMEN
