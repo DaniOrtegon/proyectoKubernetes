@@ -52,7 +52,7 @@ load_images() {
     "registry.k8s.io/ingress-nginx/controller:v1.14.1"
     "registry.k8s.io/ingress-nginx/kube-webhook-certgen:v1.6.5"
     "registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.10.0"
-    "bitnami/sealed-secrets-controller:0.26.3"
+    "ghcr.io/bitnami-labs/sealed-secrets-controller:0.26.3"
   )
 
   for IMAGE in "${IMAGES[@]}"; do
@@ -286,6 +286,39 @@ generate_sealed_secrets() {
 }
 
 # ============================================================
+# FUNCIÓN auxiliar: eliminar namespace de forma segura
+# Solo fuerza finalizers si se atasca en Terminating.
+# Nunca actúa sobre namespaces en phase Active.
+# ============================================================
+delete_namespace_safe() {
+  local ns=$1
+  local timeout=${2:-20}
+  local elapsed=0
+
+  kubectl get namespace "$ns" &>/dev/null || return 0
+  kubectl delete namespace "$ns" --ignore-not-found=true 2>/dev/null || true
+
+  while [ $elapsed -lt $timeout ]; do
+    kubectl get namespace "$ns" &>/dev/null || return 0
+    local phase
+    phase=$(kubectl get namespace "$ns" -o jsonpath='{.status.phase}' 2>/dev/null || echo "")
+    [ -z "$phase" ] && return 0
+    echo -n "."
+    sleep 2
+    elapsed=$((elapsed + 2))
+  done
+
+  local phase
+  phase=$(kubectl get namespace "$ns" -o jsonpath='{.status.phase}' 2>/dev/null || echo "")
+  if [ "$phase" = "Terminating" ]; then
+    log_warn "Namespace '$ns' atascado en Terminating — forzando finalizers..."
+    kubectl get namespace "$ns" -o json 2>/dev/null \
+      | python3 -c "import sys,json; d=json.load(sys.stdin); d['spec']['finalizers']=[]; print(json.dumps(d))" 2>/dev/null \
+      | kubectl replace --raw "/api/v1/namespaces/$ns/finalize" -f - 2>/dev/null || true
+  fi
+}
+
+# ============================================================
 # FUNCIÓN: Esperar a que un Deployment esté Ready
 # ============================================================
 wait_for_deployment() {
@@ -385,39 +418,17 @@ cleanup() {
   log_success "PVCs eliminados"
 
   # 3. Eliminar namespaces del proyecto
-  # Estrategia: kubectl delete primero. Solo forzar finalizers si se atasca en Terminating.
   log_info "Eliminando namespaces del proyecto..."
   for ns in wordpress databases monitoring security; do
-    kubectl delete namespace $ns --ignore-not-found=true 2>/dev/null || true
-  done
-  FORCE_TIMEOUT=20
-  FORCE_ELAPSED=0
-  while kubectl get namespaces 2>/dev/null | grep -E "wordpress|databases|monitoring|security" | grep -q "Terminating"; do
-    if [ $FORCE_ELAPSED -ge $FORCE_TIMEOUT ]; then
-      log_warn "Namespaces atascados en Terminating — forzando finalizers..."
-      for ns in wordpress databases monitoring security; do
-        PHASE=$(kubectl get namespace $ns -o jsonpath='{.status.phase}' 2>/dev/null || echo "")
-        if [ "$PHASE" = "Terminating" ]; then
-          kubectl get namespace $ns -o json 2>/dev/null \
-            | python3 -c "import sys,json; d=json.load(sys.stdin); d['spec']['finalizers']=[]; print(json.dumps(d))" 2>/dev/null \
-            | kubectl replace --raw "/api/v1/namespaces/$ns/finalize" -f - 2>/dev/null || true
-        fi
-      done
-      break
-    fi
-    echo -n "."
-    sleep 2
-    FORCE_ELAPSED=$((FORCE_ELAPSED + 2))
+    delete_namespace_safe "$ns" 20
   done
   echo ""
   log_success "Namespaces eliminados"
 
   # 4. Eliminar Ingress Controller
   log_info "Eliminando Ingress Controller..."
-  kubectl get namespace ingress-nginx -o json 2>/dev/null \
-    | python3 -c "import sys,json; d=json.load(sys.stdin); d['spec']['finalizers']=[]; print(json.dumps(d))" 2>/dev/null \
-    | kubectl replace --raw "/api/v1/namespaces/ingress-nginx/finalize" -f - 2>/dev/null || true
-  kubectl delete namespace ingress-nginx --grace-period=0 --force 2>/dev/null || true
+  delete_namespace_safe "ingress-nginx" 20
+  echo ""
   log_success "Ingress Controller eliminado"
 
   # 5. Eliminar kube-state-metrics
@@ -474,9 +485,12 @@ cleanup() {
     if [ $ELAPSED -ge $TIMEOUT ]; then
       log_warn "Forzando finalizers en namespaces restantes..."
       for ns in wordpress databases monitoring security; do
-        kubectl get namespace $ns -o json 2>/dev/null \
-          | python3 -c "import sys,json; d=json.load(sys.stdin); d['spec']['finalizers']=[]; print(json.dumps(d))" 2>/dev/null \
-          | kubectl replace --raw "/api/v1/namespaces/$ns/finalize" -f - 2>/dev/null || true
+        PHASE11=$(kubectl get namespace $ns -o jsonpath='{.status.phase}' 2>/dev/null || echo "")
+        if [ "$PHASE11" = "Terminating" ]; then
+          kubectl get namespace $ns -o json 2>/dev/null \
+            | python3 -c "import sys,json; d=json.load(sys.stdin); d['spec']['finalizers']=[]; print(json.dumps(d))" 2>/dev/null \
+            | kubectl replace --raw "/api/v1/namespaces/$ns/finalize" -f - 2>/dev/null || true
+        fi
       done
       break
     fi
