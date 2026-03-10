@@ -1,0 +1,109 @@
+# ============================================================
+# 15-cert-manager.yaml
+# TLS end-to-end con cert-manager en Minikube (self-signed)
+#
+# NOTA: Let's Encrypt requiere dominio público accesible desde
+# internet. En Minikube local usamos un ClusterIssuer self-signed
+# que genera certificados válidos para TLS pero no verificados
+# por una CA pública. El navegador mostrará un aviso de seguridad
+# la primera vez — esto es normal en entornos de desarrollo.
+#
+# REQUISITO: El namespace 'cert-manager' se crea en 00-namespace.yaml
+#
+# FLUJO:
+#   1. ClusterIssuer "selfsigned-issuer" — CA raíz autofirmada
+#   2. Certificate "selfsigned-ca" — genera la CA privada en namespace cert-manager
+#   3. ClusterIssuer "ca-issuer" — firma certificados usando esa CA
+#   4. Certificate "wordpress-tls" — certificado para wp-k8s.local
+#   5. Certificate "monitoring-tls" — certificado para grafana y prometheus
+# ============================================================
+
+# ------------------------------------------------------------
+# PASO 1: ClusterIssuer bootstrap — solo para crear la CA raíz
+# ------------------------------------------------------------
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: selfsigned-issuer
+spec:
+  selfSigned: {}
+
+---
+# ------------------------------------------------------------
+# PASO 2: Certificado CA raíz del clúster
+# IMPORTANTE: debe estar en namespace 'cert-manager' para que
+# el ClusterIssuer pueda leer el Secret generado.
+# ------------------------------------------------------------
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: selfsigned-ca
+  namespace: cert-manager
+spec:
+  isCA: true
+  commonName: "KubeNet Local CA"
+  secretName: selfsigned-ca-secret
+  privateKey:
+    algorithm: RSA
+    size: 4096
+  issuerRef:
+    name: selfsigned-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
+
+---
+# ------------------------------------------------------------
+# PASO 3: ClusterIssuer principal — usa la CA raíz para firmar
+# Este es el issuer que referencian los Ingress y Certificates
+# ------------------------------------------------------------
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: ca-issuer
+spec:
+  ca:
+    secretName: selfsigned-ca-secret
+
+---
+# ------------------------------------------------------------
+# PASO 4: Certificado para WordPress
+# Válido 1 año, se renueva automáticamente 30 días antes
+# ------------------------------------------------------------
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: wordpress-tls
+  namespace: wordpress
+spec:
+  secretName: wordpress-tls
+  duration: 8760h
+  renewBefore: 720h
+  commonName: wp-k8s.local
+  dnsNames:
+    - wp-k8s.local
+  issuerRef:
+    name: ca-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
+
+---
+# ------------------------------------------------------------
+# PASO 5: Certificado para Grafana y Prometheus
+# ------------------------------------------------------------
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: monitoring-tls
+  namespace: monitoring
+spec:
+  secretName: monitoring-tls
+  duration: 8760h
+  renewBefore: 720h
+  commonName: grafana.monitoring.local
+  dnsNames:
+    - grafana.monitoring.local
+    - prometheus.monitoring.local
+  issuerRef:
+    name: ca-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
