@@ -3,22 +3,13 @@
 #
 # ARQUITECTURA:
 #   - 1 master (redis-0) + 2 replicas (redis-1, redis-2)
-#   - 3 Sentinels (uno por pod via sidecar)
-#   - Sentinel quorum = 2 (mayoría de 3)
-#   - WordPress se conecta al Sentinel (:26379), no a Redis directamente
-#   - El Sentinel redirige siempre al master actual
-#
-# FAILOVER:
-#   Si redis-0 (master) cae:
-#     1. Los 2 Sentinels restantes alcanzan quorum
-#     2. Eligen una replica como nuevo master (redis-1 o redis-2)
-#     3. WordPress reconecta automáticamente via Sentinel
-#     4. Sesiones activas se mantienen (datos replicados)
+#   - 3 Sentinels sidecar (uno por pod)
+#   - Sentinel quorum = 2
+#   - 127.0.0.1 en sentinel.conf porque Sentinel y Redis
+#     comparten el mismo pod — Sentinel monitoriza el Redis local
+#     y se comunica con los otros Sentinels via red del clúster
 # ============================================================
 
-# ------------------------------------------------------------
-# ConfigMap con configuraciones de Redis y Sentinel
-# ------------------------------------------------------------
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -29,7 +20,6 @@ metadata:
     app.kubernetes.io/name: redis
     app.kubernetes.io/part-of: wordpress-ha
 data:
-  # Configuración del master Redis
   redis-master.conf: |
     bind 0.0.0.0
     port 6379
@@ -42,7 +32,6 @@ data:
     save 60 10000
     loglevel notice
 
-  # Configuración de las replicas Redis
   redis-replica.conf: |
     bind 0.0.0.0
     port 6379
@@ -54,18 +43,17 @@ data:
     appendfsync everysec
     loglevel notice
 
-  # Configuración de Sentinel (igual para todos los pods)
   sentinel.conf: |
     port 26379
-    sentinel monitor mymaster redis-0.redis-headless.databases.svc.cluster.local 6379 2
+    # 127.0.0.1 funciona porque Sentinel y Redis comparten el mismo pod (sidecar).
+    # Sentinel se conecta al Redis local para descubrir el master y las replicas.
+    sentinel monitor mymaster 127.0.0.1 6379 2
     sentinel auth-pass mymaster Redis#2024!
     sentinel down-after-milliseconds mymaster 5000
     sentinel failover-timeout mymaster 60000
     sentinel parallel-syncs mymaster 1
     loglevel notice
 
-  # Script de entrypoint que decide si el pod es master o replica
-  # basándose en el ordinal del StatefulSet (redis-0 = master)
   start-redis.sh: |
     #!/bin/sh
     ORDINAL=$(echo $HOSTNAME | rev | cut -d'-' -f1 | rev)
@@ -78,12 +66,6 @@ data:
     fi
 
 ---
-# ------------------------------------------------------------
-# Headless Service para que los pods se resuelvan por FQDN:
-# redis-0.redis-headless.databases.svc.cluster.local
-# redis-1.redis-headless.databases.svc.cluster.local
-# redis-2.redis-headless.databases.svc.cluster.local
-# ------------------------------------------------------------
 apiVersion: v1
 kind: Service
 metadata:
@@ -106,10 +88,6 @@ spec:
     app: redis
 
 ---
-# ------------------------------------------------------------
-# Service para Sentinel — WordPress apunta aquí (:26379)
-# ClusterIP estable que balancea entre los 3 Sentinels
-# ------------------------------------------------------------
 apiVersion: v1
 kind: Service
 metadata:
@@ -130,10 +108,6 @@ spec:
     app: redis
 
 ---
-# ------------------------------------------------------------
-# Service para acceso directo a Redis (usado internamente)
-# WordPress NO usa este service — usa redis-sentinel
-# ------------------------------------------------------------
 apiVersion: v1
 kind: Service
 metadata:
@@ -154,10 +128,6 @@ spec:
     app: redis
 
 ---
-# ------------------------------------------------------------
-# StatefulSet: 3 pods (redis-0 master, redis-1/2 replicas)
-# Cada pod tiene un sidecar Sentinel
-# ------------------------------------------------------------
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -182,8 +152,6 @@ spec:
         app.kubernetes.io/name: redis
         app.kubernetes.io/part-of: wordpress-ha
     spec:
-      # Anti-affinity: intentar distribuir pods en distintos nodos
-      # En Minikube (1 nodo) es preferred, no required
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
@@ -194,17 +162,18 @@ spec:
                     app: redis
                 topologyKey: kubernetes.io/hostname
       initContainers:
-        # initContainer que hace ejecutable el script de entrypoint
         - name: init-redis
           image: redis:6.2-alpine
-          command: ['sh', '-c', 'cp /config/start-redis.sh /scripts/start-redis.sh && chmod +x /scripts/start-redis.sh']
+          command:
+            - sh
+            - -c
+            - cp /config/start-redis.sh /scripts/start-redis.sh && chmod +x /scripts/start-redis.sh
           volumeMounts:
             - name: redis-config
               mountPath: /config
             - name: scripts
               mountPath: /scripts
       containers:
-        # Contenedor principal: Redis (master o replica según ordinal)
         - name: redis
           image: redis:6.2-alpine
           command: ['/scripts/start-redis.sh']
@@ -220,19 +189,13 @@ spec:
               memory: 256Mi
           readinessProbe:
             exec:
-              command:
-                - sh
-                - -c
-                - redis-cli -a 'Redis#2024!' ping | grep PONG
+              command: [sh, -c, "redis-cli -a 'Redis#2024!' ping | grep PONG"]
             initialDelaySeconds: 15
             periodSeconds: 10
             failureThreshold: 3
           livenessProbe:
             exec:
-              command:
-                - sh
-                - -c
-                - redis-cli -a 'Redis#2024!' ping | grep PONG
+              command: [sh, -c, "redis-cli -a 'Redis#2024!' ping | grep PONG"]
             initialDelaySeconds: 30
             periodSeconds: 20
             failureThreshold: 5
@@ -244,14 +207,13 @@ spec:
             - name: scripts
               mountPath: /scripts
 
-        # Sidecar: Sentinel (uno por pod = 3 sentinels en total)
         - name: sentinel
           image: redis:6.2-alpine
           command:
             - sh
             - -c
             - |
-              # Copiar conf a directorio escribible (Sentinel modifica el fichero en runtime)
+              # Copiar conf a directorio escribible — Sentinel lo modifica en runtime
               cp /etc/sentinel/sentinel.conf /data/sentinel.conf
               exec redis-sentinel /data/sentinel.conf
           ports:
@@ -266,10 +228,7 @@ spec:
               memory: 64Mi
           readinessProbe:
             exec:
-              command:
-                - sh
-                - -c
-                - redis-cli -p 26379 ping | grep PONG
+              command: [sh, -c, "redis-cli -p 26379 ping | grep PONG"]
             initialDelaySeconds: 20
             periodSeconds: 10
             failureThreshold: 3
@@ -301,7 +260,6 @@ spec:
         - name: sentinel-data
           emptyDir: {}
 
-  # PVC por pod — cada réplica tiene su propio volumen
   volumeClaimTemplates:
     - metadata:
         name: redis-data
