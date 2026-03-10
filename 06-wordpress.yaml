@@ -109,9 +109,15 @@ spec:
               value: |
                 define('WP_HOME', 'http://wp-k8s.local');
                 define('WP_SITEURL', 'http://wp-k8s.local');
-                define('WP_REDIS_HOST', 'redis.databases.svc.cluster.local');
-                define('WP_REDIS_PORT', 6379);
+                // Redis HA via Sentinel — WordPress conecta al Sentinel,
+                // que redirige siempre al master actual.
+                // Si el master cae, Sentinel elige una replica como nuevo
+                // master y WordPress reconecta automáticamente.
+                define('WP_REDIS_SENTINEL', 'mymaster');
+                define('WP_REDIS_SENTINEL_CONNECTION', 'redis-sentinel.databases.svc.cluster.local:26379');
                 define('WP_REDIS_PASSWORD', getenv('REDIS_PASSWORD'));
+                define('WP_REDIS_TIMEOUT', 1);
+                define('WP_REDIS_READ_TIMEOUT', 1);
 
           resources:
             requests:
