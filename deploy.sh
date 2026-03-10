@@ -52,6 +52,7 @@ load_images() {
     "registry.k8s.io/ingress-nginx/controller:v1.14.1"
     "registry.k8s.io/ingress-nginx/kube-webhook-certgen:v1.6.5"
     "registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.10.0"
+    "bitnami/sealed-secrets-controller:0.26.3"
   )
 
   for IMAGE in "${IMAGES[@]}"; do
@@ -169,25 +170,124 @@ install_metrics_server() {
 }
 
 # ============================================================
-# FUNCIÓN: Instalar Sealed Secrets Controller — DESHABILITADO
-# Se usan Kubernetes Secrets nativos (01-secrets.yaml)
+# FUNCIÓN: Instalar Sealed Secrets Controller
 # ============================================================
 install_sealed_secrets() {
-  log_success "Sealed Secrets omitido — usando Kubernetes Secrets nativos"
+  if kubectl get deployment sealed-secrets-controller -n kube-system &>/dev/null; then
+    log_success "Sealed Secrets Controller ya está instalado"
+    return
+  fi
+
+  local VERSION="0.26.3"
+
+  # Paso 1: Asegurar que la imagen está en Minikube ANTES de aplicar el yaml
+  # El controller.yaml oficial usa docker.io/bitnami/sealed-secrets-controller (sin ghcr.io)
+  log_info "Cargando imagen de Sealed Secrets en Minikube..."
+  if ! minikube image ls 2>/dev/null | grep -qF "bitnami/sealed-secrets-controller:${VERSION}"; then
+    docker pull bitnami/sealed-secrets-controller:${VERSION}       || log_error "No se pudo descargar la imagen de sealed-secrets."
+    minikube image load bitnami/sealed-secrets-controller:${VERSION}       || log_error "No se pudo cargar la imagen en Minikube."
+  fi
+  log_success "Imagen bitnami/sealed-secrets-controller:${VERSION} disponible en Minikube"
+
+  # Paso 2: Aplicar el yaml con imagePullPolicy: Never ya sustituido
+  # Así evitamos la race condition entre el apply y el patch posterior
+  log_info "Instalando Sealed Secrets Controller v${VERSION}..."
+  curl -sL "https://github.com/bitnami-labs/sealed-secrets/releases/download/v${VERSION}/controller.yaml"     | sed 's/imagePullPolicy: .*/imagePullPolicy: Never/g'     | kubectl apply -f -     || log_error "No se pudo instalar Sealed Secrets Controller."
+
+  log_info "Esperando a que Sealed Secrets Controller esté listo..."
+  local retries=0
+  until kubectl get pods -n kube-system -l app.kubernetes.io/name=sealed-secrets-controller 2>/dev/null | grep -q "Running"; do
+    retries=$((retries + 1))
+    [ $retries -ge 18 ] && log_error "Sealed Secrets Controller no arrancó en 3 minutos."
+    echo -n "."
+    sleep 10
+  done
+  echo ""
+  log_success "Sealed Secrets Controller está listo"
 }
 
 # ============================================================
-# FUNCIÓN: Instalar kubeseal CLI — DESHABILITADO
+# FUNCIÓN: Instalar kubeseal CLI
 # ============================================================
 install_kubeseal() {
-  log_success "kubeseal omitido — usando Kubernetes Secrets nativos"
+  if command -v kubeseal &>/dev/null; then
+    log_success "kubeseal ya está instalado: \$(kubeseal --version 2>&1)"
+    return
+  fi
+
+  local VERSION="0.26.3"
+  local ARCH="amd64"
+  log_info "Instalando kubeseal CLI v\${VERSION}..."
+  curl -sL "https://github.com/bitnami-labs/sealed-secrets/releases/download/v\${VERSION}/kubeseal-\${VERSION}-linux-\${ARCH}.tar.gz" \
+    | tar xz kubeseal \
+    && sudo mv kubeseal /usr/local/bin/kubeseal \
+    && sudo chmod +x /usr/local/bin/kubeseal \
+    || log_error "No se pudo instalar kubeseal."
+
+  log_success "kubeseal instalado: \$(kubeseal --version 2>&1)"
 }
 
 # ============================================================
-# FUNCIÓN: Generar SealedSecrets — DESHABILITADO
+# FUNCIÓN: Generar SealedSecrets si no existen ya
 # ============================================================
 generate_sealed_secrets() {
-  log_success "Generación de SealedSecrets omitida — usando Kubernetes Secrets nativos"
+  local SEALED_FILES=(
+    "sealed-mariadb-secret-databases.yaml"
+    "sealed-mariadb-secret-wordpress.yaml"
+    "sealed-redis-secret-databases.yaml"
+    "sealed-redis-secret-wordpress.yaml"
+  )
+
+  local all_exist=true
+  for f in "\${SEALED_FILES[@]}"; do
+    [ ! -f "\$f" ] && all_exist=false && break
+  done
+
+  if \$all_exist; then
+    log_success "SealedSecrets ya existen — usando los ficheros actuales"
+    log_warn "Si recreaste el clúster (minikube delete), borra los sealed-*.yaml y vuelve a ejecutar deploy.sh"
+    return
+  fi
+
+  log_info "Generando SealedSecrets con kubeseal..."
+
+  kubectl create secret generic mariadb-secret \
+    --namespace databases \
+    --from-literal=mariadb-root-password='RootDB#2024!' \
+    --from-literal=mariadb-user-password='WpUser#2024!' \
+    --dry-run=client -o yaml \
+    | kubeseal --format yaml > sealed-mariadb-secret-databases.yaml \
+    || log_error "Error generando sealed-mariadb-secret-databases.yaml"
+  log_success "sealed-mariadb-secret-databases.yaml generado"
+
+  kubectl create secret generic mariadb-secret \
+    --namespace wordpress \
+    --from-literal=mariadb-user-password='WpUser#2024!' \
+    --dry-run=client -o yaml \
+    | kubeseal --format yaml > sealed-mariadb-secret-wordpress.yaml \
+    || log_error "Error generando sealed-mariadb-secret-wordpress.yaml"
+  log_success "sealed-mariadb-secret-wordpress.yaml generado"
+
+  kubectl create secret generic redis-secret \
+    --namespace databases \
+    --from-literal=redis-password='Redis#2024!' \
+    --dry-run=client -o yaml \
+    | kubeseal --format yaml > sealed-redis-secret-databases.yaml \
+    || log_error "Error generando sealed-redis-secret-databases.yaml"
+  log_success "sealed-redis-secret-databases.yaml generado"
+
+  kubectl create secret generic redis-secret \
+    --namespace wordpress \
+    --from-literal=redis-password='Redis#2024!' \
+    --dry-run=client -o yaml \
+    | kubeseal --format yaml > sealed-redis-secret-wordpress.yaml \
+    || log_error "Error generando sealed-redis-secret-wordpress.yaml"
+  log_success "sealed-redis-secret-wordpress.yaml generado"
+
+  log_success "Todos los SealedSecrets generados"
+  log_warn "IMPORTANTE: Haz backup de la clave privada del clúster:"
+  log_warn "  kubectl get secret -n kube-system -l sealedsecrets.bitnami.com/sealed-secrets-key -o yaml > sealed-secrets-master-key-backup.yaml"
+  log_warn "  Guarda ese fichero en lugar seguro y NUNCA lo subas al repo."
 }
 
 # ============================================================
@@ -462,8 +562,15 @@ echo ""
 apply_file "00-namespace.yaml" "Namespaces (security, wordpress, databases, monitoring)"
 sleep 2
 
-# 9. Aplicar Secrets nativos de Kubernetes
-apply_file "01-secrets.yaml" "Kubernetes Secrets (mariadb + redis en todos los namespaces)"
+# 9. Generar SealedSecrets (requiere namespaces y controller activos)
+generate_sealed_secrets
+echo ""
+
+# 10. Aplicar SealedSecrets (el controller los descifra y crea los Secrets reales)
+apply_file "sealed-mariadb-secret-databases.yaml" "SealedSecret MariaDB (databases)"
+apply_file "sealed-mariadb-secret-wordpress.yaml"  "SealedSecret MariaDB (wordpress)"
+apply_file "sealed-redis-secret-databases.yaml"    "SealedSecret Redis (databases)"
+apply_file "sealed-redis-secret-wordpress.yaml"    "SealedSecret Redis (wordpress)"
 
 # 11. ConfigMaps
 apply_file "02-configmap.yaml" "ConfigMaps (mariadb-config + wordpress-config)"
