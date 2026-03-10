@@ -1,7 +1,12 @@
 # ============================================================
-# Ingress para exponer WordPress, Grafana y Prometheus
-# Requiere un Ingress Controller instalado en el clúster.
+# 08-ingress.yaml — Ingress con TLS (cert-manager self-signed)
 # ============================================================
+
+# ------------------------------------------------------------
+# Ingress para WordPress — namespace 'wordpress'
+# cert-manager detecta la anotación y genera wordpress-tls
+# automáticamente usando el ClusterIssuer 'ca-issuer'
+# ------------------------------------------------------------
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -10,8 +15,17 @@ metadata:
   annotations:
     nginx.ingress.kubernetes.io/rewrite-target: /
     nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+    # Fuerza redirect HTTP → HTTPS
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    # cert-manager genera el certificado automáticamente
+    cert-manager.io/cluster-issuer: "ca-issuer"
 spec:
   ingressClassName: nginx
+  tls:
+    - hosts:
+        - wp-k8s.local
+      secretName: wordpress-tls    # cert-manager crea este Secret
   rules:
     - host: wp-k8s.local
       http:
@@ -25,9 +39,9 @@ spec:
                   number: 80
 
 ---
-# ============================================================
-# Ingress para Grafana y Prometheus en namespace 'monitoring'
-# ============================================================
+# ------------------------------------------------------------
+# Ingress para Grafana y Prometheus — namespace 'monitoring'
+# ------------------------------------------------------------
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -35,8 +49,16 @@ metadata:
   namespace: monitoring
   annotations:
     nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "ca-issuer"
 spec:
   ingressClassName: nginx
+  tls:
+    - hosts:
+        - grafana.monitoring.local
+        - prometheus.monitoring.local
+      secretName: monitoring-tls
   rules:
     - host: grafana.monitoring.local
       http:
