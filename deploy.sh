@@ -711,9 +711,9 @@ apply_file "03-pvc.yaml" "PersistentVolumeClaims (wordpress-pvc)"
 apply_file "04-mariadb.yaml" "StatefulSet + Headless Service de MariaDB"
 wait_for_statefulset "databases" "mariadb" 120
 
-# 15. Redis
-apply_file "05-redis.yaml" "PVC + Deployment + Service de Redis"
-wait_for_deployment "databases" "redis" 60
+# 15. Redis HA con Sentinel
+apply_file "05-redis.yaml" "Redis HA — StatefulSet (1 master + 2 replicas) + Sentinel sidecars"
+wait_for_statefulset "databases" "redis" 120
 
 # 16. WordPress
 apply_file "06-wordpress.yaml" "Deployment + Service de WordPress"
