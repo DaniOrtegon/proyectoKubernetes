@@ -398,7 +398,15 @@ cleanup() {
   echo -e "${RED}============================================================${NC}"
   echo ""
 
-  # 1. Bajar replicas a 0 para liberar PVCs antes de borrarlos
+  # 0. Reiniciar Metrics Server para limpiar API stale
+  #    (evita que namespaces se queden colgados en Terminating)
+  log_info "Reiniciando Metrics Server para limpiar API stale..."
+  kubectl rollout restart deployment metrics-server -n kube-system 2>/dev/null || true
+  sleep 5
+  kubectl rollout status deployment metrics-server -n kube-system --timeout=30s 2>/dev/null || true
+  log_success "Metrics Server reiniciado"
+
+    # 1. Bajar replicas a 0 para liberar PVCs antes de borrarlos
   log_info "Bajando replicas a 0 en todos los namespaces..."
   for ns in wordpress databases monitoring; do
     kubectl scale deployment  --all -n $ns --replicas=0 2>/dev/null || true
