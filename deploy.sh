@@ -52,16 +52,8 @@ load_images() {
     "registry.k8s.io/ingress-nginx/controller:v1.14.1"
     "registry.k8s.io/ingress-nginx/kube-webhook-certgen:v1.6.5"
     "registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.10.0"
-    "ghcr.io/bitnami-labs/sealed-secrets-controller:v0.26.3"
+    "bitnami/sealed-secrets-controller:0.26.3"
   )
-
-  # Retag sealed-secrets sin prefijo 'v' por si se descargó antes sin él
-  if docker image inspect "ghcr.io/bitnami-labs/sealed-secrets-controller:0.26.3" &>/dev/null \
-     && ! docker image inspect "ghcr.io/bitnami-labs/sealed-secrets-controller:v0.26.3" &>/dev/null; then
-    docker tag "ghcr.io/bitnami-labs/sealed-secrets-controller:0.26.3" \
-               "ghcr.io/bitnami-labs/sealed-secrets-controller:v0.26.3"
-    log_success "Retag sealed-secrets-controller:0.26.3 → v0.26.3"
-  fi
 
   for IMAGE in "${IMAGES[@]}"; do
     if ! docker image inspect "$IMAGE" &>/dev/null; then
@@ -214,20 +206,20 @@ install_sealed_secrets() {
 # ============================================================
 install_kubeseal() {
   if command -v kubeseal &>/dev/null; then
-    log_success "kubeseal ya está instalado: $(kubeseal --version 2>&1)"
+    log_success "kubeseal ya está instalado: \$(kubeseal --version 2>&1)"
     return
   fi
 
   local VERSION="0.26.3"
   local ARCH="amd64"
-  log_info "Instalando kubeseal CLI v${VERSION}..."
-  curl -sL "https://github.com/bitnami-labs/sealed-secrets/releases/download/v${VERSION}/kubeseal-${VERSION}-linux-${ARCH}.tar.gz" \
+  log_info "Instalando kubeseal CLI v\${VERSION}..."
+  curl -sL "https://github.com/bitnami-labs/sealed-secrets/releases/download/v\${VERSION}/kubeseal-\${VERSION}-linux-\${ARCH}.tar.gz" \
     | tar xz kubeseal \
     && sudo mv kubeseal /usr/local/bin/kubeseal \
     && sudo chmod +x /usr/local/bin/kubeseal \
     || log_error "No se pudo instalar kubeseal."
 
-  log_success "kubeseal instalado: $(kubeseal --version 2>&1)"
+  log_success "kubeseal instalado: \$(kubeseal --version 2>&1)"
 }
 
 # ============================================================
@@ -242,11 +234,11 @@ generate_sealed_secrets() {
   )
 
   local all_exist=true
-  for f in "${SEALED_FILES[@]}"; do
-    [ ! -f "$f" ] && all_exist=false && break
+  for f in "\${SEALED_FILES[@]}"; do
+    [ ! -f "\$f" ] && all_exist=false && break
   done
 
-  if $all_exist; then
+  if \$all_exist; then
     log_success "SealedSecrets ya existen — usando los ficheros actuales"
     log_warn "Si recreaste el clúster (minikube delete), borra los sealed-*.yaml y vuelve a ejecutar deploy.sh"
     return
@@ -291,39 +283,6 @@ generate_sealed_secrets() {
   log_warn "IMPORTANTE: Haz backup de la clave privada del clúster:"
   log_warn "  kubectl get secret -n kube-system -l sealedsecrets.bitnami.com/sealed-secrets-key -o yaml > sealed-secrets-master-key-backup.yaml"
   log_warn "  Guarda ese fichero en lugar seguro y NUNCA lo subas al repo."
-}
-
-# ============================================================
-# FUNCIÓN auxiliar: eliminar namespace de forma segura
-# Solo fuerza finalizers si se atasca en Terminating.
-# Nunca actúa sobre namespaces en phase Active.
-# ============================================================
-delete_namespace_safe() {
-  local ns=$1
-  local timeout=${2:-20}
-  local elapsed=0
-
-  kubectl get namespace "$ns" &>/dev/null || return 0
-  kubectl delete namespace "$ns" --ignore-not-found=true 2>/dev/null || true
-
-  while [ $elapsed -lt $timeout ]; do
-    kubectl get namespace "$ns" &>/dev/null || return 0
-    local phase
-    phase=$(kubectl get namespace "$ns" -o jsonpath='{.status.phase}' 2>/dev/null || echo "")
-    [ -z "$phase" ] && return 0
-    echo -n "."
-    sleep 2
-    elapsed=$((elapsed + 2))
-  done
-
-  local phase
-  phase=$(kubectl get namespace "$ns" -o jsonpath='{.status.phase}' 2>/dev/null || echo "")
-  if [ "$phase" = "Terminating" ]; then
-    log_warn "Namespace '$ns' atascado en Terminating — forzando finalizers..."
-    kubectl get namespace "$ns" -o json 2>/dev/null \
-      | python3 -c "import sys,json; d=json.load(sys.stdin); d['spec']['finalizers']=[]; print(json.dumps(d))" 2>/dev/null \
-      | kubectl replace --raw "/api/v1/namespaces/$ns/finalize" -f - 2>/dev/null || true
-  fi
 }
 
 # ============================================================
@@ -426,17 +385,39 @@ cleanup() {
   log_success "PVCs eliminados"
 
   # 3. Eliminar namespaces del proyecto
+  # Estrategia: kubectl delete primero. Solo forzar finalizers si se atasca en Terminating.
   log_info "Eliminando namespaces del proyecto..."
   for ns in wordpress databases monitoring security; do
-    delete_namespace_safe "$ns" 20
+    kubectl delete namespace $ns --ignore-not-found=true 2>/dev/null || true
+  done
+  FORCE_TIMEOUT=20
+  FORCE_ELAPSED=0
+  while kubectl get namespaces 2>/dev/null | grep -E "wordpress|databases|monitoring|security" | grep -q "Terminating"; do
+    if [ $FORCE_ELAPSED -ge $FORCE_TIMEOUT ]; then
+      log_warn "Namespaces atascados en Terminating — forzando finalizers..."
+      for ns in wordpress databases monitoring security; do
+        PHASE=$(kubectl get namespace $ns -o jsonpath='{.status.phase}' 2>/dev/null || echo "")
+        if [ "$PHASE" = "Terminating" ]; then
+          kubectl get namespace $ns -o json 2>/dev/null \
+            | python3 -c "import sys,json; d=json.load(sys.stdin); d['spec']['finalizers']=[]; print(json.dumps(d))" 2>/dev/null \
+            | kubectl replace --raw "/api/v1/namespaces/$ns/finalize" -f - 2>/dev/null || true
+        fi
+      done
+      break
+    fi
+    echo -n "."
+    sleep 2
+    FORCE_ELAPSED=$((FORCE_ELAPSED + 2))
   done
   echo ""
   log_success "Namespaces eliminados"
 
   # 4. Eliminar Ingress Controller
   log_info "Eliminando Ingress Controller..."
-  delete_namespace_safe "ingress-nginx" 20
-  echo ""
+  kubectl get namespace ingress-nginx -o json 2>/dev/null \
+    | python3 -c "import sys,json; d=json.load(sys.stdin); d['spec']['finalizers']=[]; print(json.dumps(d))" 2>/dev/null \
+    | kubectl replace --raw "/api/v1/namespaces/ingress-nginx/finalize" -f - 2>/dev/null || true
+  kubectl delete namespace ingress-nginx --grace-period=0 --force 2>/dev/null || true
   log_success "Ingress Controller eliminado"
 
   # 5. Eliminar kube-state-metrics
@@ -485,21 +466,17 @@ cleanup() {
   sudo sed -i '/prometheus\.monitoring\.local/d' /etc/hosts
   log_success "/etc/hosts limpiado"
 
-  # 11. Verificación final
+  # 11. Esperar a que los namespaces desaparezcan (máx 30s, luego forzar)
   log_info "Verificando que los namespaces han desaparecido..."
   local TIMEOUT=30
   local ELAPSED=0
-  while kubectl get namespaces 2>/dev/null | grep -qE "^(wordpress|databases|monitoring|security) "; do
+  while kubectl get namespaces 2>/dev/null | grep -qE "wordpress|databases|monitoring|security"; do
     if [ $ELAPSED -ge $TIMEOUT ]; then
       log_warn "Forzando finalizers en namespaces restantes..."
       for ns in wordpress databases monitoring security; do
-        local phase
-        phase=$(kubectl get namespace $ns -o jsonpath='{.status.phase}' 2>/dev/null || echo "")
-        if [ "$phase" = "Terminating" ]; then
-          kubectl get namespace $ns -o json 2>/dev/null \
-            | python3 -c "import sys,json; d=json.load(sys.stdin); d['spec']['finalizers']=[]; print(json.dumps(d))" 2>/dev/null \
-            | kubectl replace --raw "/api/v1/namespaces/$ns/finalize" -f - 2>/dev/null || true
-        fi
+        kubectl get namespace $ns -o json 2>/dev/null \
+          | python3 -c "import sys,json; d=json.load(sys.stdin); d['spec']['finalizers']=[]; print(json.dumps(d))" 2>/dev/null \
+          | kubectl replace --raw "/api/v1/namespaces/$ns/finalize" -f - 2>/dev/null || true
       done
       break
     fi
@@ -621,6 +598,7 @@ wait_for_deployment "monitoring" "loki" 120
 # 23. Grafana
 apply_file "12-grafana.yaml" "Grafana (Deployment + Service)"
 wait_for_deployment "monitoring" "grafana" 120
+
 
 # ============================================================
 # TUNNEL Y /etc/hosts
