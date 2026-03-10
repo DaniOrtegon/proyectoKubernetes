@@ -53,6 +53,10 @@ load_images() {
     "registry.k8s.io/ingress-nginx/kube-webhook-certgen:v1.6.5"
     "registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.10.0"
     "bitnami/sealed-secrets-controller:0.26.3"
+    "quay.io/jetstack/cert-manager-controller:v1.14.4"
+    "quay.io/jetstack/cert-manager-cainjector:v1.14.4"
+    "quay.io/jetstack/cert-manager-webhook:v1.14.4"
+    "quay.io/jetstack/cert-manager-startupapicheck:v1.14.4"
   )
 
   for IMAGE in "${IMAGES[@]}"; do
@@ -180,8 +184,7 @@ install_sealed_secrets() {
 
   local VERSION="0.26.3"
 
-  # Paso 1: Asegurar que la imagen está en Minikube ANTES de aplicar el yaml
-  # El controller.yaml oficial usa docker.io/bitnami/sealed-secrets-controller (sin ghcr.io)
+  # Asegurar imagen correcta en Minikube ANTES de aplicar el yaml
   log_info "Cargando imagen de Sealed Secrets en Minikube..."
   if ! minikube image ls 2>/dev/null | grep -qF "bitnami/sealed-secrets-controller:${VERSION}"; then
     docker pull bitnami/sealed-secrets-controller:${VERSION}       || log_error "No se pudo descargar la imagen de sealed-secrets."
@@ -189,8 +192,7 @@ install_sealed_secrets() {
   fi
   log_success "Imagen bitnami/sealed-secrets-controller:${VERSION} disponible en Minikube"
 
-  # Paso 2: Aplicar el yaml con imagePullPolicy: Never ya sustituido
-  # Así evitamos la race condition entre el apply y el patch posterior
+  # Aplicar con imagePullPolicy: Never ya sustituido — evita race condition
   log_info "Instalando Sealed Secrets Controller v${VERSION}..."
   curl -sL "https://github.com/bitnami-labs/sealed-secrets/releases/download/v${VERSION}/controller.yaml"     | sed 's/imagePullPolicy: .*/imagePullPolicy: Never/g'     | kubectl apply -f -     || log_error "No se pudo instalar Sealed Secrets Controller."
 
@@ -204,6 +206,129 @@ install_sealed_secrets() {
   done
   echo ""
   log_success "Sealed Secrets Controller está listo"
+}
+
+# ============================================================
+# FUNCIÓN: Instalar cert-manager con Helm
+# ============================================================
+install_cert_manager() {
+  if kubectl get deployment cert-manager -n cert-manager &>/dev/null; then
+    log_success "cert-manager ya está instalado"
+    return
+  fi
+
+  # Asegurar que las imágenes de cert-manager están en Minikube
+  local CM_VERSION="v1.14.4"
+  local CM_IMAGES=(
+    "quay.io/jetstack/cert-manager-controller:${CM_VERSION}"
+    "quay.io/jetstack/cert-manager-cainjector:${CM_VERSION}"
+    "quay.io/jetstack/cert-manager-webhook:${CM_VERSION}"
+    "quay.io/jetstack/cert-manager-startupapicheck:${CM_VERSION}"
+  )
+  for IMAGE in "${CM_IMAGES[@]}"; do
+    if ! minikube image ls 2>/dev/null | grep -qF "$IMAGE"; then
+      log_info "Cargando en Minikube: $IMAGE"
+      docker pull "$IMAGE" || log_error "No se pudo descargar $IMAGE"
+      minikube image load "$IMAGE" || log_error "No se pudo cargar $IMAGE en Minikube"
+    else
+      log_success "Ya en Minikube: $IMAGE"
+    fi
+  done
+
+  # Instalar Helm si no está disponible
+  if ! command -v helm &>/dev/null; then
+    log_info "Helm no encontrado — instalando..."
+    curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3       | bash       || log_error "No se pudo instalar Helm."
+    log_success "Helm instalado: $(helm version --short)"
+  else
+    log_success "Helm ya disponible: $(helm version --short)"
+  fi
+
+  local VERSION="v1.14.4"
+  log_info "Instalando cert-manager ${VERSION}..."
+
+  # Añadir repo de Helm si no existe
+  if ! helm repo list 2>/dev/null | grep -q "jetstack"; then
+    helm repo add jetstack https://charts.jetstack.io       || log_error "No se pudo añadir el repo de Helm jetstack."
+    helm repo update
+  fi
+
+  # Instalar cert-manager con sus CRDs
+  helm install cert-manager jetstack/cert-manager \
+    --namespace cert-manager \
+    --create-namespace \
+    --version ${VERSION} \
+    --set installCRDs=true \
+    --set global.leaderElection.namespace=cert-manager \
+    --set image.pullPolicy=Never \
+    --set webhook.image.pullPolicy=Never \
+    --set cainjector.image.pullPolicy=Never \
+    --set startupapicheck.image.pullPolicy=Never \
+    || log_error "No se pudo instalar cert-manager."
+
+  # Esperar a que los 3 pods de cert-manager estén listos
+  log_info "Esperando a que cert-manager esté listo (puede tardar ~60s)..."
+  local retries=0
+  until [ "$(kubectl get pods -n cert-manager --field-selector=status.phase=Running 2>/dev/null | grep -c Running)" -ge 3 ]; do
+    retries=$((retries + 1))
+    [ $retries -ge 24 ] && log_error "cert-manager no arrancó en 4 minutos."
+    echo -n "."
+    sleep 10
+  done
+  echo ""
+  log_success "cert-manager está listo"
+
+  # Esperar a que el webhook de cert-manager esté realmente operativo
+  # sleep fijo no es suficiente — hacemos un probe real hasta que responda
+  log_info "Esperando a que el webhook de cert-manager esté operativo..."
+  local retries=0
+  until kubectl get pods -n cert-manager -l app.kubernetes.io/component=webhook         2>/dev/null | grep -q "Running"; do
+    retries=$((retries + 1))
+    [ $retries -ge 24 ] && log_error "Webhook de cert-manager no arrancó en 4 minutos."
+    echo -n "."
+    sleep 10
+  done
+  echo ""
+
+  # Aunque el pod esté Running, el webhook puede tardar unos segundos más
+  # en registrarse. Hacemos un probe con kubectl hasta que no falle.
+  log_info "Verificando que el webhook acepta conexiones..."
+  local probe_retries=0
+  until kubectl auth can-i create certificates.cert-manager.io         --namespace kube-system &>/dev/null; do
+    probe_retries=$((probe_retries + 1))
+    [ $probe_retries -ge 12 ] && break  # máx 60s extra, luego intentamos igualmente
+    echo -n "."
+    sleep 5
+  done
+  echo ""
+  sleep 5  # margen de seguridad final
+  log_success "Webhook de cert-manager listo"
+}
+
+# ============================================================
+# FUNCIÓN: Aplicar ClusterIssuers y Certificados TLS
+# ============================================================
+apply_cert_manager_config() {
+  if kubectl get clusterissuer ca-issuer &>/dev/null; then
+    log_success "ClusterIssuers ya están configurados"
+    return
+  fi
+
+  log_info "Aplicando configuración de cert-manager (ClusterIssuers + Certificados)..."
+  apply_file "15-cert-manager.yaml" "ClusterIssuers self-signed + Certificados TLS"
+
+  # Esperar a que los certificados estén Ready
+  log_info "Esperando a que los certificados TLS estén Ready..."
+  local retries=0
+  until kubectl get certificate wordpress-tls -n wordpress         -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null | grep -q "True"; do
+    retries=$((retries + 1))
+    [ $retries -ge 18 ] && log_warn "Certificado wordpress-tls tardando más de lo esperado — continuando..."
+    [ $retries -ge 18 ] && break
+    echo -n "."
+    sleep 10
+  done
+  echo ""
+  log_success "Certificados TLS listos"
 }
 
 # ============================================================
@@ -558,63 +683,71 @@ echo ""
 install_kubeseal
 echo ""
 
-# 8. Namespaces
+# 8. cert-manager
+install_cert_manager
+echo ""
+
+# 9. Namespaces
 apply_file "00-namespace.yaml" "Namespaces (security, wordpress, databases, monitoring)"
 sleep 2
 
-# 9. Generar SealedSecrets (requiere namespaces y controller activos)
+# 10. Generar SealedSecrets (requiere namespaces y controller activos)
 generate_sealed_secrets
 echo ""
 
-# 10. Aplicar SealedSecrets (el controller los descifra y crea los Secrets reales)
+# 11. Aplicar SealedSecrets (el controller los descifra y crea los Secrets reales)
 apply_file "sealed-mariadb-secret-databases.yaml" "SealedSecret MariaDB (databases)"
 apply_file "sealed-mariadb-secret-wordpress.yaml"  "SealedSecret MariaDB (wordpress)"
 apply_file "sealed-redis-secret-databases.yaml"    "SealedSecret Redis (databases)"
 apply_file "sealed-redis-secret-wordpress.yaml"    "SealedSecret Redis (wordpress)"
 
-# 11. ConfigMaps
+# 12. ConfigMaps
 apply_file "02-configmap.yaml" "ConfigMaps (mariadb-config + wordpress-config)"
 
-# 12. PVCs
+# 13. PVCs
 apply_file "03-pvc.yaml" "PersistentVolumeClaims (wordpress-pvc)"
 
-# 13. MariaDB
+# 14. MariaDB
 apply_file "04-mariadb.yaml" "StatefulSet + Headless Service de MariaDB"
 wait_for_statefulset "databases" "mariadb" 120
 
-# 14. Redis
+# 15. Redis
 apply_file "05-redis.yaml" "PVC + Deployment + Service de Redis"
 wait_for_deployment "databases" "redis" 60
 
-# 15. WordPress
+# 16. WordPress
 apply_file "06-wordpress.yaml" "Deployment + Service de WordPress"
 wait_for_deployment "wordpress" "wordpress" 120
 
-# 16. NetworkPolicies
+# 17. NetworkPolicies
 apply_file "07-network-policy.yaml" "NetworkPolicies (databases + wordpress + monitoring)"
 
-# 17. Ingress
-apply_file "08-ingress.yaml" "Ingress (wp-k8s.local + monitoring.local)"
+# 18. cert-manager ClusterIssuers + Certificados
+apply_cert_manager_config
+echo ""
 
-# 18. HPA
+# 19. Ingress (con TLS habilitado)
+apply_file "08-ingress.yaml" "Ingress con TLS (wp-k8s.local + monitoring.local)"
+
+# 20. HPA
 apply_file "09-hpa-wordpress.yaml" "HorizontalPodAutoscaler de WordPress"
 
-# 19. PDB
+# 21. PDB
 apply_file "13-pdb.yaml" "PodDisruptionBudget de WordPress"
 
-# 20. ResourceQuota + LimitRange
+# 22. ResourceQuota + LimitRange
 apply_file "14-resource-quota.yaml" "ResourceQuota y LimitRange"
 
-# 21. Prometheus + Alertmanager
+# 23. Prometheus + Alertmanager
 apply_file "10-prometheus.yaml" "Prometheus + Alertmanager (RBAC + ConfigMap + Deployment + Service)"
 wait_for_deployment "monitoring" "prometheus" 120
 wait_for_deployment "monitoring" "alertmanager" 60
 
-# 22. Loki + Promtail
+# 24. Loki + Promtail
 apply_file "11-loki.yaml" "Loki + Promtail (Deployment + DaemonSet)"
 wait_for_deployment "monitoring" "loki" 120
 
-# 23. Grafana
+# 25. Grafana
 apply_file "12-grafana.yaml" "Grafana (Deployment + Service)"
 wait_for_deployment "monitoring" "grafana" 120
 
@@ -641,9 +774,9 @@ echo -e "${GREEN}   ✅ Despliegue completado con éxito${NC}"
 echo -e "${GREEN}============================================================${NC}"
 echo ""
 echo -e "${BLUE}📌 URLs de acceso (mantén 'sudo minikube tunnel' activo):${NC}"
-echo -e "   WordPress:  http://wp-k8s.local"
-echo -e "   Grafana:    http://grafana.monitoring.local  (admin / admin123)"
-echo -e "   Prometheus: http://prometheus.monitoring.local"
+echo -e "   WordPress:  https://wp-k8s.local  (HTTP redirige a HTTPS automáticamente)"
+echo -e "   Grafana:    https://grafana.monitoring.local  (admin / admin123)"
+echo -e "   Prometheus: https://prometheus.monitoring.local"
 echo ""
 echo -e "${BLUE}📌 Comandos útiles:${NC}"
 echo -e "   Ver todos los pods:     kubectl get pods -A"
