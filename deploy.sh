@@ -422,7 +422,7 @@ generate_sealed_secrets() {
 # ============================================================
 delete_namespace_safe() {
   local ns=$1
-  local timeout=${2:-20}
+  local timeout=${2:-30}
   local elapsed=0
 
   kubectl get namespace "$ns" &>/dev/null || return 0
@@ -438,14 +438,21 @@ delete_namespace_safe() {
     elapsed=$((elapsed + 2))
   done
 
+  # Forzar finalizers si sigue en Terminating
   local phase
   phase=$(kubectl get namespace "$ns" -o jsonpath='{.status.phase}' 2>/dev/null || echo "")
   if [ "$phase" = "Terminating" ]; then
-    log_warn "Namespace '$ns' atascado en Terminating — forzando finalizers..."
-    kubectl get namespace "$ns" -o json 2>/dev/null \
-      | python3 -c "import sys,json; d=json.load(sys.stdin); d['spec']['finalizers']=[]; print(json.dumps(d))" 2>/dev/null \
-      | kubectl replace --raw "/api/v1/namespaces/$ns/finalize" -f - 2>/dev/null || true
+    log_warn "Namespace '$ns' atascado — forzando finalizers..."
+    kubectl get namespace "$ns" -o json 2>/dev/null       | python3 -c "import sys,json; d=json.load(sys.stdin); d['spec']['finalizers']=[]; print(json.dumps(d))" 2>/dev/null       | kubectl replace --raw "/api/v1/namespaces/$ns/finalize" -f - 2>/dev/null || true
+    # Confirmar borrado
+    local retries=0
+    while kubectl get namespace "$ns" &>/dev/null; do
+      retries=$((retries + 1))
+      [ $retries -ge 10 ] && log_warn "Namespace '$ns' persiste tras forzar finalizers" && return 0
+      sleep 2
+    done
   fi
+  return 0
 }
 
 # ============================================================
