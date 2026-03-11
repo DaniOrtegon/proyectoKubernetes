@@ -53,6 +53,9 @@ load_images() {
     "registry.k8s.io/ingress-nginx/kube-webhook-certgen:v1.6.5"
     "registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.10.0"
     "bitnami/sealed-secrets-controller:0.26.3"
+    "minio/minio:latest"
+    "minio/mc:latest"
+    "busybox"
     "quay.io/jetstack/cert-manager-controller:v1.14.4"
     "quay.io/jetstack/cert-manager-cainjector:v1.14.4"
     "quay.io/jetstack/cert-manager-webhook:v1.14.4"
@@ -752,7 +755,18 @@ fi
 apply_file "05-redis.yaml" "Redis HA — StatefulSet (1 master + 2 replicas) + Sentinel sidecars"
 wait_for_statefulset "databases" "redis" 120
 
-# 16. WordPress
+# 16. MinIO (almacenamiento S3 para uploads WordPress)
+apply_file "16-minio.yaml" "MinIO — almacenamiento S3 para uploads WordPress stateless"
+wait_for_deployment "storage" "minio" 60
+log_info "Configurando buckets MinIO..."
+kubectl delete job minio-setup -n storage --ignore-not-found=true 2>/dev/null || true
+if kubectl wait --for=condition=complete job/minio-setup -n storage --timeout=60s 2>/dev/null; then
+  log_success "Buckets MinIO creados"
+else
+  log_warn "Job minio-setup no completó — verifica con: kubectl logs -n storage job/minio-setup"
+fi
+
+# 17. WordPress
 apply_file "06-wordpress.yaml" "Deployment + Service de WordPress"
 wait_for_deployment "wordpress" "wordpress" 120
 
