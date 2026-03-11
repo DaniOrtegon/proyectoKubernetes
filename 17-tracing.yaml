@@ -1,0 +1,255 @@
+# ============================================================
+# 17-tracing.yaml — Tracing distribuido con Jaeger + OpenTelemetry
+#
+# ARQUITECTURA:
+#   - Jaeger all-in-one: recibe, almacena y visualiza trazas
+#     (memoria in-process, suficiente para Minikube/desarrollo)
+#   - OTel Collector DaemonSet: recoge trazas de los pods
+#     y las reenvía a Jaeger
+#   - WordPress instrumentado via plugin OTel for WordPress
+#
+# PUERTOS:
+#   - Jaeger UI:       16686 (consulta de trazas)
+#   - Jaeger OTLP:     4317 (gRPC), 4318 (HTTP)
+#   - OTel Collector:  4317/4318 (recepción desde pods)
+#
+# FLUJO:
+#   WordPress → OTel Collector (DaemonSet) → Jaeger → Grafana datasource
+# ============================================================
+
+# ------------------------------------------------------------
+# ConfigMap OTel Collector
+# ------------------------------------------------------------
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-collector-config
+  namespace: monitoring
+  labels:
+    app: otel-collector
+    app.kubernetes.io/part-of: wordpress-ha
+data:
+  config.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+
+    processors:
+      batch:
+        timeout: 5s
+        send_batch_size: 1024
+      memory_limiter:
+        limit_mib: 128
+        spike_limit_mib: 32
+        check_interval: 5s
+
+    exporters:
+      otlp:
+        endpoint: jaeger-collector.monitoring.svc.cluster.local:4317
+        tls:
+          insecure: true
+
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [memory_limiter, batch]
+          exporters: [otlp]
+
+---
+# ------------------------------------------------------------
+# Jaeger all-in-one — recibe, almacena y visualiza trazas
+# Almacenamiento in-memory (suficiente para desarrollo/Minikube)
+# En producción usar Elasticsearch o Cassandra como backend
+# ------------------------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jaeger
+  namespace: monitoring
+  labels:
+    app: jaeger
+    app.kubernetes.io/name: jaeger
+    app.kubernetes.io/version: "1.52"
+    app.kubernetes.io/part-of: wordpress-ha
+    app.kubernetes.io/component: tracing
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jaeger
+  template:
+    metadata:
+      labels:
+        app: jaeger
+        app.kubernetes.io/name: jaeger
+        app.kubernetes.io/part-of: wordpress-ha
+    spec:
+      containers:
+        - name: jaeger
+          image: jaegertracing/all-in-one:1.52
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 16686  # UI
+              name: ui
+            - containerPort: 4317   # OTLP gRPC
+              name: otlp-grpc
+            - containerPort: 4318   # OTLP HTTP
+              name: otlp-http
+            - containerPort: 14268  # Jaeger HTTP collector
+              name: collector-http
+          env:
+            - name: COLLECTOR_OTLP_ENABLED
+              value: "true"
+            - name: SPAN_STORAGE_TYPE
+              value: memory
+            - name: MEMORY_MAX_TRACES
+              value: "10000"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 16686
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 16686
+            initialDelaySeconds: 30
+            periodSeconds: 20
+
+---
+# Service Jaeger — UI + collector endpoints
+apiVersion: v1
+kind: Service
+metadata:
+  name: jaeger-collector
+  namespace: monitoring
+  labels:
+    app: jaeger
+    app.kubernetes.io/name: jaeger
+    app.kubernetes.io/part-of: wordpress-ha
+spec:
+  type: ClusterIP
+  ports:
+    - name: ui
+      port: 16686
+      targetPort: 16686
+    - name: otlp-grpc
+      port: 4317
+      targetPort: 4317
+    - name: otlp-http
+      port: 4318
+      targetPort: 4318
+    - name: collector-http
+      port: 14268
+      targetPort: 14268
+  selector:
+    app: jaeger
+
+---
+# Alias 'jaeger-query' para el datasource de Grafana
+apiVersion: v1
+kind: Service
+metadata:
+  name: jaeger-query
+  namespace: monitoring
+  labels:
+    app: jaeger
+    app.kubernetes.io/name: jaeger
+    app.kubernetes.io/part-of: wordpress-ha
+spec:
+  type: ClusterIP
+  ports:
+    - name: ui
+      port: 16686
+      targetPort: 16686
+  selector:
+    app: jaeger
+
+---
+# ------------------------------------------------------------
+# OTel Collector DaemonSet — uno por nodo, recoge trazas
+# de todos los pods y las reenvía a Jaeger
+# ------------------------------------------------------------
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: otel-collector
+  namespace: monitoring
+  labels:
+    app: otel-collector
+    app.kubernetes.io/name: otel-collector
+    app.kubernetes.io/part-of: wordpress-ha
+    app.kubernetes.io/component: tracing
+spec:
+  selector:
+    matchLabels:
+      app: otel-collector
+  template:
+    metadata:
+      labels:
+        app: otel-collector
+        app.kubernetes.io/name: otel-collector
+        app.kubernetes.io/part-of: wordpress-ha
+    spec:
+      containers:
+        - name: otel-collector
+          image: otel/opentelemetry-collector-contrib:0.91.0
+          imagePullPolicy: Never
+          args: ["--config=/etc/otel/config.yaml"]
+          ports:
+            - containerPort: 4317
+              name: otlp-grpc
+              hostPort: 4317
+            - containerPort: 4318
+              name: otlp-http
+              hostPort: 4318
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          volumeMounts:
+            - name: otel-config
+              mountPath: /etc/otel
+      volumes:
+        - name: otel-config
+          configMap:
+            name: otel-collector-config
+
+---
+# Service OTel Collector — WordPress envía trazas aquí
+apiVersion: v1
+kind: Service
+metadata:
+  name: otel-collector
+  namespace: monitoring
+  labels:
+    app: otel-collector
+    app.kubernetes.io/name: otel-collector
+    app.kubernetes.io/part-of: wordpress-ha
+spec:
+  type: ClusterIP
+  ports:
+    - name: otlp-grpc
+      port: 4317
+      targetPort: 4317
+    - name: otlp-http
+      port: 4318
+      targetPort: 4318
+  selector:
+    app: otel-collector
