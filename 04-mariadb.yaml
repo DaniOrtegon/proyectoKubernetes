@@ -4,23 +4,10 @@
 # ARQUITECTURA:
 #   - mariadb-0: PRIMARY (escrituras + lecturas)
 #   - mariadb-1: REPLICA (solo lectura, replicación asíncrona)
-#   - WordPress apunta al Service 'mariadb-primary' para escrituras
-#   - Headless Service para FQDNs estables entre pods
-#
-# FAILOVER:
-#   En Minikube (1 nodo) el failover es manual — si mariadb-0 cae
-#   hay que promover mariadb-1 manualmente. En producción multi-nodo
-#   se usaría Orchestrator o MaxScale para failover automático.
-#
-# REPLICACIÓN:
-#   - mariadb-0 actúa como master con binary log activado
-#   - mariadb-1 se conecta al master via FQDN y replica todos los cambios
-#   - initContainer en mariadb-1 espera al master antes de arrancar
+#   - Un solo contenedor por pod — sin sidecars
+#   - El script de entrypoint gestiona todo según el ordinal
 # ============================================================
 
-# ------------------------------------------------------------
-# ConfigMap con configuraciones de MariaDB
-# ------------------------------------------------------------
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -34,100 +21,34 @@ data:
   MYSQL_DATABASE: wordpress_db
   MYSQL_USER: wordpress_user
 
-  # Configuración del primary (mariadb-0)
-  primary.cnf: |
-    [mysqld]
-    server-id=1
-    log-bin=mysql-bin
-    binlog-format=ROW
-    binlog-do-db=wordpress_db
-    sync-binlog=1
-    innodb-flush-log-at-trx-commit=1
-    max-connections=200
-    character-set-server=utf8mb4
-    collation-server=utf8mb4_unicode_ci
-
-  # Configuración de la replica (mariadb-1)
-  replica.cnf: |
-    [mysqld]
-    server-id=2
-    relay-log=relay-bin
-    read-only=1
-    max-connections=200
-    character-set-server=utf8mb4
-    collation-server=utf8mb4_unicode_ci
-
-  # Script que decide si el pod es primary o replica según el ordinal
+  # Script que decide el rol según el ordinal del StatefulSet
+  # La replicación se configura por separado via Job (04b-mariadb-replication-job.yaml)
   start-mariadb.sh: |
     #!/bin/bash
     ORDINAL=$(echo $HOSTNAME | rev | cut -d'-' -f1 | rev)
     if [ "$ORDINAL" = "0" ]; then
-      echo "Arrancando como PRIMARY (server-id=1)"
-      exec docker-entrypoint.sh mysqld --defaults-file=/etc/mysql/conf.d/primary.cnf
+      echo "=== Arrancando como PRIMARY (server-id=1) ==="
+      exec docker-entrypoint.sh mysqld \
+        --server-id=1 \
+        --log-bin=mysql-bin \
+        --binlog-format=ROW \
+        --binlog-do-db=wordpress_db \
+        --sync-binlog=1 \
+        --character-set-server=utf8mb4 \
+        --collation-server=utf8mb4_unicode_ci \
+        --max-connections=200
     else
-      echo "Arrancando como REPLICA (server-id=2)"
-      # Esperar a que el primary esté listo antes de arrancar
-      until mysql -h mariadb-0.mariadb-headless.databases.svc.cluster.local \
-                  -u root -p"${MYSQL_ROOT_PASSWORD}" -e "SELECT 1" &>/dev/null; do
-        echo "Esperando al primary mariadb-0..."
-        sleep 3
-      done
-      echo "Primary disponible, arrancando replica..."
-      exec docker-entrypoint.sh mysqld --defaults-file=/etc/mysql/conf.d/replica.cnf
+      echo "=== Arrancando como REPLICA (server-id=2) ==="
+      exec docker-entrypoint.sh mysqld \
+        --server-id=2 \
+        --relay-log=relay-bin \
+        --read-only=1 \
+        --character-set-server=utf8mb4 \
+        --collation-server=utf8mb4_unicode_ci \
+        --max-connections=200
     fi
 
-  # Script que configura la replicación en mariadb-1 tras el primer arranque
-  setup-replication.sh: |
-    #!/bin/bash
-    ORDINAL=$(echo $HOSTNAME | rev | cut -d'-' -f1 | rev)
-    [ "$ORDINAL" = "0" ] && exit 0  # Solo en replicas
-
-    echo "Configurando replicación en mariadb-$ORDINAL..."
-
-    # Esperar a que MySQL esté listo en este pod
-    until mysqladmin -u root -p"${MYSQL_ROOT_PASSWORD}" ping &>/dev/null; do
-      echo "Esperando a que MySQL local esté listo..."
-      sleep 2
-    done
-
-    # Crear usuario de replicación en el primary (idempotente)
-    mysql -h mariadb-0.mariadb-headless.databases.svc.cluster.local \
-          -u root -p"${MYSQL_ROOT_PASSWORD}" << SQL
-    CREATE USER IF NOT EXISTS 'replicator'@'%' IDENTIFIED BY '${MYSQL_ROOT_PASSWORD}';
-    GRANT REPLICATION SLAVE ON *.* TO 'replicator'@'%';
-    FLUSH PRIVILEGES;
-    SQL
-
-    # Obtener posición del binary log del primary
-    MASTER_STATUS=$(mysql -h mariadb-0.mariadb-headless.databases.svc.cluster.local \
-                         -u root -p"${MYSQL_ROOT_PASSWORD}" \
-                         -e "SHOW MASTER STATUS\G" 2>/dev/null)
-    MASTER_LOG_FILE=$(echo "$MASTER_STATUS" | grep "File:" | awk '{print $2}')
-    MASTER_LOG_POS=$(echo "$MASTER_STATUS"  | grep "Position:" | awk '{print $2}')
-
-    echo "Master log: $MASTER_LOG_FILE @ $MASTER_LOG_POS"
-
-    # Configurar replicación en este pod
-    mysql -u root -p"${MYSQL_ROOT_PASSWORD}" << SQL
-    STOP SLAVE;
-    CHANGE MASTER TO
-      MASTER_HOST='mariadb-0.mariadb-headless.databases.svc.cluster.local',
-      MASTER_USER='replicator',
-      MASTER_PASSWORD='${MYSQL_ROOT_PASSWORD}',
-      MASTER_LOG_FILE='${MASTER_LOG_FILE}',
-      MASTER_LOG_POS=${MASTER_LOG_POS};
-    START SLAVE;
-    SQL
-
-    echo "Replicación configurada correctamente"
-    mysql -u root -p"${MYSQL_ROOT_PASSWORD}" -e "SHOW SLAVE STATUS\G" | grep -E "Running|Error|Seconds"
-
 ---
-# ------------------------------------------------------------
-# Headless Service — FQDNs estables por pod
-# mariadb-0.mariadb-headless.databases.svc.cluster.local
-# mariadb-1.mariadb-headless.databases.svc.cluster.local
-# ------------------------------------------------------------
 apiVersion: v1
 kind: Service
 metadata:
@@ -146,34 +67,8 @@ spec:
     app: mariadb
 
 ---
-# ------------------------------------------------------------
-# Service Primary — WordPress apunta aquí para escrituras
-# ClusterIP estable que siempre apunta a mariadb-0
-# ------------------------------------------------------------
-apiVersion: v1
-kind: Service
-metadata:
-  name: mariadb-primary
-  namespace: databases
-  labels:
-    app: mariadb
-    app.kubernetes.io/name: mariadb
-    app.kubernetes.io/part-of: wordpress-ha
-    app.kubernetes.io/component: primary
-spec:
-  type: ClusterIP
-  ports:
-    - port: 3306
-      targetPort: 3306
-  selector:
-    app: mariadb
-    mariadb-role: primary
-
----
-# ------------------------------------------------------------
-# Service mariadb — alias para compatibilidad con el ConfigMap
-# wordpress-config que usa 'mariadb.databases.svc.cluster.local'
-# ------------------------------------------------------------
+# Service 'mariadb' — apunta siempre al primary (mariadb-0)
+# WordPress usa este service como WORDPRESS_DB_HOST
 apiVersion: v1
 kind: Service
 metadata:
@@ -190,12 +85,9 @@ spec:
       targetPort: 3306
   selector:
     app: mariadb
-    mariadb-role: primary
+    statefulset.kubernetes.io/pod-name: mariadb-0
 
 ---
-# ------------------------------------------------------------
-# StatefulSet: mariadb-0 (primary) + mariadb-1 (replica)
-# ------------------------------------------------------------
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -220,28 +112,31 @@ spec:
         app.kubernetes.io/name: mariadb
         app.kubernetes.io/part-of: wordpress-ha
     spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: mariadb
+                topologyKey: kubernetes.io/hostname
       initContainers:
-        # Fix permisos del volumen (igual que antes)
         - name: fix-perms
           image: mariadb:10.6
           command: ["chown", "-R", "999:999", "/var/lib/mysql"]
           securityContext:
             runAsUser: 0
-            allowPrivilegeEscalation: false
           volumeMounts:
             - name: mariadb-storage
               mountPath: /var/lib/mysql
 
-        # Copiar scripts al directorio ejecutable
         - name: init-scripts
-          image: mariadb:10.6
+          image: busybox
           command:
             - sh
             - -c
-            - |
-              cp /config/start-mariadb.sh /scripts/start-mariadb.sh
-              cp /config/setup-replication.sh /scripts/setup-replication.sh
-              chmod +x /scripts/start-mariadb.sh /scripts/setup-replication.sh
+            - cp /config/start-mariadb.sh /scripts/start-mariadb.sh && chmod +x /scripts/start-mariadb.sh
           volumeMounts:
             - name: mariadb-config-vol
               mountPath: /config
@@ -256,8 +151,6 @@ spec:
             runAsUser: 999
             runAsNonRoot: true
             allowPrivilegeEscalation: false
-            capabilities:
-              drop: ["ALL"]
           ports:
             - containerPort: 3306
           env:
@@ -294,7 +187,7 @@ spec:
                 - sh
                 - -c
                 - mysqladmin -u root -p"${MYSQL_ROOT_PASSWORD}" ping -h localhost
-            initialDelaySeconds: 20
+            initialDelaySeconds: 30
             periodSeconds: 10
             failureThreshold: 3
           livenessProbe:
@@ -303,46 +196,12 @@ spec:
                 - sh
                 - -c
                 - mysqladmin -u root -p"${MYSQL_ROOT_PASSWORD}" ping -h localhost
-            initialDelaySeconds: 40
+            initialDelaySeconds: 60
             periodSeconds: 20
             failureThreshold: 5
           volumeMounts:
             - name: mariadb-storage
               mountPath: /var/lib/mysql
-            - name: mariadb-config-vol
-              mountPath: /etc/mysql/conf.d
-            - name: scripts
-              mountPath: /scripts
-
-        # Sidecar que configura la replicación tras el arranque
-        # Solo actúa en mariadb-1 (replica), en mariadb-0 sale inmediatamente
-        - name: replication-init
-          image: mariadb:10.6
-          command:
-            - sh
-            - -c
-            - |
-              # Esperar a que mysqld local esté listo
-              until mysqladmin -h 127.0.0.1 -u root -p"${MYSQL_ROOT_PASSWORD}" ping &>/dev/null; do
-                sleep 3
-              done
-              /scripts/setup-replication.sh
-              # Mantener el sidecar vivo para monitorización
-              while true; do sleep 3600; done
-          env:
-            - name: MYSQL_ROOT_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: mariadb-secret
-                  key: mariadb-root-password
-          resources:
-            requests:
-              cpu: 50m
-              memory: 64Mi
-            limits:
-              cpu: 100m
-              memory: 128Mi
-          volumeMounts:
             - name: scripts
               mountPath: /scripts
 
@@ -351,14 +210,8 @@ spec:
           configMap:
             name: mariadb-config
             items:
-              - key: primary.cnf
-                path: primary.cnf
-              - key: replica.cnf
-                path: replica.cnf
               - key: start-mariadb.sh
                 path: start-mariadb.sh
-              - key: setup-replication.sh
-                path: setup-replication.sh
         - name: scripts
           emptyDir: {}
 
