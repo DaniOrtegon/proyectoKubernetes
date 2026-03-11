@@ -158,6 +158,63 @@ data:
               summary: "OOMKill en {{ $labels.pod }}"
               description: "El contenedor {{ $labels.container }} fue terminado por falta de memoria."
 
+      # --------------------------------------------------------
+      # SLOs y Error Budgets — Apartado 3.1
+      # SLO: 99.9% de requests exitosas (error budget: 43min/mes)
+      # --------------------------------------------------------
+      - name: wordpress-slos
+        rules:
+          # Métrica de tasa de éxito en ventana de 5 minutos
+          # Usada como base para calcular el burn rate del error budget
+          - record: wordpress:request_success_rate:5m
+            expr: |
+              sum(rate(nginx_ingress_controller_requests{
+                service="wordpress", status!~"5.."
+              }[5m]))
+              /
+              sum(rate(nginx_ingress_controller_requests{
+                service="wordpress"
+              }[5m]))
+
+          # Alerta de burn rate alto (x14.4 = consume error budget mensual en 1h)
+          # Si se dispara, quedan ~43 minutos de error budget para todo el mes
+          - alert: WordPressSLOBurnRateHigh
+            expr: |
+              (1 - wordpress:request_success_rate:5m) > (1 - 0.999) * 14.4
+            for: 5m
+            labels:
+              severity: critical
+              slo: availability
+            annotations:
+              summary: "WordPress consume error budget demasiado rápido"
+              description: "Burn rate: {{ $value | humanizePercentage }}. Al ritmo actual el error budget mensual (43min) se agotará en menos de 1 hora."
+
+          # Alerta de burn rate moderado (x3 = consume error budget en ~5 días)
+          # Aviso temprano antes de que sea crítico
+          - alert: WordPressSLOBurnRateMedium
+            expr: |
+              (1 - wordpress:request_success_rate:5m) > (1 - 0.999) * 3
+            for: 30m
+            labels:
+              severity: warning
+              slo: availability
+            annotations:
+              summary: "WordPress consumiendo error budget a ritmo elevado"
+              description: "Burn rate: {{ $value | humanizePercentage }}. El error budget mensual se agotará en ~5 días si continúa."
+
+          # Registro del error budget restante (útil para dashboards Grafana)
+          - record: wordpress:error_budget_remaining:30d
+            expr: |
+              1 - (
+                sum(increase(nginx_ingress_controller_requests{
+                  service="wordpress", status=~"5.."
+                }[30d]))
+                /
+                sum(increase(nginx_ingress_controller_requests{
+                  service="wordpress"
+                }[30d]))
+              ) / (1 - 0.999)
+
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
