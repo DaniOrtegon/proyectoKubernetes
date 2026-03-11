@@ -724,6 +724,16 @@ apply_file "02-configmap.yaml" "ConfigMaps (mariadb-config + wordpress-config)"
 apply_file "03-pvc.yaml" "PersistentVolumeClaims (wordpress-pvc)"
 
 # 14. MariaDB HA (primary + replica)
+# Si existe un StatefulSet previo con spec diferente, hay que borrarlo antes
+# (kubectl apply no puede cambiar campos inmutables como volumeClaimTemplates)
+if kubectl get statefulset mariadb -n databases &>/dev/null; then
+  CURRENT_REPLICAS=$(kubectl get statefulset mariadb -n databases -o jsonpath='{.spec.replicas}' 2>/dev/null || echo "0")
+  if [ "$CURRENT_REPLICAS" != "2" ]; then
+    log_warn "StatefulSet mariadb existente con spec diferente — recreando..."
+    kubectl delete statefulset mariadb -n databases --cascade=orphan 2>/dev/null || true
+    sleep 5
+  fi
+fi
 apply_file "04-mariadb.yaml" "MariaDB HA — StatefulSet (primary + replica) + replicación asíncrona"
 wait_for_statefulset "databases" "mariadb" 180
 
