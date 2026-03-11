@@ -107,6 +107,28 @@ spec:
       ports:
         - protocol: TCP
           port: 6379
+    # Permite salida hacia MinIO en namespace 'storage'
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: storage
+          podSelector:
+            matchLabels:
+              app: minio
+      ports:
+        - protocol: TCP
+          port: 9000
+    # Permite salida a Sentinel (puerto 26379)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: databases
+          podSelector:
+            matchLabels:
+              app: redis
+      ports:
+        - protocol: TCP
+          port: 26379
     # Permite resolución DNS (sin esto WordPress no puede resolver FQDNs)
     - ports:
         - protocol: UDP
@@ -300,3 +322,54 @@ spec:
           protocol: UDP
         - port: 53
           protocol: TCP
+
+---
+# Política 13: default-deny storage namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-storage
+  namespace: storage
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+  egress:
+    - ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+
+---
+# Política 14: WordPress puede acceder a MinIO (:9000)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-wordpress-to-minio
+  namespace: storage
+spec:
+  podSelector:
+    matchLabels:
+      app: minio
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: wordpress
+          podSelector:
+            matchLabels:
+              app: wordpress
+      ports:
+        - port: 9000
+    # Job minio-setup necesita acceso interno
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: storage
+      ports:
+        - port: 9000
+        - port: 9001
