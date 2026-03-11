@@ -734,8 +734,19 @@ if kubectl get statefulset mariadb -n databases &>/dev/null; then
     sleep 5
   fi
 fi
-apply_file "04-mariadb.yaml" "MariaDB HA — StatefulSet (primary + replica) + replicación asíncrona"
+apply_file "04-mariadb.yaml" "MariaDB HA — StatefulSet (primary + replica)"
 wait_for_statefulset "databases" "mariadb" 180
+
+# Lanzar Job que configura la replicación una vez ambos pods están listos
+log_info "Configurando replicación MariaDB..."
+kubectl delete job mariadb-replication-setup -n databases --ignore-not-found=true 2>/dev/null || true
+apply_file "04b-mariadb-replication-job.yaml" "Job de configuración de replicación MariaDB"
+# Esperar a que el Job complete
+if kubectl wait --for=condition=complete job/mariadb-replication-setup -n databases --timeout=120s 2>/dev/null; then
+  log_success "Replicación MariaDB configurada"
+else
+  log_warn "El Job de replicación no completó en 120s — verifica con: kubectl logs -n databases job/mariadb-replication-setup"
+fi
 
 # 15. Redis HA con Sentinel
 apply_file "05-redis.yaml" "Redis HA — StatefulSet (1 master + 2 replicas) + Sentinel sidecars"
