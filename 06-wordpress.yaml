@@ -125,6 +125,13 @@ spec:
                 define('WP_REDIS_PASSWORD', getenv('REDIS_PASSWORD'));
                 define('WP_REDIS_TIMEOUT', 1);
                 define('WP_REDIS_READ_TIMEOUT', 1);
+                // OpenTelemetry — tracing distribuido
+                // Requiere plugin: wp-packages/opentelemetry-wordpress
+                // Las trazas se envían al OTel Collector del nodo
+                putenv('OTEL_PHP_AUTOLOAD_ENABLED=true');
+                putenv('OTEL_SERVICE_NAME=wordpress');
+                putenv('OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector.monitoring.svc.cluster.local:4318');
+                putenv('OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf');
                 // MinIO S3 — uploads van a MinIO, pods WordPress stateless
                 define('AS3CF_SETTINGS', serialize([
                   'provider'                 => 'aws',
