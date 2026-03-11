@@ -58,6 +58,7 @@ load_images() {
     "busybox"
     "jaegertracing/all-in-one:1.52"
     "otel/opentelemetry-collector-contrib:0.91.0"
+    "alpine:3.18"
     "quay.io/jetstack/cert-manager-controller:v1.14.4"
     "quay.io/jetstack/cert-manager-cainjector:v1.14.4"
     "quay.io/jetstack/cert-manager-webhook:v1.14.4"
@@ -368,15 +369,38 @@ generate_sealed_secrets() {
     "sealed-redis-secret-wordpress.yaml"
   )
 
+  # ----------------------------------------------------------
+  # Detectar si los sealed secrets existentes son válidos
+  # para la clave del clúster actual.
+  # Estrategia: kubeseal --validate compara el certificado
+  # embebido en el sealed secret con el del controlador actual.
+  # Si la clave cambió (clúster nuevo o minikube delete) → regenerar.
+  # ----------------------------------------------------------
   local all_exist=true
-  for f in "\${SEALED_FILES[@]}"; do
-    [ ! -f "\$f" ] && all_exist=false && break
+  for f in "${SEALED_FILES[@]}"; do
+    [ ! -f "$f" ] && all_exist=false && break
   done
 
-  if \$all_exist; then
-    log_success "SealedSecrets ya existen — usando los ficheros actuales"
-    log_warn "Si recreaste el clúster (minikube delete), borra los sealed-*.yaml y vuelve a ejecutar deploy.sh"
-    return
+  if $all_exist; then
+    log_info "SealedSecrets encontrados — verificando compatibilidad con este clúster..."
+
+    # kubeseal --validate verifica que el sealed secret fue cifrado
+    # con la misma clave pública que tiene el controlador actual.
+    # Falla con exit code != 0 si la clave es diferente.
+    if kubeseal --validate < sealed-mariadb-secret-databases.yaml &>/dev/null 2>&1; then
+      log_success "SealedSecrets válidos para este clúster ✅ — reutilizando"
+      return
+    else
+      log_warn "⚠️  SealedSecrets incompatibles con este clúster (clave diferente)"
+      log_warn "   Esto ocurre al cambiar de máquina o tras 'minikube delete'"
+      log_warn "   Haciendo backup y regenerando automáticamente..."
+      local backup_dir="sealed-secrets-backup-$(date +%Y%m%d_%H%M%S)"
+      mkdir -p "$backup_dir"
+      for f in "${SEALED_FILES[@]}"; do
+        [ -f "$f" ] && cp "$f" "$backup_dir/" && rm -f "$f"
+      done
+      log_info "Backup guardado en: $backup_dir/"
+    fi
   fi
 
   log_info "Generando SealedSecrets con kubeseal..."
@@ -530,10 +554,13 @@ update_hosts() {
   sudo sed -i '/wp-k8s\.local/d' /etc/hosts
   sudo sed -i '/grafana\.monitoring\.local/d' /etc/hosts
   sudo sed -i '/prometheus\.monitoring\.local/d' /etc/hosts
+  sudo sed -i '/minio\.storage\.local/d' /etc/hosts
+  sudo sed -i '/minio\.storage\.local/d' /etc/hosts
 
   echo "$EXTERNAL_IP wp-k8s.local"               | sudo tee -a /etc/hosts > /dev/null
   echo "$EXTERNAL_IP grafana.monitoring.local"    | sudo tee -a /etc/hosts > /dev/null
   echo "$EXTERNAL_IP prometheus.monitoring.local" | sudo tee -a /etc/hosts > /dev/null
+  echo "$EXTERNAL_IP minio.storage.local"         | sudo tee -a /etc/hosts > /dev/null
 
   log_success "/etc/hosts actualizado correctamente"
 }
@@ -634,6 +661,7 @@ cleanup() {
   sudo sed -i '/wp-k8s\.local/d' /etc/hosts
   sudo sed -i '/grafana\.monitoring\.local/d' /etc/hosts
   sudo sed -i '/prometheus\.monitoring\.local/d' /etc/hosts
+  sudo sed -i '/minio\.storage\.local/d' /etc/hosts
   log_success "/etc/hosts limpiado"
 
   # 11. Esperar a que los namespaces desaparezcan (máx 30s, luego forzar)
@@ -768,6 +796,9 @@ wait_for_statefulset "databases" "redis" 120
 # 16. MinIO (almacenamiento S3 para uploads WordPress)
 apply_file "16-minio.yaml" "MinIO — almacenamiento S3 para uploads WordPress stateless"
 wait_for_deployment "storage" "minio" 60
+
+# Backup (CronJobs: MariaDB 2AM + Uploads 3AM + Limpieza domingos 4AM)
+apply_file "18-backup.yaml" "CronJobs backup → MinIO (RPO: 24h, RTO: ~15min)"
 log_info "Configurando buckets MinIO..."
 kubectl delete job minio-setup -n storage --ignore-not-found=true 2>/dev/null || true
 if kubectl wait --for=condition=complete job/minio-setup -n storage --timeout=60s 2>/dev/null; then
@@ -812,7 +843,10 @@ wait_for_deployment "monitoring" "loki" 120
 apply_file "17-tracing.yaml" "Jaeger all-in-one + OTel Collector DaemonSet"
 wait_for_deployment "monitoring" "jaeger" 60
 
-# 26. Grafana
+# 26. Backup CronJobs (MariaDB + uploads → MinIO)
+apply_file "18-backup.yaml" "CronJobs de backup — MariaDB y uploads a MinIO"
+
+# 27. Grafana
 apply_file "12-grafana.yaml" "Grafana (Deployment + Service)"
 wait_for_deployment "monitoring" "grafana" 120
 
@@ -842,6 +876,7 @@ echo -e "${BLUE}📌 URLs de acceso (mantén 'sudo minikube tunnel' activo):${NC
 echo -e "   WordPress:  https://wp-k8s.local  (HTTP redirige a HTTPS automáticamente)"
 echo -e "   Grafana:    https://grafana.monitoring.local  (admin / admin123)"
 echo -e "   Prometheus: https://prometheus.monitoring.local"
+echo -e "   MinIO:      https://minio.storage.local  (minioadmin / Minio#2024!)"
 echo ""
 echo -e "${BLUE}📌 Comandos útiles:${NC}"
 echo -e "   Ver todos los pods:     kubectl get pods -A"
@@ -851,73 +886,3 @@ echo -e "   Ver logs de MariaDB:    kubectl logs -n databases -l app=mariadb -f"
 echo -e "   Prometheus lockfile:    kubectl scale deploy prometheus -n monitoring --replicas=0 && minikube ssh 'sudo rm -f /tmp/hostpath-provisioner/monitoring/prometheus-pvc/lock' && kubectl scale deploy prometheus -n monitoring --replicas=1"
 echo -e "   Deshacer todo:          ./deploy.sh --cleanup"
 echo ""
-
-# ============================================================
-# GIT: inicializar repo y hacer push automático a GitHub
-# ============================================================
-setup_git() {
-  local REPO_URL="https://github.com/DaniOrtegon/proyectoKubernetes.git"
-
-  echo ""
-  echo -e "${BLUE}============================================================${NC}"
-  echo -e "${BLUE}   📦 Sincronizando con GitHub...${NC}"
-  echo -e "${BLUE}============================================================${NC}"
-
-  # Mover pipeline.yml a la carpeta correcta si existe en raíz
-  if [ -f "pipeline.yml" ] && [ ! -f ".github/workflows/pipeline.yml" ]; then
-    mkdir -p .github/workflows
-    mv pipeline.yml .github/workflows/pipeline.yml
-    log_success "pipeline.yml movido a .github/workflows/"
-  fi
-
-  # Inicializar git si no existe
-  if [ ! -d ".git" ]; then
-    git init
-    git remote add origin "$REPO_URL"
-    log_success "Repositorio Git inicializado"
-  else
-    CURRENT_REMOTE=$(git remote get-url origin 2>/dev/null || echo "")
-    if [ "$CURRENT_REMOTE" != "$REPO_URL" ]; then
-      git remote set-url origin "$REPO_URL"
-    fi
-    log_success "Repositorio Git ya configurado"
-  fi
-
-  # Configurar rama main
-  git checkout -b main 2>/dev/null || git checkout main 2>/dev/null || true
-
-  # Crear .gitignore si no existe
-  if [ ! -f ".gitignore" ]; then
-    cat > .gitignore << 'GITIGNORE'
-*.tmp
-*.bak
-GITIGNORE
-    log_success ".gitignore creado"
-  fi
-
-  # Añadir todos los archivos
-  git add -A
-
-  # Comprobar si hay cambios
-  if git diff --cached --quiet; then
-    log_success "Git: sin cambios nuevos que commitear"
-    return 0
-  fi
-
-  # Commit
-  COMMIT_MSG="feat: deploy automático $(date '+%Y-%m-%d %H:%M') — WordPress HA K8s"
-  git commit -m "$COMMIT_MSG"
-  log_success "Commit: $COMMIT_MSG"
-
-  # Push
-  log_info "Haciendo push a GitHub..."
-  if git push -u origin main 2>/dev/null; then
-    log_success "✅ Push completado → $REPO_URL"
-  else
-    log_warn "Push fallido — configura credenciales Git y ejecuta:"
-    log_warn "  git push -u origin main"
-    log_warn "  (usa un Personal Access Token como contraseña)"
-  fi
-}
-
-setup_git
