@@ -15,6 +15,9 @@ metadata:
 spec:
   ttlSecondsAfterFinished: 300
   template:
+    metadata:
+      labels:
+        app: mariadb
     spec:
       restartPolicy: OnFailure
       containers:
