@@ -290,14 +290,22 @@ spec:
               memory: 512Mi
           readinessProbe:
             exec:
-              command: ["mysqladmin", "ping", "-h", "localhost"]
+              command:
+                - sh
+                - -c
+                - mysqladmin -u root -p"${MYSQL_ROOT_PASSWORD}" ping -h localhost
             initialDelaySeconds: 20
             periodSeconds: 10
+            failureThreshold: 3
           livenessProbe:
             exec:
-              command: ["mysqladmin", "ping", "-h", "localhost"]
+              command:
+                - sh
+                - -c
+                - mysqladmin -u root -p"${MYSQL_ROOT_PASSWORD}" ping -h localhost
             initialDelaySeconds: 40
             periodSeconds: 20
+            failureThreshold: 5
           volumeMounts:
             - name: mariadb-storage
               mountPath: /var/lib/mysql
