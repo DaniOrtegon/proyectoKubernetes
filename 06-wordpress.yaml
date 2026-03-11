@@ -169,6 +169,8 @@ spec:
             # para ficheros temporales, sesiones y compilación de plantillas.
             - name: tmp-dir
               mountPath: /tmp
+            - name: apache-run
+              mountPath: /var/run/apache2
       volumes:
         - name: wordpress-storage
           persistentVolumeClaim:
@@ -176,6 +178,8 @@ spec:
         # R-SEC-1: emptyDir proporciona /tmp efímero y escribible por www-data (uid 33).
         # Se vacía automáticamente al terminar el pod, sin coste de almacenamiento persistente.
         - name: tmp-dir
+          emptyDir: {}
+        - name: apache-run
           emptyDir: {}
 
 ---
