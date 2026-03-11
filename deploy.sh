@@ -56,6 +56,8 @@ load_images() {
     "minio/minio:latest"
     "minio/mc:latest"
     "busybox"
+    "jaegertracing/all-in-one:1.52"
+    "otel/opentelemetry-collector-contrib:0.91.0"
     "quay.io/jetstack/cert-manager-controller:v1.14.4"
     "quay.io/jetstack/cert-manager-cainjector:v1.14.4"
     "quay.io/jetstack/cert-manager-webhook:v1.14.4"
@@ -798,7 +800,11 @@ wait_for_deployment "monitoring" "alertmanager" 60
 apply_file "11-loki.yaml" "Loki + Promtail (Deployment + DaemonSet)"
 wait_for_deployment "monitoring" "loki" 120
 
-# 25. Grafana
+# 25. Jaeger + OTel Collector (tracing distribuido)
+apply_file "17-tracing.yaml" "Jaeger all-in-one + OTel Collector DaemonSet"
+wait_for_deployment "monitoring" "jaeger" 60
+
+# 26. Grafana
 apply_file "12-grafana.yaml" "Grafana (Deployment + Service)"
 wait_for_deployment "monitoring" "grafana" 120
 
