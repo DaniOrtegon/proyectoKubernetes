@@ -723,9 +723,9 @@ apply_file "02-configmap.yaml" "ConfigMaps (mariadb-config + wordpress-config)"
 # 13. PVCs
 apply_file "03-pvc.yaml" "PersistentVolumeClaims (wordpress-pvc)"
 
-# 14. MariaDB
-apply_file "04-mariadb.yaml" "StatefulSet + Headless Service de MariaDB"
-wait_for_statefulset "databases" "mariadb" 120
+# 14. MariaDB HA (primary + replica)
+apply_file "04-mariadb.yaml" "MariaDB HA — StatefulSet (primary + replica) + replicación asíncrona"
+wait_for_statefulset "databases" "mariadb" 180
 
 # 15. Redis HA con Sentinel
 apply_file "05-redis.yaml" "Redis HA — StatefulSet (1 master + 2 replicas) + Sentinel sidecars"
