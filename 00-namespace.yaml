@@ -28,3 +28,11 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: cert-manager  # Namespace para cert-manager (TLS end-to-end)
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: storage
+  labels:
+    app.kubernetes.io/part-of: wordpress-ha
