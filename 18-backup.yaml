@@ -1,0 +1,290 @@
+# ============================================================
+# 18-backup.yaml — Backup y Recuperación ante Desastres
+#
+# ESTRATEGIA:
+#   - MariaDB: mysqldump diario a las 2:00 AM → MinIO
+#   - WordPress uploads: sync diario a las 3:00 AM → MinIO
+#   - Retención: 30 días
+#   - RTO (Recovery Time Objective): ~15 minutos
+#   - RPO (Recovery Point Objective): ~24 horas (backup diario)
+#
+# DESTINO: MinIO bucket 'wordpress-backups' (namespace storage)
+#   - mariadb/wordpress_YYYYMMDD_HHMMSS.sql.gz
+#   - uploads/wordpress-uploads_YYYYMMDD_HHMMSS.tar.gz
+#
+# RESTAURACIÓN:
+#   kubectl exec -n databases mariadb-0 -- \
+#     mysql -u root -p"${PASS}" < backup.sql
+# ============================================================
+
+# ------------------------------------------------------------
+# CronJob 1: Backup diario de MariaDB → MinIO
+# ------------------------------------------------------------
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: mariadb-backup
+  namespace: databases
+  labels:
+    app: mariadb-backup
+    app.kubernetes.io/part-of: wordpress-ha
+    app.kubernetes.io/component: backup
+spec:
+  schedule: "0 2 * * *"          # Cada día a las 2:00 AM
+  timeZone: "Europe/Madrid"
+  successfulJobsHistoryLimit: 7  # Mantener logs de los últimos 7 éxitos
+  failedJobsHistoryLimit: 3      # Mantener logs de los últimos 3 fallos
+  concurrencyPolicy: Forbid      # No lanzar si el anterior aún corre
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: mariadb-backup
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: backup
+              image: mariadb:10.6
+              imagePullPolicy: Never
+              command:
+                - /bin/bash
+                - -c
+                - |
+                  set -e
+                  DATE=$(date +%Y%m%d_%H%M%S)
+                  BACKUP_FILE="wordpress_${DATE}.sql.gz"
+                  MINIO_URL="http://minio.storage.svc.cluster.local:9000"
+
+                  echo "=== Iniciando backup MariaDB: $BACKUP_FILE ==="
+
+                  # Dump de todas las bases de datos con transacción única
+                  # --single-transaction evita bloqueos en tablas InnoDB
+                  mysqldump \
+                    -h mariadb.databases.svc.cluster.local \
+                    -u root -p"${MYSQL_ROOT_PASSWORD}" \
+                    --all-databases \
+                    --single-transaction \
+                    --routines \
+                    --triggers \
+                    --events \
+                    | gzip > /tmp/${BACKUP_FILE}
+
+                  BACKUP_SIZE=$(du -sh /tmp/${BACKUP_FILE} | cut -f1)
+                  echo "Backup generado: ${BACKUP_SIZE}"
+
+                  # Subir a MinIO via curl (sin necesidad de cliente mc)
+                  # Usamos la API S3 compatible de MinIO
+                  curl -s --fail \
+                    -X PUT \
+                    -H "Content-Type: application/gzip" \
+                    -u "${MINIO_ACCESS_KEY}:${MINIO_SECRET_KEY}" \
+                    --data-binary @/tmp/${BACKUP_FILE} \
+                    "${MINIO_URL}/wordpress-backups/mariadb/${BACKUP_FILE}" \
+                    || { echo "❌ Error subiendo a MinIO"; exit 1; }
+
+                  echo "✅ Backup subido a MinIO: mariadb/${BACKUP_FILE}"
+
+                  # Limpiar archivo temporal
+                  rm -f /tmp/${BACKUP_FILE}
+
+                  # Listar backups disponibles (últimos 5)
+                  echo "=== Backups disponibles en MinIO ==="
+                  curl -s \
+                    -u "${MINIO_ACCESS_KEY}:${MINIO_SECRET_KEY}" \
+                    "${MINIO_URL}/wordpress-backups/?prefix=mariadb/&list-type=2" \
+                    | grep -oP '(?<=<Key>)[^<]+' | tail -5 || true
+
+                  echo "=== Backup completado ==="
+              env:
+                - name: MYSQL_ROOT_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: mariadb-secret
+                      key: mariadb-root-password
+                - name: MINIO_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: minio-secret
+                      key: access-key
+                - name: MINIO_SECRET_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: minio-secret
+                      key: secret-key
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 128Mi
+                limits:
+                  cpu: 500m
+                  memory: 256Mi
+
+---
+# ------------------------------------------------------------
+# CronJob 2: Backup diario de uploads WordPress → MinIO
+# Los uploads están en el PVC wordpress-pvc (/var/www/html/wp-content/uploads)
+# ------------------------------------------------------------
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: wordpress-uploads-backup
+  namespace: wordpress
+  labels:
+    app: wordpress-backup
+    app.kubernetes.io/part-of: wordpress-ha
+    app.kubernetes.io/component: backup
+spec:
+  schedule: "0 3 * * *"          # Cada día a las 3:00 AM
+  timeZone: "Europe/Madrid"
+  successfulJobsHistoryLimit: 7
+  failedJobsHistoryLimit: 3
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: wordpress-backup
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: backup
+              image: alpine:3.18
+              imagePullPolicy: Never
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -e
+                  DATE=$(date +%Y%m%d_%H%M%S)
+                  BACKUP_FILE="wordpress-uploads_${DATE}.tar.gz"
+                  MINIO_URL="http://minio.storage.svc.cluster.local:9000"
+
+                  echo "=== Iniciando backup uploads WordPress: $BACKUP_FILE ==="
+
+                  # Instalar curl si no está (alpine no lo incluye por defecto)
+                  apk add --no-cache curl tar gzip --quiet
+
+                  # Comprimir directorio de uploads
+                  tar -czf /tmp/${BACKUP_FILE} \
+                    -C /var/www/html/wp-content/uploads . \
+                    2>/dev/null || { echo "❌ Error comprimiendo uploads"; exit 1; }
+
+                  BACKUP_SIZE=$(du -sh /tmp/${BACKUP_FILE} | cut -f1)
+                  echo "Backup generado: ${BACKUP_SIZE}"
+
+                  # Subir a MinIO
+                  curl -s --fail \
+                    -X PUT \
+                    -H "Content-Type: application/gzip" \
+                    -u "${MINIO_ACCESS_KEY}:${MINIO_SECRET_KEY}" \
+                    --data-binary @/tmp/${BACKUP_FILE} \
+                    "${MINIO_URL}/wordpress-backups/uploads/${BACKUP_FILE}" \
+                    || { echo "❌ Error subiendo a MinIO"; exit 1; }
+
+                  echo "✅ Backup subido a MinIO: uploads/${BACKUP_FILE}"
+                  rm -f /tmp/${BACKUP_FILE}
+                  echo "=== Backup uploads completado ==="
+              env:
+                - name: MINIO_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: minio-secret
+                      key: access-key
+                - name: MINIO_SECRET_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: minio-secret
+                      key: secret-key
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 64Mi
+                limits:
+                  cpu: 200m
+                  memory: 128Mi
+              volumeMounts:
+                - name: wordpress-storage
+                  mountPath: /var/www/html/wp-content/uploads
+                  subPath: wp-content/uploads
+                  readOnly: true
+          volumes:
+            - name: wordpress-storage
+              persistentVolumeClaim:
+                claimName: wordpress-pvc
+
+---
+# ------------------------------------------------------------
+# CronJob 3: Limpieza de backups antiguos (>30 días)
+# Se ejecuta los domingos a las 4:00 AM
+# ------------------------------------------------------------
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: backup-cleanup
+  namespace: storage
+  labels:
+    app: backup-cleanup
+    app.kubernetes.io/part-of: wordpress-ha
+    app.kubernetes.io/component: backup
+spec:
+  schedule: "0 4 * * 0"          # Cada domingo a las 4:00 AM
+  timeZone: "Europe/Madrid"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: backup-cleanup
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: cleanup
+              image: minio/mc:latest
+              imagePullPolicy: Never
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -e
+                  echo "=== Limpiando backups antiguos (>30 días) ==="
+
+                  mc alias set local \
+                    http://minio.storage.svc.cluster.local:9000 \
+                    "${MINIO_ROOT_USER}" "${MINIO_ROOT_PASSWORD}"
+
+                  # Borrar backups MariaDB con más de 30 días
+                  mc find local/wordpress-backups/mariadb \
+                    --older-than 30d \
+                    --exec "mc rm {}" || true
+
+                  # Borrar backups de uploads con más de 30 días
+                  mc find local/wordpress-backups/uploads \
+                    --older-than 30d \
+                    --exec "mc rm {}" || true
+
+                  echo "=== Limpieza completada ==="
+                  echo "Backups actuales:"
+                  mc ls local/wordpress-backups/mariadb/ | tail -5 || true
+                  mc ls local/wordpress-backups/uploads/ | tail -5 || true
+              env:
+                - name: MINIO_ROOT_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: minio-secret
+                      key: root-user
+                - name: MINIO_ROOT_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: minio-secret
+                      key: root-password
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 32Mi
+                limits:
+                  cpu: 100m
+                  memory: 64Mi
