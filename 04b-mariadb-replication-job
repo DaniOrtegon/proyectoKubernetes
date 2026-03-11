@@ -1,0 +1,90 @@
+# ============================================================
+# 04b-mariadb-replication-job.yaml
+# Job que configura la replicación MariaDB una vez que
+# mariadb-0 (primary) y mariadb-1 (replica) están listos.
+# Se ejecuta tras apply_file "04-mariadb.yaml"
+# ============================================================
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: mariadb-replication-setup
+  namespace: databases
+  labels:
+    app: mariadb
+    app.kubernetes.io/part-of: wordpress-ha
+spec:
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: setup
+          image: mariadb:10.6
+          command:
+            - bash
+            - -c
+            - |
+              set -e
+              echo "=== Configurando replicación MariaDB ==="
+
+              # Esperar al primary
+              echo "Esperando a mariadb-0..."
+              until mysql -h mariadb-0.mariadb-headless.databases.svc.cluster.local \
+                          -u root -p"${MYSQL_ROOT_PASSWORD}" \
+                          --connect-timeout=5 -e "SELECT 1" &>/dev/null 2>&1; do
+                sleep 3
+              done
+              echo "Primary listo."
+
+              # Esperar a mariadb-1
+              echo "Esperando a mariadb-1..."
+              until mysql -h mariadb-1.mariadb-headless.databases.svc.cluster.local \
+                          -u root -p"${MYSQL_ROOT_PASSWORD}" \
+                          --connect-timeout=5 -e "SELECT 1" &>/dev/null 2>&1; do
+                sleep 3
+              done
+              echo "Replica lista."
+
+              # Crear usuario de replicación en el primary
+              mysql -h mariadb-0.mariadb-headless.databases.svc.cluster.local \
+                    -u root -p"${MYSQL_ROOT_PASSWORD}" << SQL
+              CREATE USER IF NOT EXISTS 'replicator'@'%' IDENTIFIED BY '${MYSQL_ROOT_PASSWORD}';
+              GRANT REPLICATION SLAVE ON *.* TO 'replicator'@'%';
+              FLUSH PRIVILEGES;
+              SQL
+              echo "Usuario replicator creado."
+
+              # Obtener posición del binary log
+              MASTER_LOG_FILE=$(mysql -h mariadb-0.mariadb-headless.databases.svc.cluster.local \
+                                     -u root -p"${MYSQL_ROOT_PASSWORD}" \
+                                     -sNe "SHOW MASTER STATUS" 2>/dev/null | awk '{print $1}')
+              MASTER_LOG_POS=$(mysql -h mariadb-0.mariadb-headless.databases.svc.cluster.local \
+                                    -u root -p"${MYSQL_ROOT_PASSWORD}" \
+                                    -sNe "SHOW MASTER STATUS" 2>/dev/null | awk '{print $2}')
+              echo "Master: $MASTER_LOG_FILE @ $MASTER_LOG_POS"
+
+              # Configurar CHANGE MASTER en mariadb-1
+              mysql -h mariadb-1.mariadb-headless.databases.svc.cluster.local \
+                    -u root -p"${MYSQL_ROOT_PASSWORD}" << SQL
+              STOP SLAVE;
+              CHANGE MASTER TO
+                MASTER_HOST='mariadb-0.mariadb-headless.databases.svc.cluster.local',
+                MASTER_USER='replicator',
+                MASTER_PASSWORD='${MYSQL_ROOT_PASSWORD}',
+                MASTER_LOG_FILE='${MASTER_LOG_FILE}',
+                MASTER_LOG_POS=${MASTER_LOG_POS};
+              START SLAVE;
+              SQL
+              echo "=== Replicación configurada ==="
+
+              # Verificar estado
+              mysql -h mariadb-1.mariadb-headless.databases.svc.cluster.local \
+                    -u root -p"${MYSQL_ROOT_PASSWORD}" \
+                    -e "SHOW SLAVE STATUS\G" 2>/dev/null | \
+                    grep -E "Running|Behind|Error" || true
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mariadb-secret
+                  key: mariadb-root-password
