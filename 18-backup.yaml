@@ -74,7 +74,6 @@ spec:
                   echo "Backup generado: ${BACKUP_SIZE}"
 
                   # Subir a MinIO via curl (sin necesidad de cliente mc)
-                  # Usamos la API S3 compatible de MinIO
                   curl -s --fail \
                     -X PUT \
                     -H "Content-Type: application/gzip" \
@@ -84,8 +83,6 @@ spec:
                     || { echo "❌ Error subiendo a MinIO"; exit 1; }
 
                   echo "✅ Backup subido a MinIO: mariadb/${BACKUP_FILE}"
-
-                  # Limpiar archivo temporal
                   rm -f /tmp/${BACKUP_FILE}
 
                   # Listar backups disponibles (últimos 5)
@@ -123,7 +120,6 @@ spec:
 ---
 # ------------------------------------------------------------
 # CronJob 2: Backup diario de uploads WordPress → MinIO
-# Los uploads están en el PVC wordpress-pvc (/var/www/html/wp-content/uploads)
 # ------------------------------------------------------------
 apiVersion: batch/v1
 kind: CronJob
@@ -162,11 +158,8 @@ spec:
                   MINIO_URL="http://minio.storage.svc.cluster.local:9000"
 
                   echo "=== Iniciando backup uploads WordPress: $BACKUP_FILE ==="
-
-                  # Instalar curl si no está (alpine no lo incluye por defecto)
                   apk add --no-cache curl tar gzip --quiet
 
-                  # Comprimir directorio de uploads
                   tar -czf /tmp/${BACKUP_FILE} \
                     -C /var/www/html/wp-content/uploads . \
                     2>/dev/null || { echo "❌ Error comprimiendo uploads"; exit 1; }
@@ -174,7 +167,6 @@ spec:
                   BACKUP_SIZE=$(du -sh /tmp/${BACKUP_FILE} | cut -f1)
                   echo "Backup generado: ${BACKUP_SIZE}"
 
-                  # Subir a MinIO
                   curl -s --fail \
                     -X PUT \
                     -H "Content-Type: application/gzip" \
@@ -256,12 +248,10 @@ spec:
                     http://minio.storage.svc.cluster.local:9000 \
                     "${MINIO_ROOT_USER}" "${MINIO_ROOT_PASSWORD}"
 
-                  # Borrar backups MariaDB con más de 30 días
                   mc find local/wordpress-backups/mariadb \
                     --older-than 30d \
                     --exec "mc rm {}" || true
 
-                  # Borrar backups de uploads con más de 30 días
                   mc find local/wordpress-backups/uploads \
                     --older-than 30d \
                     --exec "mc rm {}" || true
@@ -288,3 +278,88 @@ spec:
                 limits:
                   cpu: 100m
                   memory: 64Mi
+
+---
+# ------------------------------------------------------------
+# Job de restauración manual de MariaDB
+# USO:
+#   1. Editar BACKUP_FILE con el nombre del backup a restaurar
+#   2. Cambiar suspend: true → suspend: false
+#   3. kubectl apply -f 18-backup.yaml
+#   4. kubectl logs -n databases job/mariadb-restore-manual -f
+#   5. kubectl delete job mariadb-restore-manual -n databases
+# ------------------------------------------------------------
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: mariadb-restore-manual
+  namespace: databases
+  labels:
+    app: mariadb-restore
+    app.kubernetes.io/part-of: wordpress-ha
+    app.kubernetes.io/component: restore
+spec:
+  suspend: true
+  ttlSecondsAfterFinished: 600
+  template:
+    metadata:
+      labels:
+        app: mariadb-backup
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: restore
+          image: mariadb:10.6
+          imagePullPolicy: Never
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+              MINIO_URL="http://minio.storage.svc.cluster.local:9000"
+
+              if [ "${BACKUP_FILE}" = "CHANGE_ME.sql.gz" ]; then
+                echo "❌ ERROR: Especifica BACKUP_FILE con el nombre del backup"
+                echo "Backups disponibles:"
+                curl -s -u "${MINIO_ACCESS_KEY}:${MINIO_SECRET_KEY}" \
+                     "${MINIO_URL}/wordpress-backups/?prefix=mariadb/" \
+                  | grep -oP '(?<=<Key>)[^<]+' || true
+                exit 1
+              fi
+
+              echo "=== Restaurando: ${BACKUP_FILE} ==="
+              curl -s --fail \
+                -u "${MINIO_ACCESS_KEY}:${MINIO_SECRET_KEY}" \
+                "${MINIO_URL}/wordpress-backups/mariadb/${BACKUP_FILE}" \
+                | gunzip \
+                | mysql \
+                    -h mariadb.databases.svc.cluster.local \
+                    -u root -p"${MYSQL_ROOT_PASSWORD}" \
+                    2>/dev/null
+
+              echo "✅ Restauración completada desde: ${BACKUP_FILE}"
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mariadb-secret
+                  key: mariadb-root-password
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-secret
+                  key: access-key
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-secret
+                  key: secret-key
+            - name: BACKUP_FILE
+              value: "CHANGE_ME.sql.gz"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
