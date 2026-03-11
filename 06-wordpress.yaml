@@ -103,21 +103,43 @@ spec:
                 secretKeyRef:
                   name: redis-secret
                   key: redis-password
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-secret
+                  key: access-key
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-secret
+                  key: secret-key
 
             # Configuración extra de WordPress via PHP
             - name: WORDPRESS_CONFIG_EXTRA
               value: |
                 define('WP_HOME', 'http://wp-k8s.local');
                 define('WP_SITEURL', 'http://wp-k8s.local');
-                // Redis HA via Sentinel — WordPress conecta al Sentinel,
-                // que redirige siempre al master actual.
-                // Si el master cae, Sentinel elige una replica como nuevo
-                // master y WordPress reconecta automáticamente.
+                // Redis HA via Sentinel
                 define('WP_REDIS_SENTINEL', 'mymaster');
                 define('WP_REDIS_SENTINEL_CONNECTION', 'redis-sentinel.databases.svc.cluster.local:26379');
                 define('WP_REDIS_PASSWORD', getenv('REDIS_PASSWORD'));
                 define('WP_REDIS_TIMEOUT', 1);
                 define('WP_REDIS_READ_TIMEOUT', 1);
+                // MinIO S3 — uploads van a MinIO, pods WordPress stateless
+                define('AS3CF_SETTINGS', serialize([
+                  'provider'                 => 'aws',
+                  'access-key-id'            => getenv('MINIO_ACCESS_KEY'),
+                  'secret-access-key'        => getenv('MINIO_SECRET_KEY'),
+                  'bucket'                   => 'wordpress-uploads',
+                  'region'                   => 'us-east-1',
+                  'use-server-roles'         => false,
+                  'enable-object-prefix'     => true,
+                  'object-prefix'            => 'uploads/',
+                  'force-https'              => false,
+                  'remove-local-file'        => false,
+                  'custom-domain'            => 'minio.storage.svc.cluster.local:9000',
+                  'enable-delivery-domain'   => true,
+                ]));
 
           resources:
             requests:
