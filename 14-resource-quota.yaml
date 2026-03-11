@@ -79,14 +79,15 @@ metadata:
   namespace: databases
 spec:
   hard:
-    # Redis HA: 3 pods × (128Mi redis + 32Mi sentinel) = 480Mi requests
-    # MariaDB: 256Mi requests → total ~740Mi → techo en 1Gi
-    requests.cpu: "1"
-    requests.memory: 1Gi
-    # Limits: 3 × (256Mi + 64Mi) + 512Mi (mariadb) = ~1.5Gi → techo en 3Gi
-    limits.cpu: "3"
-    limits.memory: 3Gi
-    # 3 pods redis + 1 mariadb = 4 pods mínimo
+    # Redis HA: 3 × (128Mi + 32Mi) = 480Mi
+    # MariaDB HA: 2 × (256Mi + 64Mi sidecar) = 640Mi
+    # Total requests ~1.1Gi → techo en 2Gi
+    requests.cpu: "2"
+    requests.memory: 2Gi
+    # Limits: Redis 3×320Mi=960Mi + MariaDB 2×640Mi=1280Mi = ~2.2Gi → techo en 4Gi
+    limits.cpu: "4"
+    limits.memory: 4Gi
+    # 3 pods redis + 2 pods mariadb = 5 pods mínimo
     pods: "10"
-    # 3 PVCs redis (volumeClaimTemplates) + 1 mariadb = 4 PVCs
-    persistentvolumeclaims: "6"
+    # 3 PVCs redis + 2 PVCs mariadb = 5 PVCs
+    persistentvolumeclaims: "8"
