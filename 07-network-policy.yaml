@@ -266,148 +266,37 @@ spec:
           port: 9093
 
 ---
-# ------------------------------------------------------------
-# POLÍTICA 10: Default-deny para namespace 'monitoring'
-# Sin esta política, cualquier pod del clúster puede acceder
-# a Prometheus (métricas), Grafana (dashboards) y Loki (logs).
-#
-# Egress permitido explícitamente:
-#   - DNS (UDP/TCP :53) — resolución de nombres
-#   - Prometheus → Alertmanager (:9093)
-#   - Prometheus → scrape de todos los namespaces (:9090, :8080, :9104, :80)
-#   - Promtail → Loki (:3100) — ya cubierto por allow-loki-ingress
-#   - Grafana → Loki (:3100) y Prometheus (:9090)
-#   - kube-state-metrics en kube-system (:8080)
-#   - Salida a la API de Kubernetes (:443) para service discovery de Prometheus
-# ------------------------------------------------------------
+# Política 12: Comunicación interna entre pods MariaDB (replicación)
+# mariadb-1 necesita conectar a mariadb-0:3306 para replicación
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: default-deny-monitoring
-  namespace: monitoring
+  name: allow-mariadb-replication
+  namespace: databases
 spec:
-  podSelector: {}
+  podSelector:
+    matchLabels:
+      app: mariadb
   policyTypes:
     - Ingress
     - Egress
-  egress:
-    # DNS — obligatorio para resolver FQDNs internos
-    - ports:
-        - protocol: UDP
-          port: 53
-        - protocol: TCP
-          port: 53
-
-    # Prometheus → Alertmanager
-    - to:
-        - podSelector:
-            matchLabels:
-              app: alertmanager
-      ports:
-        - protocol: TCP
-          port: 9093
-
-    # Prometheus → API de Kubernetes (service discovery + scrape via proxy)
-    - to:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: default
-          podSelector: {}
-      ports:
-        - protocol: TCP
-          port: 443
-
-    # Prometheus → scrape namespace 'wordpress' (:80)
-    - to:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: wordpress
-      ports:
-        - protocol: TCP
-          port: 80
-
-    # Prometheus → scrape namespace 'databases' (:9104 mysqld-exporter, :6379 redis)
-    - to:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: databases
-      ports:
-        - protocol: TCP
-          port: 9104
-        - protocol: TCP
-          port: 6379
-
-    # Prometheus → kube-state-metrics en kube-system (:8080)
-    - to:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: kube-system
-      ports:
-        - protocol: TCP
-          port: 8080
-        - protocol: TCP
-          port: 10250   # kubelet metrics
-
-    # Grafana → Prometheus interno (:9090)
-    - to:
-        - podSelector:
-            matchLabels:
-              app: prometheus
-      ports:
-        - protocol: TCP
-          port: 9090
-
-    # Grafana + Promtail → Loki interno (:3100, :9096 gRPC)
-    - to:
-        - podSelector:
-            matchLabels:
-              app: loki
-      ports:
-        - protocol: TCP
-          port: 3100
-        - protocol: TCP
-          port: 9096
-
----
-# ------------------------------------------------------------
-# POLÍTICA 11: Ingress al namespace monitoring
-# Solo permite tráfico desde el Ingress Controller (Grafana y
-# Prometheus son accesibles via HTTPS desde el exterior) y
-# tráfico interno entre componentes de monitoring.
-# ------------------------------------------------------------
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: allow-ingress-to-monitoring
-  namespace: monitoring
-spec:
-  podSelector:
-    matchLabels: {}
-  policyTypes:
-    - Ingress
   ingress:
-    # Tráfico desde el Ingress Controller (Grafana :3000, Prometheus :9090)
     - from:
-        - namespaceSelector:
+        - podSelector:
             matchLabels:
-              kubernetes.io/metadata.name: ingress-nginx
+              app: mariadb
       ports:
-        - protocol: TCP
-          port: 3000
-        - protocol: TCP
-          port: 9090
-
-    # Tráfico interno entre pods de monitoring (Grafana↔Prometheus, Promtail→Loki, etc.)
-    - from:
-        - podSelector: {}
+        - port: 3306
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: mariadb
       ports:
-        - protocol: TCP
-          port: 9090
-        - protocol: TCP
-          port: 3100
-        - protocol: TCP
-          port: 9096
-        - protocol: TCP
-          port: 9093
-        - protocol: TCP
-          port: 9080
+        - port: 3306
+    # DNS
+    - ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
