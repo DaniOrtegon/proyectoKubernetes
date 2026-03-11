@@ -22,7 +22,7 @@ metadata:
   name: wordpress-config      # Referenciado por el Deployment de WordPress
   namespace: wordpress        # Mismo namespace que WordPress
 data:
-  WORDPRESS_DB_HOST: "mariadb.databases.svc.cluster.local"  # FQDN del Service de MariaDB en namespace 'databases'
+  WORDPRESS_DB_HOST: "mariadb.databases.svc.cluster.local"  # Service alias → apunta siempre al primary (mariadb-0)
   WORDPRESS_DB_NAME: "wordpress_db"                          # Debe coincidir con MYSQL_DATABASE de mariadb-config
   WORDPRESS_DB_USER: "wordpress_user"                        # Debe coincidir con MYSQL_USER de mariadb-config
   WORDPRESS_SITE_URL: "http://wp-k8s.local"                  # URL pública de la instalación de WordPress
