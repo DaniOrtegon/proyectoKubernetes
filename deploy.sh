@@ -198,7 +198,7 @@ install_sealed_secrets() {
 
   log_info "Esperando a que Sealed Secrets Controller esté listo..."
   local retries=0
-  until kubectl get pods -n kube-system -l app.kubernetes.io/name=sealed-secrets-controller 2>/dev/null | grep -q "Running"; do
+  until kubectl get pods -n kube-system -l name=sealed-secrets-controller 2>/dev/null | grep -q "Running"; do
     retries=$((retries + 1))
     [ $retries -ge 18 ] && log_error "Sealed Secrets Controller no arrancó en 3 minutos."
     echo -n "."
@@ -527,6 +527,15 @@ cleanup() {
   echo -e "${RED}   CLEANUP - Eliminando todo el despliegue${NC}"
   echo -e "${RED}============================================================${NC}"
   echo ""
+
+  # 0. Reiniciar Metrics Server para evitar "stale GroupVersion discovery"
+  # que bloquea el borrado de namespaces con Terminating indefinido
+  log_info "Reiniciando Metrics Server para limpiar API stale..."
+  kubectl rollout restart deployment metrics-server -n kube-system 2>/dev/null || true
+  sleep 10
+  kubectl delete apiservice v1beta1.metrics.k8s.io --ignore-not-found=true 2>/dev/null || true
+  sleep 5
+  log_success "Metrics Server reiniciado"
 
   # 1. Bajar replicas a 0 para liberar PVCs antes de borrarlos
   log_info "Bajando replicas a 0 en todos los namespaces..."
