@@ -851,3 +851,73 @@ echo -e "   Ver logs de MariaDB:    kubectl logs -n databases -l app=mariadb -f"
 echo -e "   Prometheus lockfile:    kubectl scale deploy prometheus -n monitoring --replicas=0 && minikube ssh 'sudo rm -f /tmp/hostpath-provisioner/monitoring/prometheus-pvc/lock' && kubectl scale deploy prometheus -n monitoring --replicas=1"
 echo -e "   Deshacer todo:          ./deploy.sh --cleanup"
 echo ""
+
+# ============================================================
+# GIT: inicializar repo y hacer push automático a GitHub
+# ============================================================
+setup_git() {
+  local REPO_URL="https://github.com/DaniOrtegon/proyectoKubernetes.git"
+
+  echo ""
+  echo -e "${BLUE}============================================================${NC}"
+  echo -e "${BLUE}   📦 Sincronizando con GitHub...${NC}"
+  echo -e "${BLUE}============================================================${NC}"
+
+  # Mover pipeline.yml a la carpeta correcta si existe en raíz
+  if [ -f "pipeline.yml" ] && [ ! -f ".github/workflows/pipeline.yml" ]; then
+    mkdir -p .github/workflows
+    mv pipeline.yml .github/workflows/pipeline.yml
+    log_success "pipeline.yml movido a .github/workflows/"
+  fi
+
+  # Inicializar git si no existe
+  if [ ! -d ".git" ]; then
+    git init
+    git remote add origin "$REPO_URL"
+    log_success "Repositorio Git inicializado"
+  else
+    CURRENT_REMOTE=$(git remote get-url origin 2>/dev/null || echo "")
+    if [ "$CURRENT_REMOTE" != "$REPO_URL" ]; then
+      git remote set-url origin "$REPO_URL"
+    fi
+    log_success "Repositorio Git ya configurado"
+  fi
+
+  # Configurar rama main
+  git checkout -b main 2>/dev/null || git checkout main 2>/dev/null || true
+
+  # Crear .gitignore si no existe
+  if [ ! -f ".gitignore" ]; then
+    cat > .gitignore << 'GITIGNORE'
+*.tmp
+*.bak
+GITIGNORE
+    log_success ".gitignore creado"
+  fi
+
+  # Añadir todos los archivos
+  git add -A
+
+  # Comprobar si hay cambios
+  if git diff --cached --quiet; then
+    log_success "Git: sin cambios nuevos que commitear"
+    return 0
+  fi
+
+  # Commit
+  COMMIT_MSG="feat: deploy automático $(date '+%Y-%m-%d %H:%M') — WordPress HA K8s"
+  git commit -m "$COMMIT_MSG"
+  log_success "Commit: $COMMIT_MSG"
+
+  # Push
+  log_info "Haciendo push a GitHub..."
+  if git push -u origin main 2>/dev/null; then
+    log_success "✅ Push completado → $REPO_URL"
+  else
+    log_warn "Push fallido — configura credenciales Git y ejecuta:"
+    log_warn "  git push -u origin main"
+    log_warn "  (usa un Personal Access Token como contraseña)"
+  fi
+}
+
+setup_git
