@@ -741,7 +741,7 @@ update_hosts() {
   local EXTERNAL_IP=""
   until [ -n "$EXTERNAL_IP" ] && [ "$EXTERNAL_IP" != "<pending>" ]; do
     retries=$((retries + 1))
-    [ $retries -ge 18 ] && log_error "No se asignó EXTERNAL-IP. Asegúrate de tener 'sudo minikube tunnel' corriendo."
+    [ $retries -ge 18 ] && log_error "No se asignó EXTERNAL-IP. Asegúrate de tener 'minikube tunnel' corriendo en otra terminal."
     EXTERNAL_IP=$(kubectl get svc ingress-nginx-controller -n ingress-nginx \
       -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null)
     [ -z "$EXTERNAL_IP" ] && echo -n "." && sleep 5
@@ -1057,9 +1057,6 @@ install_velero
 # TUNNEL Y /etc/hosts
 # ============================================================
 echo ""
-# Configurar tunnel como servicio systemd (arranca automáticamente con la máquina)
-setup_tunnel_service
-
 log_info "Esperando a que el tunnel asigne IP y actualizando /etc/hosts..."
 echo ""
 
@@ -1077,8 +1074,8 @@ echo ""
 
 # --- URLs ---
 echo -e "${BLUE}🌐  URLs de acceso${NC}"
-echo -e "    El tunnel arranca automáticamente como servicio systemd."
-echo -e "    Si no funciona: ${GREEN}minikube tunnel${NC}"
+echo -e "    Para acceder a las URLs abre una terminal nueva y ejecuta:"
+echo -e "    ${GREEN}minikube tunnel${NC}"
 echo ""
 echo -e "    ${GREEN}WordPress${NC}   →  https://wp-k8s.local"
 echo -e "                   HTTP redirige a HTTPS automáticamente"
