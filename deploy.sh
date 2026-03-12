@@ -59,6 +59,8 @@ load_images() {
     "jaegertracing/all-in-one:1.52"
     "otel/opentelemetry-collector-contrib:0.91.0"
     "alpine:3.18"
+    "velero/velero:v1.12.4"
+    "velero/velero-plugin-for-aws:v1.8.2"
     "quay.io/jetstack/cert-manager-controller:v1.14.4"
     "quay.io/jetstack/cert-manager-cainjector:v1.14.4"
     "quay.io/jetstack/cert-manager-webhook:v1.14.4"
@@ -535,6 +537,198 @@ apply_file() {
 # ============================================================
 # FUNCIÓN: Actualizar /etc/hosts automáticamente
 # ============================================================
+
+# ============================================================
+# FUNCIÓN: Instalar Velero con backend MinIO
+# ============================================================
+install_velero() {
+  log_info "Instalando Velero con backend MinIO..."
+
+  # Activar addons CSI necesarios para snapshots de PVCs
+  # Timeout de 30s por addon — si se cuelga continuamos sin snapshots de PVC
+  # (Velero seguirá funcionando para objetos K8s, solo sin snapshot de volúmenes)
+  log_info "Activando addons CSI de Minikube (timeout 120s cada uno)..."
+
+  if timeout 120s minikube addons enable volumesnapshots &>/dev/null 2>&1; then
+    log_success "Addon volumesnapshots activado"
+  else
+    log_warn "Addon volumesnapshots tardó demasiado — Velero funcionará sin snapshots de PVC"
+  fi
+
+  if timeout 120s minikube addons enable csi-hostpath-driver &>/dev/null 2>&1; then
+    log_success "Addon csi-hostpath-driver activado"
+  else
+    log_warn "Addon csi-hostpath-driver tardó demasiado — continuando sin él"
+    log_warn "  Para activarlo manualmente después: minikube addons enable csi-hostpath-driver"
+  fi
+
+  # Añadir repo Helm de Velero
+  helm repo add vmware-tanzu https://vmware-tanzu.github.io/helm-charts 2>/dev/null || true
+  helm repo update vmware-tanzu 2>/dev/null || true
+
+  # Limpiar namespace velero si quedó en Terminating de un intento anterior
+  if kubectl get namespace velero &>/dev/null 2>&1; then
+    local phase
+    phase=$(kubectl get namespace velero -o jsonpath='{.status.phase}' 2>/dev/null || echo "")
+    if [ "$phase" = "Terminating" ]; then
+      log_warn "Namespace velero en Terminating — forzando limpieza..."
+      # Forzar eliminación de finalizers directamente
+      kubectl get namespace velero -o json 2>/dev/null         | python3 -c "import sys,json; d=json.load(sys.stdin); d['spec']['finalizers']=[]; print(json.dumps(d))"         | kubectl replace --raw "/api/v1/namespaces/velero/finalize" -f - 2>/dev/null || true
+      # Esperar a que desaparezca (máx 30s)
+      local i=0
+      while kubectl get namespace velero &>/dev/null 2>&1 && [ $i -lt 15 ]; do
+        echo -n "."
+        sleep 2
+        i=$((i+1))
+      done
+      echo ""
+      log_success "Namespace velero eliminado"
+    fi
+  fi
+
+  # Crear namespace velero limpio
+  sleep 2
+  kubectl create namespace velero --dry-run=client -o yaml | kubectl apply -f - 2>/dev/null || true
+
+  # Crear bucket velero-backups en MinIO
+  log_info "Creando bucket velero-backups en MinIO..."
+  kubectl delete job velero-bucket-setup -n storage --ignore-not-found=true 2>/dev/null || true
+  apply_file "19-velero.yaml" "Velero — bucket setup + NetworkPolicy"
+  if ! kubectl wait --for=condition=complete job/velero-bucket-setup -n storage --timeout=60s 2>/dev/null; then
+    log_warn "Job velero-bucket-setup no completó — verifica: kubectl logs -n storage job/velero-bucket-setup"
+  else
+    log_success "Bucket velero-backups creado en MinIO"
+  fi
+
+  # Obtener credenciales MinIO
+  MINIO_ACCESS_KEY=$(kubectl get secret minio-secret -n storage -o jsonpath='{.data.access-key}' | base64 -d 2>/dev/null || echo "minioadmin")
+  MINIO_SECRET_KEY=$(kubectl get secret minio-secret -n storage -o jsonpath='{.data.secret-key}' | base64 -d 2>/dev/null || echo "Minio#2024!")
+  MINIO_URL="http://minio.storage.svc.cluster.local:9000"
+
+  # Instalar Velero via Helm apuntando a MinIO
+  # Nota: desde v1.13 configuration.provider fue eliminado,
+  # el provider se configura por separado en cada backupStorageLocation.
+  # Usamos fichero de valores temporal para evitar problemas con caracteres especiales.
+  cat > /tmp/velero-values.yaml << HELMEOF
+credentials:
+  secretContents:
+    cloud: |
+      [default]
+      aws_access_key_id=${MINIO_ACCESS_KEY}
+      aws_secret_access_key=${MINIO_SECRET_KEY}
+
+configuration:
+  backupStorageLocation:
+    - name: minio
+      provider: aws
+      bucket: velero-backups
+      default: true
+      config:
+        region: minio
+        s3ForcePathStyle: "true"
+        s3Url: "${MINIO_URL}"
+  volumeSnapshotLocation:
+    - name: minio
+      provider: aws
+      config:
+        region: minio
+
+initContainers:
+  - name: velero-plugin-for-aws
+    image: velero/velero-plugin-for-aws:v1.8.2
+    imagePullPolicy: Never
+    volumeMounts:
+      - mountPath: /target
+        name: plugins
+
+image:
+  repository: velero/velero
+  tag: v1.12.4
+  pullPolicy: Never
+
+features: "EnableCSI"
+HELMEOF
+
+  helm upgrade --install velero vmware-tanzu/velero \
+    --namespace velero \
+    --version 5.2.0 \
+    --values /tmp/velero-values.yaml \
+    --set upgradeCRDs=false \
+    --timeout 5m \
+    || log_warn "Velero helm install falló — continuando sin Velero"
+
+  rm -f /tmp/velero-values.yaml
+
+  wait_for_deployment "velero" "velero" 120
+
+  # Crear schedule diario a la 1:00 AM
+  log_info "Creando schedule de backup diario (1:00 AM)..."
+  velero schedule create wordpress-daily \
+    --schedule="0 1 * * *" \
+    --include-namespaces wordpress,databases \
+    --ttl 720h \
+    2>/dev/null \
+    || log_warn "Schedule velero ya existe o no se pudo crear"
+
+  log_success "Velero instalado — backups diarios a la 1:00 AM"
+  log_info "  Ver backups:    velero backup get"
+  log_info "  Ver schedules:  velero schedule get"
+  log_info "  Backup manual:  velero backup create manual-backup --include-namespaces wordpress,databases"
+}
+
+
+# ============================================================
+# FUNCIÓN: Configurar minikube tunnel como servicio systemd
+# Se ejecuta automáticamente al arrancar la máquina
+# ============================================================
+setup_tunnel_service() {
+  local SERVICE_FILE="/etc/systemd/system/minikube-tunnel.service"
+  local CURRENT_USER=$(whoami)
+  local MINIKUBE_PATH=$(which minikube)
+
+  log_info "Configurando minikube tunnel como servicio systemd..."
+
+  # Crear el archivo de servicio
+  sudo tee "$SERVICE_FILE" > /dev/null << UNIT
+[Unit]
+Description=Minikube Tunnel
+After=network.target docker.service
+Wants=docker.service
+
+[Service]
+Type=simple
+User=root
+ExecStartPre=/bin/sleep 10
+ExecStart=${MINIKUBE_PATH} tunnel --alsologtostderr
+ExecStop=/usr/bin/pkill -f "minikube tunnel"
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+
+  # Recargar systemd, habilitar e iniciar el servicio
+  sudo systemctl daemon-reload
+  sudo systemctl enable minikube-tunnel.service
+  sudo systemctl restart minikube-tunnel.service
+
+  # Verificar que arrancó
+  sleep 3
+  if sudo systemctl is-active --quiet minikube-tunnel.service; then
+    log_success "Servicio minikube-tunnel activo y habilitado al arranque ✅"
+    log_info "  Ver estado:  sudo systemctl status minikube-tunnel"
+    log_info "  Ver logs:    sudo journalctl -u minikube-tunnel -f"
+    log_info "  Parar:       sudo systemctl stop minikube-tunnel"
+  else
+    log_warn "El servicio no arrancó correctamente — iniciando tunnel manualmente..."
+    sudo minikube tunnel &
+    sleep 5
+  fi
+}
+
 update_hosts() {
   log_info "Obteniendo IP externa del Ingress Controller..."
 
@@ -850,15 +1044,17 @@ apply_file "18-backup.yaml" "CronJobs de backup — MariaDB y uploads a MinIO"
 apply_file "12-grafana.yaml" "Grafana (Deployment + Service)"
 wait_for_deployment "monitoring" "grafana" 120
 
+# 28. Velero — backup completo del clúster con MinIO como backend
+install_velero
+
 
 # ============================================================
 # TUNNEL Y /etc/hosts
 # ============================================================
 echo ""
-log_warn "PASO FINAL: Si no tienes minikube tunnel activo, ábrelo en otra terminal:"
-echo ""
-echo -e "   ${GREEN}sudo minikube tunnel${NC}"
-echo ""
+# Configurar tunnel como servicio systemd (arranca automáticamente con la máquina)
+setup_tunnel_service
+
 log_info "Esperando a que el tunnel asigne IP y actualizando /etc/hosts..."
 echo ""
 
@@ -872,7 +1068,7 @@ echo -e "${GREEN}============================================================${N
 echo -e "${GREEN}   ✅ Despliegue completado con éxito${NC}"
 echo -e "${GREEN}============================================================${NC}"
 echo ""
-echo -e "${BLUE}📌 URLs de acceso (mantén 'sudo minikube tunnel' activo):${NC}"
+echo -e "${BLUE}📌 URLs de acceso (tunnel activo automáticamente como servicio systemd):${NC}"
 echo -e "   WordPress:  https://wp-k8s.local  (HTTP redirige a HTTPS automáticamente)"
 echo -e "   Grafana:    https://grafana.monitoring.local  (admin / admin123)"
 echo -e "   Prometheus: https://prometheus.monitoring.local"
@@ -884,5 +1080,8 @@ echo -e "   Ver estado del HPA:     kubectl get hpa -n wordpress"
 echo -e "   Ver logs de WordPress:  kubectl logs -n wordpress -l app=wordpress -f"
 echo -e "   Ver logs de MariaDB:    kubectl logs -n databases -l app=mariadb -f"
 echo -e "   Prometheus lockfile:    kubectl scale deploy prometheus -n monitoring --replicas=0 && minikube ssh 'sudo rm -f /tmp/hostpath-provisioner/monitoring/prometheus-pvc/lock' && kubectl scale deploy prometheus -n monitoring --replicas=1"
-echo -e "   Deshacer todo:          ./deploy.sh --cleanup"
+echo -e "   Deshacer todo:          ./deploy.sh --cleanup
+   Ver backups Velero:     velero backup get
+   Backup manual Velero:   velero backup create manual --include-namespaces wordpress,databases
+   Restaurar backup:       velero restore create --from-backup <nombre-backup>"
 echo ""
