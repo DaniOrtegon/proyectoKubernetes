@@ -1,33 +1,63 @@
+# ============================================================
+# 00-namespace.yaml — Namespaces del proyecto
+#
+# Pod Security Standards (Kubernetes 1.25+):
+#   - enforce: baseline  → rechaza pods que violen el perfil
+#   - warn:    restricted → avisa si el pod no cumple restricted
+#   - audit:   restricted → registra en audit log incumplimientos
+#
+# 'baseline' previene:
+#   - Contenedores privilegiados
+#   - hostPID / hostIPC / hostNetwork
+#   - Volúmenes peligrosos (hostPath sin restricción)
+#   - Escalada de privilegios via allowPrivilegeEscalation
+#
+# 'restricted' (warn+audit) informa de mejoras adicionales posibles
+# sin romper las imágenes actuales que corren como root.
+# ============================================================
+
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: wordpress  # Namespace para los recursos de WordPress (Deployment, Service, PVCs, etc.)
+  name: wordpress
+  labels:
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted
 
 ---
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: databases  # Namespace para bases de datos (MariaDB, Redis)
+  name: databases
+  labels:
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted
 
 ---
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: monitoring  # Namespace para herramientas de monitoreo (Prometheus, Grafana, Loki)
-
----
-# R-2: Namespace 'security' añadido — referenciado en Promtail (11-loki.yaml)
-# y en el dashboard de Grafana (wordpress-k8s.json) como namespace del stack.
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: security  # Namespace para componentes de seguridad (WAF, cert-manager, etc.)
+  name: monitoring
+  labels:
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted
 
 ---
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: cert-manager  # Namespace para cert-manager (TLS end-to-end)
+  name: security
+  labels:
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted
 
 ---
 apiVersion: v1
@@ -35,4 +65,17 @@ kind: Namespace
 metadata:
   name: storage
   labels:
-    app.kubernetes.io/part-of: wordpress-ha
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted
+
+---
+# Namespace velero — perfil privileged necesario para snapshots de PVCs
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: velero
+  labels:
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/enforce-version: latest
