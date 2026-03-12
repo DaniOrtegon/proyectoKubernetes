@@ -59,6 +59,8 @@ load_images() {
     "jaegertracing/all-in-one:1.52"
     "otel/opentelemetry-collector-contrib:0.91.0"
     "alpine:3.18"
+    "ghcr.io/kedacore/keda:2.13.0"
+    "ghcr.io/kedacore/keda-metrics-apiserver:2.13.0"
     "velero/velero:v1.12.4"
     "velero/velero-plugin-for-aws:v1.8.2"
     "quay.io/jetstack/cert-manager-controller:v1.14.4"
@@ -541,6 +543,28 @@ apply_file() {
 # ============================================================
 # FUNCIÓN: Instalar Velero con backend MinIO
 # ============================================================
+
+# ============================================================
+# FUNCIÓN: Instalar KEDA
+# ============================================================
+install_keda() {
+  log_info "Instalando KEDA..."
+
+  # Añadir repo Helm de KEDA
+  helm repo add kedacore https://kedacore.github.io/charts 2>/dev/null || true
+  helm repo update kedacore 2>/dev/null || true
+
+  # Crear namespace keda
+  kubectl create namespace keda --dry-run=client -o yaml | kubectl apply -f - 2>/dev/null || true
+
+  # Instalar KEDA
+  helm upgrade --install keda kedacore/keda     --namespace keda     --set image.pullPolicy=IfNotPresent     --timeout 5m     || log_warn "KEDA helm install falló — continuando sin KEDA"
+
+  wait_for_deployment "keda" "keda-operator" 120
+  log_success "KEDA instalado ✅"
+  log_info "  Ver ScaledObjects: kubectl get scaledobject -A"
+}
+
 install_velero() {
   log_info "Instalando Velero con backend MinIO..."
 
@@ -1021,7 +1045,9 @@ echo ""
 apply_file "08-ingress.yaml" "Ingress con TLS (wp-k8s.local + monitoring.local)"
 
 # 20. HPA
-apply_file "09-hpa-wordpress.yaml" "HorizontalPodAutoscaler de WordPress"
+# 21. KEDA — reemplaza el HPA por escalado basado en métricas de Prometheus
+install_keda
+apply_file "09-keda-wordpress.yaml" "KEDA ScaledObject WordPress (min:2 max:10, trigger: req/s + CPU)"
 
 # 21. PDB
 apply_file "13-pdb.yaml" "PodDisruptionBudget de WordPress"
@@ -1090,7 +1116,7 @@ echo ""
 # --- Arquitectura ---
 echo -e "${BLUE}🏗️   Arquitectura desplegada${NC}"
 echo ""
-echo -e "    WordPress HA    2 réplicas (HPA min:2 max:5) + PDB"
+echo -e "    WordPress HA    2 réplicas (KEDA min:2 max:10) + PDB"
 echo -e "    MariaDB HA      Primary + Replica con replicación activa"
 echo -e "    Redis HA        1 master + 2 réplicas + 3 Sentinels"
 echo -e "    MinIO           Almacenamiento S3 para uploads y backups"
@@ -1100,6 +1126,7 @@ echo -e "    Prometheus      Métricas + SLOs + Alertmanager (Slack)"
 echo -e "    Loki + Promtail Logs centralizados"
 echo -e "    Grafana         Dashboards + datasources integrados"
 echo -e "    Jaeger + OTel   Trazas distribuidas"
+echo -e "    KEDA            Escalado por req/s (Prometheus) + CPU fallback"
 echo -e "    Velero          Backup completo del clúster (diario 1:00 AM)"
 echo -e "    NetworkPolicies 19 políticas de red"
 echo ""
@@ -1131,7 +1158,7 @@ echo ""
 echo -e "${BLUE}🔧  Comandos útiles${NC}"
 echo ""
 echo -e "    Ver todos los pods:       kubectl get pods -A"
-echo -e "    Estado del HPA:           kubectl get hpa -n wordpress"
+echo -e "    Estado del escalado:      kubectl get scaledobject -n wordpress"
 echo -e "    Logs WordPress:           kubectl logs -n wordpress -l app=wordpress -f"
 echo -e "    Logs MariaDB:             kubectl logs -n databases -l app=mariadb -f"
 echo -e "    Logs Redis:               kubectl logs -n databases -l app=redis -f"
