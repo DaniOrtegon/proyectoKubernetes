@@ -684,11 +684,13 @@ HELMEOF
 setup_tunnel_service() {
   local SERVICE_FILE="/etc/systemd/system/minikube-tunnel.service"
   local CURRENT_USER=$(whoami)
+  local CURRENT_HOME=$(eval echo ~$CURRENT_USER)
   local MINIKUBE_PATH=$(which minikube)
 
   log_info "Configurando minikube tunnel como servicio systemd..."
 
-  # Crear el archivo de servicio
+  # El servicio debe correr como el usuario actual (no root)
+  # porque necesita acceder al kubeconfig en ~/.kube/config
   sudo tee "$SERVICE_FILE" > /dev/null << UNIT
 [Unit]
 Description=Minikube Tunnel
@@ -697,9 +699,11 @@ Wants=docker.service
 
 [Service]
 Type=simple
-User=root
-ExecStartPre=/bin/sleep 10
-ExecStart=${MINIKUBE_PATH} tunnel --alsologtostderr
+User=${CURRENT_USER}
+Environment="HOME=${CURRENT_HOME}"
+Environment="KUBECONFIG=${CURRENT_HOME}/.kube/config"
+ExecStartPre=/bin/sleep 5
+ExecStart=${MINIKUBE_PATH} tunnel
 ExecStop=/usr/bin/pkill -f "minikube tunnel"
 Restart=on-failure
 RestartSec=10
@@ -716,15 +720,16 @@ UNIT
   sudo systemctl restart minikube-tunnel.service
 
   # Verificar que arrancó
-  sleep 3
+  sleep 5
   if sudo systemctl is-active --quiet minikube-tunnel.service; then
     log_success "Servicio minikube-tunnel activo y habilitado al arranque ✅"
     log_info "  Ver estado:  sudo systemctl status minikube-tunnel"
     log_info "  Ver logs:    sudo journalctl -u minikube-tunnel -f"
     log_info "  Parar:       sudo systemctl stop minikube-tunnel"
   else
-    log_warn "El servicio no arrancó correctamente — iniciando tunnel manualmente..."
-    sudo minikube tunnel &
+    log_warn "Servicio systemd no arrancó — lanzando tunnel en segundo plano..."
+    nohup minikube tunnel > /tmp/minikube-tunnel.log 2>&1 &
+    log_info "  Logs del tunnel: tail -f /tmp/minikube-tunnel.log"
     sleep 5
   fi
 }
@@ -1073,7 +1078,7 @@ echo ""
 # --- URLs ---
 echo -e "${BLUE}🌐  URLs de acceso${NC}"
 echo -e "    El tunnel arranca automáticamente como servicio systemd."
-echo -e "    Si no funciona: ${GREEN}sudo minikube tunnel${NC}"
+echo -e "    Si no funciona: ${GREEN}minikube tunnel${NC}"
 echo ""
 echo -e "    ${GREEN}WordPress${NC}   →  https://wp-k8s.local"
 echo -e "                   HTTP redirige a HTTPS automáticamente"
