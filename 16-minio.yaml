@@ -13,6 +13,8 @@
 #   - Console:   minio.storage.svc.cluster.local:9001
 # ============================================================
 
+# --- Namespace dedicado para almacenamiento de objetos ---
+# Separado de 'wordpress' y 'databases' para aislar recursos y aplicar políticas independientes
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -21,7 +23,8 @@ metadata:
     app.kubernetes.io/part-of: wordpress-ha
 
 ---
-# Credenciales MinIO via Secret
+# --- Secret con credenciales de root de MinIO (namespace 'storage') ---
+# Usado por el servidor MinIO y por los Jobs de administración (setup, backup-cleanup, velero)
 apiVersion: v1
 kind: Secret
 metadata:
@@ -32,11 +35,13 @@ metadata:
     app.kubernetes.io/part-of: wordpress-ha
 type: Opaque
 stringData:
-  root-user: minioadmin
-  root-password: Minio#2024!
+  root-user: minioadmin          # Usuario root de MinIO — CAMBIAR en producción
+  root-password: Minio#2024!     # Contraseña root — CAMBIAR en producción; usar Sealed Secret
 
 ---
-# Secret en namespace wordpress para que WordPress acceda a MinIO
+# --- Secret con credenciales de acceso S3 (namespace 'wordpress') ---
+# Usado por el plugin WP Offload Media Lite para subir media a MinIO.
+# Claves separadas del Secret de root para seguir el principio de mínimo privilegio.
 apiVersion: v1
 kind: Secret
 metadata:
@@ -47,10 +52,12 @@ metadata:
     app.kubernetes.io/part-of: wordpress-ha
 type: Opaque
 stringData:
-  access-key: minioadmin
-  secret-key: Minio#2024!
+  access-key: minioadmin         # Clave de acceso S3 compatible (mismo valor que root en desarrollo)
+  secret-key: Minio#2024!        # Clave secreta S3 compatible
 
 ---
+# --- PVC para almacenamiento de objetos de MinIO ---
+# Almacena los buckets 'wordpress-uploads' y 'wordpress-backups'
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -61,13 +68,14 @@ metadata:
     app.kubernetes.io/part-of: wordpress-ha
 spec:
   accessModes:
-    - ReadWriteOnce
+    - ReadWriteOnce         # Un único pod escribe; MinIO standalone no requiere acceso compartido
   storageClassName: standard
   resources:
     requests:
-      storage: 10Gi
+      storage: 10Gi         # Espacio para uploads de WordPress + backups de MariaDB (30 días)
 
 ---
+# --- Deployment de MinIO ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -80,7 +88,7 @@ metadata:
     app.kubernetes.io/part-of: wordpress-ha
     app.kubernetes.io/component: storage
 spec:
-  replicas: 1
+  replicas: 1   # MinIO standalone: una réplica con un PVC. Para HA se necesita modo distribuido (≥4 nodos)
   selector:
     matchLabels:
       app: minio
@@ -94,24 +102,24 @@ spec:
       containers:
         - name: minio
           image: minio/minio:latest
-          imagePullPolicy: Never
+          imagePullPolicy: Never   # Usa imagen precargada en Minikube; no intenta descargar de internet
           command:
             - minio
             - server
-            - /data
+            - /data                  # Directorio de datos donde MinIO almacena los objetos (montado del PVC)
             - --console-address
-            - ":9001"
+            - ":9001"                # Activa la consola web en el puerto 9001 (separado de la API S3)
           ports:
             - containerPort: 9000
-              name: api
+              name: api              # API S3 compatible — endpoint para WordPress y herramientas CLI
             - containerPort: 9001
-              name: console
+              name: console          # Consola web de administración de MinIO
           env:
             - name: MINIO_ROOT_USER
               valueFrom:
                 secretKeyRef:
                   name: minio-secret
-                  key: root-user
+                  key: root-user     # Inyecta credenciales desde el Secret sin exponerlas en el YAML
             - name: MINIO_ROOT_PASSWORD
               valueFrom:
                 secretKeyRef:
@@ -126,9 +134,9 @@ spec:
               memory: 512Mi
           readinessProbe:
             httpGet:
-              path: /minio/health/ready
+              path: /minio/health/ready   # Endpoint de health específico de MinIO
               port: 9000
-            initialDelaySeconds: 20
+            initialDelaySeconds: 20       # MinIO tarda en inicializar los discos antes de estar listo
             periodSeconds: 10
           livenessProbe:
             httpGet:
@@ -138,13 +146,15 @@ spec:
             periodSeconds: 20
           volumeMounts:
             - name: minio-data
-              mountPath: /data
+              mountPath: /data             # Directorio donde MinIO almacena todos los objetos
       volumes:
         - name: minio-data
           persistentVolumeClaim:
             claimName: minio-pvc
 
 ---
+# --- Service de MinIO (ClusterIP) ---
+# Expone la API S3 y la consola web solo dentro del clúster
 apiVersion: v1
 kind: Service
 metadata:
@@ -155,20 +165,21 @@ metadata:
     app.kubernetes.io/name: minio
     app.kubernetes.io/part-of: wordpress-ha
 spec:
-  type: ClusterIP
+  type: ClusterIP   # No expuesto al exterior; acceso via 'kubectl port-forward' para administración
   ports:
     - name: api
       port: 9000
-      targetPort: 9000
+      targetPort: 9000   # API S3: endpoint para WordPress, CronJobs de backup y Velero
     - name: console
       port: 9001
-      targetPort: 9001
+      targetPort: 9001   # Consola web: interfaz gráfica de administración de buckets
   selector:
     app: minio
 
 ---
-# Job que crea el bucket 'wordpress-uploads' en MinIO
-# Se ejecuta una vez que MinIO está listo
+# --- Job de inicialización: crea los buckets necesarios en MinIO ---
+# Se ejecuta una sola vez tras el despliegue de MinIO.
+# ttlSecondsAfterFinished limpia el Job y sus pods automáticamente tras 5 minutos.
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -178,13 +189,13 @@ metadata:
     app: minio
     app.kubernetes.io/part-of: wordpress-ha
 spec:
-  ttlSecondsAfterFinished: 300
+  ttlSecondsAfterFinished: 300   # Limpieza automática del Job 5 minutos después de completarse
   template:
     metadata:
       labels:
         app: minio
     spec:
-      restartPolicy: OnFailure
+      restartPolicy: OnFailure   # Reintenta si MinIO no está listo todavía cuando el Job arranca
       containers:
         - name: setup
           image: minio/mc:latest
@@ -194,23 +205,25 @@ spec:
             - -c
             - |
               echo "Esperando a MinIO..."
+              # Bucle de espera hasta que MinIO responde correctamente al alias
               until mc alias set local http://minio.storage.svc.cluster.local:9000 \
                     "${MINIO_ROOT_USER}" "${MINIO_ROOT_PASSWORD}" &>/dev/null; do
                 sleep 3
               done
               echo "MinIO disponible."
 
-              # Crear bucket wordpress-uploads con acceso público para lectura
+              # Crea el bucket de uploads con acceso público de lectura
+              # 'mc anonymous set download' permite a cualquier cliente descargar objetos sin autenticación
               mc mb --ignore-existing local/wordpress-uploads
               mc anonymous set download local/wordpress-uploads
               echo "Bucket wordpress-uploads creado con acceso público de lectura."
 
-              # Crear política de acceso para el plugin WP Offload Media
+              # Crea el bucket de backups (acceso privado por defecto)
               mc mb --ignore-existing local/wordpress-backups
               echo "Bucket wordpress-backups creado."
 
               echo "=== MinIO configurado ==="
-              mc ls local/
+              mc ls local/   # Verifica que los buckets se han creado correctamente
           env:
             - name: MINIO_ROOT_USER
               valueFrom:
