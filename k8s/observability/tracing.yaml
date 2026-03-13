@@ -1,5 +1,5 @@
 # ============================================================
-# 17-tracing.yaml — Tracing distribuido con Jaeger + OpenTelemetry
+# tracing.yaml — Tracing distribuido con Jaeger + OpenTelemetry
 #
 # ARQUITECTURA:
 #   - Jaeger all-in-one: recibe, almacena y visualiza trazas
