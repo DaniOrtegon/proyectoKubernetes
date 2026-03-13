@@ -4,6 +4,7 @@
 # Acceso: http://<minikube-ip>:30030
 # ============================================================
 
+# Almacena la base de datos SQLite de Grafana: usuarios, orgs, alertas y ajustes de la UI
 # --- PersistentVolumeClaim para Grafana ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -19,6 +20,8 @@ spec:
   storageClassName: standard
 
 ---
+# Credenciales del administrador; los valores están en base64 (no cifrados)
+# Inyectados como variables de entorno GF_SECURITY_ADMIN_USER y GF_SECURITY_ADMIN_PASSWORD
 # --- Secret con credenciales de Grafana ---
 apiVersion: v1
 kind: Secret
@@ -32,6 +35,9 @@ data:
 
 ---
 # --- ConfigMap: provisioning de datasources (Prometheus + Loki) ---
+# Grafana carga este fichero al arrancar y configura las fuentes de datos automáticamente
+# access: proxy — Grafana hace las consultas desde el servidor, no desde el browser del usuario
+# isDefault: true en Prometheus — se usa como datasource por defecto en nuevos paneles
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -54,6 +60,9 @@ data:
         editable: false
 
 ---
+# Indica a Grafana dónde buscar ficheros JSON de dashboards para importar automáticamente
+# disableDeletion: true — los dashboards provisionados no se pueden borrar desde la UI
+# updateIntervalSeconds: 30 — Grafana recarga los dashboards del disco cada 30 segundos
 # --- ConfigMap: provisioning de dashboards ---
 apiVersion: v1
 kind: ConfigMap
@@ -75,6 +84,8 @@ data:
           foldersFromFilesStructure: true
 
 ---
+# Dashboard básico de Kubernetes con paneles de pods running, CPU y memoria por namespace
+# Requiere métricas de kube-state-metrics (kube_pod_status_phase) y cAdvisor
 # --- ConfigMap: Dashboard de Kubernetes ---
 apiVersion: v1
 kind: ConfigMap
@@ -119,6 +130,9 @@ data:
     }
 
 ---
+# Dashboard completo del proyecto con vistas por namespace, WordPress, MariaDB, Redis y red
+# Incluye variables de template para filtrar por namespace
+# Los paneles de SLO requieren métricas del NGINX Ingress Controller
 # --- ConfigMap: Dashboard personalizado WordPress K8s ---
 apiVersion: v1
 kind: ConfigMap
@@ -1270,6 +1284,8 @@ data:
     }
 
 ---
+# --- Deployment de Grafana ---
+# Monta todos los ConfigMaps de provisioning y el PVC de datos
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -1288,12 +1304,12 @@ spec:
         app: grafana
     spec:
       securityContext:
-        fsGroup: 472
+        fsGroup: 472       # UID/GID del usuario grafana en la imagen oficial — acceso de escritura al PVC
         runAsUser: 472
-        runAsNonRoot: true
+        runAsNonRoot: true  # Cumple con PodSecurityStandard baseline
       containers:
         - name: grafana
-          image: grafana/grafana:10.2.3
+          image: grafana/grafana:10.2.3   # Versión fija para reproducibilidad
           ports:
             - containerPort: 3000
           env:
@@ -1308,7 +1324,7 @@ spec:
                   name: grafana-secret
                   key: admin-password
             - name: GF_PATHS_PROVISIONING
-              value: /etc/grafana/provisioning
+              value: /etc/grafana/provisioning  # Indica a Grafana el directorio raíz de provisioning (datasources + dashboards)
           resources:
             requests:
               cpu: 100m
@@ -1330,17 +1346,17 @@ spec:
             periodSeconds: 15
           volumeMounts:
             - name: grafana-storage
-              mountPath: /var/lib/grafana
+              mountPath: /var/lib/grafana           # PVC: persiste SQLite, plugins instalados y sesiones
             - name: datasources
-              mountPath: /etc/grafana/provisioning/datasources
+              mountPath: /etc/grafana/provisioning/datasources  # ConfigMap grafana-datasources: Prometheus + Loki
             - name: dashboard-provider
-              mountPath: /etc/grafana/provisioning/dashboards
+              mountPath: /etc/grafana/provisioning/dashboards  # ConfigMap grafana-dashboard-provider: indica dónde leer los JSON
             - name: dashboard-kubernetes
               mountPath: /var/lib/grafana/dashboards/kubernetes.json
-              subPath: kubernetes.json
+              subPath: kubernetes.json   # subPath: monta solo este fichero sin sobrescribir el directorio
             - name: dashboard-wordpress-k8s
               mountPath: /var/lib/grafana/dashboards/wordpress-k8s.json
-              subPath: wordpress-k8s.json
+              subPath: wordpress-k8s.json  # Dashboard completo del proyecto KubeNet
       volumes:
         - name: grafana-storage
           persistentVolumeClaim:
@@ -1359,13 +1375,15 @@ spec:
             name: grafana-dashboard-wordpress-k8s
 
 ---
+# --- Service de Grafana (ClusterIP) ---
+# Expuesto al exterior via Ingress (08-ingress.yaml) en grafana.monitoring.local
 apiVersion: v1
 kind: Service
 metadata:
   name: grafana
   namespace: monitoring
 spec:
-  type: ClusterIP
+  type: ClusterIP   # Solo acceso interno; el Ingress termina TLS y hace proxy hacia este Service
   ports:
     - port: 3000
       targetPort: 3000
