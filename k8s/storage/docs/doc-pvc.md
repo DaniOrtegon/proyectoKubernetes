@@ -33,7 +33,7 @@ El volumen se presenta al contenedor como un sistema de ficheros POSIX montado e
 
 | Decisión | Justificación |
 |---|---|
-| Solo un PVC (WordPress) | MariaDB gestiona su propio almacenamiento con `volumeClaimTemplates` dentro del StatefulSet (`04-mariadb.yaml`), que genera PVCs individuales por réplica automáticamente. Definir aquí un PVC para MariaDB sería un recurso huérfano que consumiría cuota innecesariamente. |
+| Solo un PVC (WordPress) | MariaDB gestiona su propio almacenamiento con `volumeClaimTemplates` dentro del StatefulSet (`mariadb.yaml`), que genera PVCs individuales por réplica automáticamente. Definir aquí un PVC para MariaDB sería un recurso huérfano que consumiría cuota innecesariamente. |
 | 2 GiB para WordPress | Suficiente para un entorno de desarrollo y demostración con uploads típicos. El tamaño cubre plugins, temas y medios sin sobredimensionar el entorno Minikube. |
 | `standard` como StorageClass | Es la StorageClass disponible por defecto en Minikube, garantizando que el archivo funciona en el entorno objetivo sin requerir configuración adicional. |
 | `ReadWriteOnce` | Correcto para Minikube (single-node). Todas las réplicas de WordPress comparten el mismo nodo y pueden montar el volumen simultáneamente sin conflicto. |
@@ -44,20 +44,20 @@ El volumen se presenta al contenedor como un sistema de ficheros POSIX montado e
 
 | Archivo | Relación |
 |---|---|
-| `00-namespace.yaml` | Crea el namespace `wordpress` donde se define este PVC. Debe existir antes de aplicar este archivo. |
-| `06-wordpress.yaml` | El Deployment de WordPress referencia este PVC por su nombre (`wordpress-pvc`) en `spec.volumes[].persistentVolumeClaim.claimName`. Sin el PVC, el Deployment no puede arrancar. |
-| `14-resource-quota.yaml` | Si define cuotas de almacenamiento en el namespace, este PVC las consume. El tamaño de 2 GiB está dimensionado para encajar dentro de los límites del entorno. |
-| `04-mariadb.yaml` | **No depende** de este PVC. El StatefulSet de MariaDB genera sus propios PVCs automáticamente. |
+| `namespace.yaml` | Crea el namespace `wordpress` donde se define este PVC. Debe existir antes de aplicar este archivo. |
+| `wordpress.yaml` | El Deployment de WordPress referencia este PVC por su nombre (`wordpress-pvc`) en `spec.volumes[].persistentVolumeClaim.claimName`. Sin el PVC, el Deployment no puede arrancar. |
+| `resource-quota.yaml` | Si define cuotas de almacenamiento en el namespace, este PVC las consume. El tamaño de 2 GiB está dimensionado para encajar dentro de los límites del entorno. |
+| `mariadb.yaml` | **No depende** de este PVC. El StatefulSet de MariaDB genera sus propios PVCs automáticamente. |
 
 ---
 
 ## Puntos a tener en cuenta
 
 ### Orden de aplicación
-Este archivo debe aplicarse **antes** que `06-wordpress.yaml`. Si el PVC no existe cuando se crea el Deployment, los Pods quedarán en `Pending` hasta que el PVC sea provisionado.
+Este archivo debe aplicarse **antes** que `wordpress.yaml`. Si el PVC no existe cuando se crea el Deployment, los Pods quedarán en `Pending` hasta que el PVC sea provisionado.
 
 ### Ciclo de vida del PVC
-Por defecto, la `reclaimPolicy` de la StorageClass `standard` en Minikube es `Delete`, lo que significa que el PV y los datos se eliminan automáticamente al borrar el PVC. Este comportamiento es el adecuado para el entorno de desarrollo: una limpieza completa con `kubectl delete -f 03-pvc.yaml` elimina también los datos asociados sin dejar recursos huérfanos.
+Por defecto, la `reclaimPolicy` de la StorageClass `standard` en Minikube es `Delete`, lo que significa que el PV y los datos se eliminan automáticamente al borrar el PVC. Este comportamiento es el adecuado para el entorno de desarrollo: una limpieza completa con `kubectl delete -f pvc.yaml` elimina también los datos asociados sin dejar recursos huérfanos.
 
 ### Evolución hacia stateless
-La arquitectura del proyecto ya contempla MinIO (`16-minio.yaml`) como destino para los uploads. La configuración `AS3CF_SETTINGS` en `06-wordpress.yaml` apunta a MinIO como almacén de objetos. En la evolución natural del proyecto hacia un diseño completamente stateless, este PVC dejaría de ser necesario para los uploads una vez activado `remove-local-file: true` en el plugin WP Offload Media.
+La arquitectura del proyecto ya contempla MinIO (`minio.yaml`) como destino para los uploads. La configuración `AS3CF_SETTINGS` en `wordpress.yaml` apunta a MinIO como almacén de objetos. En la evolución natural del proyecto hacia un diseño completamente stateless, este PVC dejaría de ser necesario para los uploads una vez activado `remove-local-file: true` en el plugin WP Offload Media.
