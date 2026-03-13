@@ -1,4 +1,4 @@
-# 01-secrets.yaml — Documento de referencia
+# secrets.yaml — Documento de referencia
 
 ## ¿Qué hace este archivo?
 
