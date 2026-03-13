@@ -10,6 +10,10 @@
 #     y se comunica con los otros Sentinels via red del clúster
 # ============================================================
 
+# --- RECURSO 1: ConfigMap ---
+# Centraliza las cuatro piezas de configuración de Redis HA:
+# dos ficheros de configuración (master/replica), la configuración
+# de Sentinel y el script de arranque que decide el rol por ordinal.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -20,40 +24,56 @@ metadata:
     app.kubernetes.io/name: redis
     app.kubernetes.io/part-of: wordpress-ha
 data:
+  # Configuración del nodo MASTER (redis-0).
+  # Habilita persistencia AOF (Append-Only File) y RDB (snapshots).
   redis-master.conf: |
-    bind 0.0.0.0
+    bind 0.0.0.0           # Escucha en todas las interfaces del Pod
     port 6379
-    requirepass Redis#2024!
-    masterauth Redis#2024!
-    appendonly yes
-    appendfsync everysec
-    save 900 1
-    save 300 10
-    save 60 10000
+    requirepass Redis#2024! # Contraseña para clientes que se conecten al master
+    masterauth Redis#2024!  # Contraseña usada por las réplicas para autenticarse
+                            # (necesaria también en el master para cuando pase a réplica tras failover)
+    appendonly yes          # Habilita AOF: cada escritura se registra en fichero
+    appendfsync everysec    # Sincroniza AOF a disco cada segundo (balance rendimiento/durabilidad)
+    save 900 1              # RDB snapshot: si ≥1 cambio en 900s → guardar
+    save 300 10             # RDB snapshot: si ≥10 cambios en 300s → guardar
+    save 60 10000           # RDB snapshot: si ≥10000 cambios en 60s → guardar
     loglevel notice
 
+  # Configuración de los nodos REPLICA (redis-1, redis-2).
+  # Apunta al master por su FQDN estable via Service headless.
   redis-replica.conf: |
     bind 0.0.0.0
     port 6379
     requirepass Redis#2024!
-    masterauth Redis#2024!
+    masterauth Redis#2024!   # Contraseña para conectarse al master durante la replicación
+    # FQDN del Pod master via Service headless — DNS estable garantizado por el StatefulSet
     replicaof redis-0.redis-headless.databases.svc.cluster.local 6379
-    replica-read-only yes
+    replica-read-only yes    # Las réplicas rechazan escrituras directas (solo las acepta el master)
     appendonly yes
     appendfsync everysec
     loglevel notice
 
+  # Configuración de Redis Sentinel.
+  # Sentinel es el componente de alta disponibilidad: detecta fallos del master
+  # y coordina la promoción automática de una réplica a nuevo master (failover).
   sentinel.conf: |
     port 26379
     # 127.0.0.1 funciona porque Sentinel y Redis comparten el mismo pod (sidecar).
     # Sentinel se conecta al Redis local para descubrir el master y las replicas.
     sentinel monitor mymaster 127.0.0.1 6379 2
-    sentinel auth-pass mymaster Redis#2024!
-    sentinel down-after-milliseconds mymaster 5000
-    sentinel failover-timeout mymaster 60000
-    sentinel parallel-syncs mymaster 1
+    # mymaster: nombre lógico del grupo de replicación (usado por los clientes)
+    # 127.0.0.1 6379: dirección del Redis local en el mismo Pod (loopback)
+    # 2: quorum — número mínimo de Sentinels que deben acordar que el master está caído
+    #    para iniciar el failover. Con 3 Sentinels, quorum=2 tolera 1 fallo de Sentinel.
+    sentinel auth-pass mymaster Redis#2024!       # Contraseña para conectarse a los nodos Redis
+    sentinel down-after-milliseconds mymaster 5000  # Tiempo sin respuesta para considerar el master caído (5s)
+    sentinel failover-timeout mymaster 60000        # Timeout máximo para completar el failover (60s)
+    sentinel parallel-syncs mymaster 1              # Réplicas que sincronizan simultáneamente tras failover
     loglevel notice
 
+  # Script de arranque: determina el rol del Pod por ordinal del hostname.
+  # redis-0 → master, redis-1 y redis-2 → replicas.
+  # La misma lógica de parsing que en MariaDB (corte por '-' invertido).
   start-redis.sh: |
     #!/bin/sh
     ORDINAL=$(echo $HOSTNAME | rev | cut -d'-' -f1 | rev)
@@ -66,6 +86,11 @@ data:
     fi
 
 ---
+# --- RECURSO 2: Service Headless ---
+# Expone DNS individual por Pod (redis-0.redis-headless…, redis-1.redis-headless…).
+# Necesario para que: las réplicas localicen el master por FQDN estable,
+# y los Sentinels se descubran mutuamente durante el proceso de quorum.
+# Expone ambos puertos: Redis (6379) y Sentinel (26379).
 apiVersion: v1
 kind: Service
 metadata:
@@ -76,7 +101,7 @@ metadata:
     app.kubernetes.io/name: redis
     app.kubernetes.io/part-of: wordpress-ha
 spec:
-  clusterIP: None
+  clusterIP: None           # Headless: DNS directo a IPs de Pods, sin VIP
   ports:
     - name: redis
       port: 6379
@@ -85,9 +110,15 @@ spec:
       port: 26379
       targetPort: 26379
   selector:
-    app: redis
+    app: redis              # Selecciona todos los Pods del StatefulSet Redis
 
 ---
+# --- RECURSO 3: Service ClusterIP para Sentinel ---
+# Punto de entrada estable para clientes que usen el protocolo Sentinel
+# para descubrir dinámicamente el master actual.
+# WordPress con plugin Redis Object Cache puede configurarse con este Service
+# como endpoint Sentinel en lugar de apuntar directamente al master.
+# Balancea entre los 3 Sentinels (todos exponen el puerto 26379).
 apiVersion: v1
 kind: Service
 metadata:
@@ -105,9 +136,16 @@ spec:
       port: 26379
       targetPort: 26379
   selector:
-    app: redis
+    app: redis              # Apunta a todos los Pods (cada uno tiene un Sentinel sidecar)
 
 ---
+# --- RECURSO 4: Service ClusterIP para Redis ---
+# Punto de entrada para clientes Redis que NO usan el protocolo Sentinel
+# (conexión directa sin descubrimiento de master).
+# ⚠️ LIMITACIÓN: este Service balancea entre los 3 Pods (master + 2 réplicas).
+# Tras un failover, el master cambia de Pod pero este Service no se actualiza
+# automáticamente → puede enrutar escrituras a una réplica (error READONLY).
+# Para escrituras confiables, los clientes deben usar el Service redis-sentinel.
 apiVersion: v1
 kind: Service
 metadata:
@@ -125,9 +163,12 @@ spec:
       port: 6379
       targetPort: 6379
   selector:
-    app: redis
+    app: redis              # ⚠️ Selector genérico: no distingue master de réplicas
 
 ---
+# --- RECURSO 5: StatefulSet Redis ---
+# Gestiona los 3 Pods (redis-0, redis-1, redis-2), cada uno con
+# dos contenedores: el proceso Redis principal y el sidecar Sentinel.
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -140,8 +181,8 @@ metadata:
     app.kubernetes.io/part-of: wordpress-ha
     app.kubernetes.io/component: cache
 spec:
-  serviceName: redis-headless
-  replicas: 3
+  serviceName: redis-headless   # Asocia el StatefulSet al Service headless para DNS estable
+  replicas: 3                   # redis-0 (master), redis-1 (replica), redis-2 (replica)
   selector:
     matchLabels:
       app: redis
@@ -152,6 +193,9 @@ spec:
         app.kubernetes.io/name: redis
         app.kubernetes.io/part-of: wordpress-ha
     spec:
+      # Anti-afinidad soft: intenta distribuir los Pods en nodos distintos.
+      # Crítico para HA real: si todos los Pods están en el mismo nodo,
+      # un fallo de nodo elimina master y réplicas simultáneamente.
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
@@ -161,6 +205,11 @@ spec:
                   matchLabels:
                     app: redis
                 topologyKey: kubernetes.io/hostname
+
+      # Init container: copia el script de arranque desde el ConfigMap (read-only)
+      # al emptyDir /scripts y le da permisos de ejecución.
+      # Misma técnica que en 04-mariadb.yaml: los ficheros de ConfigMap montados
+      # como volumen no son ejecutables directamente por el proceso principal.
       initContainers:
         - name: init-redis
           image: redis:6.2-alpine
@@ -170,13 +219,15 @@ spec:
             - cp /config/start-redis.sh /scripts/start-redis.sh && chmod +x /scripts/start-redis.sh
           volumeMounts:
             - name: redis-config
-              mountPath: /config
+              mountPath: /config    # ConfigMap con el script (read-only)
             - name: scripts
-              mountPath: /scripts
+              mountPath: /scripts   # emptyDir compartido con el contenedor principal
+
       containers:
+        # --- Contenedor principal: Redis ---
         - name: redis
           image: redis:6.2-alpine
-          command: ['/scripts/start-redis.sh']
+          command: ['/scripts/start-redis.sh']   # Script copiado por el init container
           ports:
             - containerPort: 6379
               name: redis
@@ -186,13 +237,17 @@ spec:
               memory: 128Mi
             limits:
               cpu: 500m
-              memory: 256Mi
+              memory: 256Mi   # Si se supera → OOMKill; Redis puede crecer con el dataset
+          # readinessProbe: verifica que Redis responde al comando PING.
+          # Hasta que no pase, el Pod no recibe tráfico del Service.
           readinessProbe:
             exec:
               command: [sh, -c, "redis-cli -a 'Redis#2024!' ping | grep PONG"]
             initialDelaySeconds: 15
             periodSeconds: 10
             failureThreshold: 3
+          # livenessProbe: detecta bloqueos o crashes del proceso Redis.
+          # Más tolerante que readiness (initialDelay mayor, más failureThreshold).
           livenessProbe:
             exec:
               command: [sh, -c, "redis-cli -a 'Redis#2024!' ping | grep PONG"]
@@ -201,19 +256,25 @@ spec:
             failureThreshold: 5
           volumeMounts:
             - name: redis-data
-              mountPath: /data
+              mountPath: /data         # Persistencia RDB/AOF (via volumeClaimTemplate)
             - name: redis-config
-              mountPath: /etc/redis
+              mountPath: /etc/redis    # Ficheros de configuración master/replica
             - name: scripts
-              mountPath: /scripts
+              mountPath: /scripts      # Script de arranque
 
+        # --- Contenedor sidecar: Sentinel ---
+        # Comparte el mismo Pod (y red) que el contenedor Redis.
+        # Por eso puede monitorizar Redis via 127.0.0.1 (loopback).
+        # Se comunica con los Sentinels de otros Pods via red del clúster.
         - name: sentinel
           image: redis:6.2-alpine
           command:
             - sh
             - -c
             - |
-              # Copiar conf a directorio escribible — Sentinel lo modifica en runtime
+              # Sentinel modifica su propio fichero de configuración en runtime
+              # (escribe el master actual, los Sentinels conocidos, etc.).
+              # El ConfigMap es read-only → se copia a un emptyDir escribible (/data).
               cp /etc/sentinel/sentinel.conf /data/sentinel.conf
               exec redis-sentinel /data/sentinel.conf
           ports:
@@ -221,11 +282,13 @@ spec:
               name: sentinel
           resources:
             requests:
-              cpu: 50m
+              cpu: 50m        # Sentinel es ligero: solo gestiona metadatos
               memory: 32Mi
             limits:
               cpu: 100m
               memory: 64Mi
+          # readinessProbe para Sentinel: verifica que el proceso Sentinel responde PING.
+          # Nota: redis-cli -p 26379 usa el puerto de Sentinel, no el de Redis.
           readinessProbe:
             exec:
               command: [sh, -c, "redis-cli -p 26379 ping | grep PONG"]
@@ -234,11 +297,12 @@ spec:
             failureThreshold: 3
           volumeMounts:
             - name: sentinel-config
-              mountPath: /etc/sentinel
+              mountPath: /etc/sentinel   # sentinel.conf original del ConfigMap (read-only)
             - name: sentinel-data
-              mountPath: /data
+              mountPath: /data           # Directorio escribible donde Sentinel modifica su conf
 
       volumes:
+        # ConfigMap con redis-master.conf, redis-replica.conf y start-redis.sh
         - name: redis-config
           configMap:
             name: redis-config
@@ -249,22 +313,30 @@ spec:
                 path: redis-replica.conf
               - key: start-redis.sh
                 path: start-redis.sh
+        # ConfigMap con sentinel.conf (montado por separado para mayor claridad)
         - name: sentinel-config
           configMap:
             name: redis-config
             items:
               - key: sentinel.conf
                 path: sentinel.conf
+        # emptyDir para el script ejecutable (compartido entre init y contenedor principal)
         - name: scripts
           emptyDir: {}
+        # emptyDir para la configuración de Sentinel modificable en runtime
+        # ⚠️ emptyDir es efímero: si el Pod se reinicia, Sentinel pierde su estado
+        # y redescubrirá el master desde cero vía el fichero de configuración base.
         - name: sentinel-data
           emptyDir: {}
 
+  # volumeClaimTemplates: genera un PVC de 2 GiB por Pod para persistencia Redis.
+  # redis-data-redis-0, redis-data-redis-1, redis-data-redis-2.
+  # Solo el contenedor Redis monta este volumen (Sentinel usa emptyDir).
   volumeClaimTemplates:
     - metadata:
         name: redis-data
       spec:
-        accessModes: ["ReadWriteOnce"]
+        accessModes: ["ReadWriteOnce"]   # Un Pod por volumen (correcto: cada Pod tiene el suyo)
         storageClassName: standard
         resources:
           requests:
