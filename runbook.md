@@ -206,7 +206,7 @@ kubectl get secret -n kube-system \
 **Síntoma**
 ```bash
 kubectl exec -n databases mariadb-1 -- \
-  mysql -u root -p'RootDB#2024!' -e 'SHOW SLAVE STATUS\G' 2>/dev/null \
+  mysql -u root -p'RootDB#2026!' -e 'SHOW SLAVE STATUS\G' 2>/dev/null \
   | grep -E 'Running|Behind|Error'
 # Slave_IO_Running: No
 # Slave_SQL_Running: No
@@ -223,14 +223,14 @@ La réplica no está sincronizada. Reads en la réplica devuelven datos desactua
 **Paso 1 — Verificar estado de la replicación**
 ```bash
 kubectl exec -n databases mariadb-1 -- \
-  mysql -u root -p'RootDB#2024!' -e 'SHOW SLAVE STATUS\G' 2>/dev/null \
+  mysql -u root -p'RootDB#2026!' -e 'SHOW SLAVE STATUS\G' 2>/dev/null \
   | grep -E 'Slave_IO|Slave_SQL|Seconds_Behind|Last_Error'
 ```
 
 **Paso 2 — Verificar que el primary está accesible**
 ```bash
 kubectl exec -n databases mariadb-1 -- \
-  mysql -u root -p'RootDB#2024!' \
+  mysql -u root -p'RootDB#2026!' \
   -h mariadb-0.mariadb-headless.databases.svc.cluster.local \
   -e 'SELECT 1' 2>/dev/null
 # Esperado: 1
@@ -239,13 +239,13 @@ kubectl exec -n databases mariadb-1 -- \
 **Paso 3 — Reiniciar la replicación**
 ```bash
 kubectl exec -n databases mariadb-1 -- \
-  mysql -u root -p'RootDB#2024!' 2>/dev/null << 'SQL'
+  mysql -u root -p'RootDB#2026!' 2>/dev/null << 'SQL'
 STOP SLAVE;
 RESET SLAVE;
 CHANGE MASTER TO
   MASTER_HOST='mariadb-0.mariadb-headless.databases.svc.cluster.local',
   MASTER_USER='replicator',
-  MASTER_PASSWORD='RootDB#2024!',
+  MASTER_PASSWORD='RootDB#2026!',
   MASTER_AUTO_POSITION=1;
 START SLAVE;
 SQL
@@ -254,7 +254,7 @@ SQL
 **Paso 4 — Verificar que la replicación está activa**
 ```bash
 kubectl exec -n databases mariadb-1 -- \
-  mysql -u root -p'RootDB#2024!' -e 'SHOW SLAVE STATUS\G' 2>/dev/null \
+  mysql -u root -p'RootDB#2026!' -e 'SHOW SLAVE STATUS\G' 2>/dev/null \
   | grep -E 'Slave_IO|Slave_SQL|Seconds_Behind'
 # Esperado:
 # Slave_IO_Running: Yes
