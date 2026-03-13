@@ -20,41 +20,45 @@
 
 # ------------------------------------------------------------
 # PASO 1: ClusterIssuer bootstrap — solo para crear la CA raíz
+# Este issuer se auto-firma: no necesita ninguna CA preexistente.
+# Su único propósito es emitir el certificado de la CA raíz (Paso 2).
 # ------------------------------------------------------------
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
 metadata:
   name: selfsigned-issuer
 spec:
-  selfSigned: {}
+  selfSigned: {}   # Tipo self-signed: cert-manager firma el certificado con su propia clave privada
 
 ---
 # ------------------------------------------------------------
 # PASO 2: Certificado CA raíz del clúster
 # IMPORTANTE: debe estar en namespace 'cert-manager' para que
 # el ClusterIssuer pueda leer el Secret generado.
+# cert-manager crea el Secret 'selfsigned-ca-secret' en este namespace.
 # ------------------------------------------------------------
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: selfsigned-ca
-  namespace: cert-manager
+  namespace: cert-manager   # Los ClusterIssuer solo pueden leer Secrets del namespace donde está instalado cert-manager
 spec:
-  isCA: true
+  isCA: true                 # Marca este certificado como CA: puede firmar otros certificados
   commonName: "KubeNet Local CA"
-  secretName: selfsigned-ca-secret
+  secretName: selfsigned-ca-secret   # Nombre del Secret donde cert-manager almacenará cert + clave privada de la CA
   privateKey:
     algorithm: RSA
-    size: 4096
+    size: 4096               # Clave de 4096 bits para la CA raíz: mayor seguridad, coste de generación único
   issuerRef:
-    name: selfsigned-issuer
+    name: selfsigned-issuer  # Referencia al ClusterIssuer del Paso 1
     kind: ClusterIssuer
     group: cert-manager.io
 
 ---
 # ------------------------------------------------------------
 # PASO 3: ClusterIssuer principal — usa la CA raíz para firmar
-# Este es el issuer que referencian los Ingress y Certificates
+# Este es el issuer que referencian los Ingress y Certificates.
+# A partir de aquí, 'ca-issuer' actúa como una CA privada del clúster.
 # ------------------------------------------------------------
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
@@ -62,33 +66,37 @@ metadata:
   name: ca-issuer
 spec:
   ca:
-    secretName: selfsigned-ca-secret
+    secretName: selfsigned-ca-secret   # Lee la clave privada de la CA raíz creada en el Paso 2
 
 ---
 # ------------------------------------------------------------
 # PASO 4: Certificado para WordPress
-# Válido 1 año, se renueva automáticamente 30 días antes
+# Válido 1 año, se renueva automáticamente 30 días antes.
+# cert-manager crea y renueva el Secret 'wordpress-tls' en namespace 'wordpress'.
+# El Ingress de 08-ingress.yaml referencia este Secret para servir HTTPS.
 # ------------------------------------------------------------
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: wordpress-tls
-  namespace: wordpress
+  namespace: wordpress   # El Secret se crea en este namespace, donde lo lee el controlador NGINX Ingress
 spec:
-  secretName: wordpress-tls
-  duration: 8760h
-  renewBefore: 720h
+  secretName: wordpress-tls   # Nombre del Secret; debe coincidir con spec.tls[].secretName en 08-ingress.yaml
+  duration: 8760h             # Validez del certificado: 365 días
+  renewBefore: 720h           # cert-manager renueva 30 días antes de la expiración (sin downtime)
   commonName: wp-k8s.local
   dnsNames:
-    - wp-k8s.local
+    - wp-k8s.local            # SAN (Subject Alternative Name): nombre DNS para el que es válido el certificado
   issuerRef:
-    name: ca-issuer
+    name: ca-issuer           # Firmado por el ClusterIssuer principal del Paso 3
     kind: ClusterIssuer
     group: cert-manager.io
 
 ---
 # ------------------------------------------------------------
 # PASO 5: Certificado para Grafana y Prometheus
+# Un único certificado con dos SANs cubre ambos servicios de monitoring.
+# Simplifica la gestión: una sola renovación para ambos hostnames.
 # ------------------------------------------------------------
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -96,13 +104,13 @@ metadata:
   name: monitoring-tls
   namespace: monitoring
 spec:
-  secretName: monitoring-tls
+  secretName: monitoring-tls  # Nombre del Secret; debe coincidir con spec.tls[].secretName en 08-ingress.yaml
   duration: 8760h
   renewBefore: 720h
-  commonName: grafana.monitoring.local
+  commonName: grafana.monitoring.local   # CN del certificado (el primer hostname por convención)
   dnsNames:
-    - grafana.monitoring.local
-    - prometheus.monitoring.local
+    - grafana.monitoring.local           # SAN 1: Grafana
+    - prometheus.monitoring.local        # SAN 2: Prometheus — un único cert cubre ambos hostnames
   issuerRef:
     name: ca-issuer
     kind: ClusterIssuer
