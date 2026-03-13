@@ -1,4 +1,4 @@
-# DOC-09 — HorizontalPodAutoscaler WordPress (`09-hpa-wordpress.yaml`)
+# HorizontalPodAutoscaler WordPress (`hpa-wordpress.yaml`)
 
 ## Qué hace este archivo
 
