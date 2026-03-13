@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>KubeNet — WordPress HA</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#060B12;font-family:'Inter',-apple-system,sans-serif;color:#E2E8F0;min-height:100vh}
+button{font-family:inherit;cursor:pointer}
+a{color:inherit;text-decoration:none}
+
+/* HEADER */
+#header{border-bottom:1px solid #1E293B;padding:16px 28px;display:flex;align-items:center;gap:16px;background:#0D1117;position:sticky;top:0;z-index:50;flex-wrap:wrap}
+.logo{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#3B82F6,#8B5CF6);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.logo-title{font-size:16px;font-weight:700;color:#F8FAFC;letter-spacing:-0.3px}
+.logo-sub{font-size:11px;color:#475569;font-family:monospace}
+.tabs{margin-left:auto;display:flex;gap:4px;flex-wrap:wrap}
+.tab-btn{background:transparent;border:1px solid transparent;color:#64748B;border-radius:8px;padding:8px 16px;font-size:13px;display:flex;align-items:center;gap:6px;transition:all .15s}
+.tab-btn.active{background:#1E293B;border-color:#3B82F6;color:#7DD3FC;font-weight:600}
+
+/* STATS BAR */
+#stats{display:flex;gap:0;border-bottom:1px solid #1E293B;background:#0D1117}
+.stat{flex:1;padding:10px 20px;border-right:1px solid #1E293B;text-align:center}
+.stat-val{font-size:20px;font-weight:800;font-family:monospace}
+.stat-label{color:#475569;font-size:10px;margin-top:2px}
+
+/* MAIN */
+#main{padding:24px 28px;transition:padding-right .3s}
+#main.panel-open{padding-right:408px}
+
+/* TABS CONTENT */
+.tab-content{display:none}
+.tab-content.active{display:block}
+
+/* DIAGRAM */
+.diagram-hint{color:#64748B;font-size:12px;margin-bottom:12px;text-align:center}
+.diagram-wrap{overflow-x:auto}
+svg{display:block;margin:0 auto}
+.legend{display:flex;gap:20px;justify-content:center;margin-top:16px;flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:6px}
+.legend-dot{width:10px;height:10px;border-radius:2px}
+.legend-text{color:#64748B;font-size:11px;font-family:monospace}
+
+/* FILES */
+.filter-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+.filter-btn{background:transparent;border:1px solid #2A3441;color:#64748B;border-radius:6px;padding:4px 12px;font-size:12px;transition:all .15s}
+.filter-btn.active{background:#1E293B;border-color:#3B82F6;color:#7DD3FC}
+.files-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px}
+.file-card{background:#0D1117;border:1px solid #1E293B;border-radius:10px;padding:16px;cursor:pointer;text-align:left;transition:all .15s;width:100%}
+.file-card:hover{background:#161B22}
+.file-card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+.file-card-left{display:flex;align-items:center;gap:8px}
+.file-name{color:#E2E8F0;font-size:13px;font-weight:600;font-family:'JetBrains Mono',monospace}
+.file-badge{border-radius:4px;padding:2px 8px;font-size:10px;white-space:nowrap;border-width:1px;border-style:solid}
+.file-desc{color:#64748B;font-size:12px;line-height:1.6;text-align:left}
+
+/* NAMESPACES */
+.ns-list{display:flex;flex-direction:column;gap:16px}
+.ns-block{border-radius:12px;overflow:hidden;border-width:1px;border-style:solid}
+.ns-header{width:100%;background:none;border:none;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;cursor:pointer}
+.ns-header-left{display:flex;align-items:center;gap:12px}
+.ns-dot-live{width:8px;height:8px;border-radius:50%}
+.ns-title{font-size:15px;font-weight:700;font-family:'JetBrains Mono',monospace}
+.ns-desc{color:#475569;font-size:12px}
+.ns-right{display:flex;align-items:center;gap:8px}
+.ns-count{border-radius:4px;padding:2px 8px;font-size:11px;border-width:1px;border-style:solid}
+.ns-toggle{color:#475569;font-size:14px}
+.ns-body{padding:16px 20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+.pod-card{background:#0D1117;border-radius:8px;padding:12px 14px;cursor:pointer;text-align:left;transition:all .15s;border-width:1px;border-style:solid;width:100%}
+.pod-icon{font-size:22px;margin-bottom:6px}
+.pod-name{font-size:12px;font-weight:600;font-family:'JetBrains Mono',monospace;margin-bottom:4px}
+.pod-badges{display:flex;gap:4px;flex-wrap:wrap}
+.pod-badge{border-radius:3px;padding:1px 6px;font-size:10px}
+.pod-ports{margin-top:6px;color:#475569;font-size:10px;font-family:monospace}
+
+/* DETAIL PANEL */
+#detail-panel{position:fixed;right:0;top:0;bottom:0;width:380px;background:#0D1117;z-index:100;overflow-y:auto;padding:24px;display:none}
+#detail-panel.open{display:block}
+.dp-close{background:none;border:1px solid #2A3441;color:#64748B;padding:4px 10px;border-radius:6px;margin-bottom:20px;font-size:12px}
+.dp-icon{font-size:32px;margin-bottom:12px}
+.dp-kind{font-size:11px;font-family:'JetBrains Mono',monospace;margin-bottom:6px;text-transform:uppercase;letter-spacing:2px}
+.dp-name{color:#E2E8F0;font-size:20px;font-weight:700;margin-bottom:16px;line-height:1.3}
+.dp-image-box{background:#161B22;border:1px solid #2A3441;border-radius:6px;padding:8px 12px;margin-bottom:16px}
+.dp-image-label{color:#64748B;font-size:10px;margin-bottom:4px;text-transform:uppercase;letter-spacing:1px}
+.dp-image-val{color:#7DD3FC;font-size:12px;font-family:'JetBrains Mono',monospace}
+.dp-desc{color:#94A3B8;font-size:13px;line-height:1.7;margin-bottom:20px}
+.dp-section-label{color:#64748B;font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.dp-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px}
+.dp-tag{border-radius:4px;padding:2px 8px;font-size:12px;font-family:'JetBrains Mono',monospace}
+.dp-concept{background:#1E293B;border:1px solid #334155;color:#94A3B8;border-radius:4px;padding:2px 8px;font-size:11px}
+
+@media(max-width:700px){
+  #main.panel-open{padding-right:24px}
+  #detail-panel{width:100%;top:auto;height:65vh;overflow-y:auto}
+  .files-grid{grid-template-columns:1fr}
+  .tabs{margin-left:0}
+  #stats{flex-wrap:wrap}
+  .stat{min-width:33%}
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div id="header">
+  <div class="logo">⎈</div>
+  <div>
+    <div class="logo-title">KubeNet</div>
+    <div class="logo-sub">WordPress HA · Minikube · 7 namespaces · 19 NetworkPolicies</div>
+  </div>
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('diagram')"><span>🗺️</span> Arquitectura</button>
+    <button class="tab-btn" onclick="switchTab('files')"><span>📄</span> Archivos</button>
+    <button class="tab-btn" onclick="switchTab('namespaces')"><span>📦</span> Namespaces</button>
+  </div>
+</div>
+
+<!-- STATS -->
+<div id="stats">
+  <div class="stat"><div class="stat-val" style="color:#3B82F6">7</div><div class="stat-label">Namespaces</div></div>
+  <div class="stat"><div class="stat-val" style="color:#10B981">14</div><div class="stat-label">Workloads</div></div>
+  <div class="stat"><div class="stat-val" style="color:#F59E0B">20</div><div class="stat-label">Archivos YAML</div></div>
+  <div class="stat"><div class="stat-val" style="color:#EC4899">19</div><div class="stat-label">NetworkPolicies</div></div>
+  <div class="stat"><div class="stat-val" style="color:#8B5CF6">2</div><div class="stat-label">Certificados TLS</div></div>
+  <div class="stat"><div class="stat-val" style="color:#F97316">3</div><div class="stat-label">CronJobs</div></div>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+
+  <!-- DIAGRAM TAB -->
+  <div id="tab-diagram" class="tab-content active">
+    <div class="diagram-hint">Haz clic en cualquier componente para ver detalles</div>
+    <div class="diagram-wrap">
+      <svg id="arch-svg" width="900" height="460" viewBox="0 0 900 460"></svg>
+    </div>
+    <div class="legend" id="legend"></div>
+  </div>
+
+  <!-- FILES TAB -->
+  <div id="tab-files" class="tab-content">
+    <div class="filter-bar" id="filter-bar"></div>
+    <div class="files-grid" id="files-grid"></div>
+  </div>
+
+  <!-- NAMESPACES TAB -->
+  <div id="tab-namespaces" class="tab-content">
+    <div class="ns-list" id="ns-list"></div>
+  </div>
+</div>
+
+<!-- DETAIL PANEL -->
+<div id="detail-panel">
+  <button class="dp-close" onclick="closePanel()">← cerrar</button>
+  <div class="dp-icon" id="dp-icon"></div>
+  <div class="dp-kind" id="dp-kind"></div>
+  <div class="dp-name" id="dp-name"></div>
+  <div id="dp-image-box" class="dp-image-box" style="display:none">
+    <div class="dp-image-label">Image</div>
+    <div class="dp-image-val" id="dp-image"></div>
+  </div>
+  <div class="dp-desc" id="dp-desc"></div>
+  <div id="dp-ports-wrap" style="margin-bottom:16px;display:none">
+    <div class="dp-section-label">Puertos</div>
+    <div class="dp-tags" id="dp-ports"></div>
+  </div>
+  <div id="dp-connects-wrap" style="margin-bottom:16px;display:none">
+    <div class="dp-section-label">Conecta con</div>
+    <div class="dp-tags" id="dp-connects"></div>
+  </div>
+  <div id="dp-concepts-wrap" style="display:none">
+    <div class="dp-section-label">Conceptos K8s</div>
+    <div class="dp-tags" id="dp-concepts"></div>
+  </div>
+</div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────────────────────
+
+const NAMESPACES = {
+  wordpress:{color:"#3B82F6",glow:"#3B82F620",label:"wordpress",desc:"Capa de presentación — WordPress y su configuración",pods:[
+    {id:"wordpress",name:"wordpress",kind:"Deployment",replicas:"2–5",image:"wordpress:6.4",icon:"🌐",desc:"CMS principal. Stateless: los uploads van a MinIO vía plugin WP Offload Media. Escala horizontalmente con HPA (CPU >50%, Memoria >70%). SecurityContext con runAsUser:33, readOnlyRootFilesystem y capabilities DROP ALL.",ports:[80],connects:["mariadb","redis-sentinel","minio","otel-collector"]},
+  ]},
+  databases:{color:"#F59E0B",glow:"#F59E0B20",label:"databases",desc:"Capa de datos — MariaDB HA + Redis Sentinel",pods:[
+    {id:"mariadb-0",name:"mariadb-0",kind:"StatefulSet",replicas:"1 (Primary)",image:"mariadb:10.6",icon:"🗄️",desc:"Nodo PRIMARY de MariaDB. Gestiona escrituras y lecturas. Binary log habilitado (ROW format) para replicación asíncrona hacia mariadb-1. server-id=1. WordPress conecta siempre al Service 'mariadb' que apunta solo a este pod.",ports:[3306],connects:["mariadb-1"]},
+    {id:"mariadb-1",name:"mariadb-1",kind:"StatefulSet",replicas:"1 (Replica)",image:"mariadb:10.6",icon:"🗄️",desc:"Nodo REPLICA de MariaDB. Solo lectura (read-only=1). Recibe replicación asíncrona desde mariadb-0 via relay-log. Configurado por el Job 04b-mariadb-replication-job al desplegar. server-id=2.",ports:[3306],connects:[]},
+    {id:"redis-0",name:"redis-0",kind:"StatefulSet",replicas:"1 (Master)",image:"redis:6.2-alpine",icon:"⚡",desc:"Master de Redis. Acepta escrituras. Cada pod lleva un sidecar Sentinel que monitoriza la salud del Redis local y se coordina con los otros 2 Sentinels para decidir failover automático (quorum=2).",ports:[6379,26379],connects:["redis-1","redis-2"]},
+    {id:"redis-1",name:"redis-1",kind:"StatefulSet",replicas:"1 (Replica)",image:"redis:6.2-alpine",icon:"⚡",desc:"Réplica 1 de Redis. Solo lectura. Replica datos del master vía replicaof. Sidecar Sentinel incluido. En caso de fallo del master, Sentinel promueve la réplica con mayor prioridad.",ports:[6379,26379],connects:[]},
+    {id:"redis-2",name:"redis-2",kind:"StatefulSet",replicas:"1 (Replica)",image:"redis:6.2-alpine",icon:"⚡",desc:"Réplica 2 de Redis. Solo lectura. Tercer nodo del quorum de Sentinel. Garantiza que siempre hay mayoría para decidir failover incluso si un nodo falla.",ports:[6379,26379],connects:[]},
+  ]},
+  monitoring:{color:"#10B981",glow:"#10B98120",label:"monitoring",desc:"Observabilidad — Métricas, Logs, Trazas y Alertas",pods:[
+    {id:"prometheus",name:"prometheus",kind:"Deployment",replicas:"1",image:"prom/prometheus:v2.48.0",icon:"📊",desc:"Recolecta métricas de todos los pods vía Kubernetes Service Discovery. Evalúa reglas de alerta cada 15s. Implementa SLOs con burn rate (99.9% disponibilidad, error budget 43min/mes). Retención 15 días en PVC de 10Gi.",ports:[9090],connects:["alertmanager","grafana"]},
+    {id:"alertmanager",name:"alertmanager",kind:"Deployment",replicas:"1",image:"prom/alertmanager:v0.26.0",icon:"🚨",desc:"Recibe alertas de Prometheus y las enruta por severidad. Agrupa alertas relacionadas, aplica inhibición (si PodDown activo, suprime HighCPU del mismo pod) y envía a Slack via Incoming Webhook. Repeat interval: 12h.",ports:[9093],connects:[]},
+    {id:"grafana",name:"grafana",kind:"Deployment",replicas:"1",image:"grafana/grafana:10.2.3",icon:"📈",desc:"Visualización central. Datasources provisionados como código: Prometheus (métricas) y Loki (logs). Dashboards predefinidos: Kubernetes Overview y WordPress K8s Project con variables de namespace. PVC 5Gi para persistencia.",ports:[3000],connects:["prometheus","loki","jaeger"]},
+    {id:"loki",name:"loki",kind:"Deployment",replicas:"1",image:"grafana/loki:2.9.3",icon:"📋",desc:"Agregación de logs indexada por labels (no por contenido). Schema v13 con TSDB. Retención 31 días. Solo recibe logs de Promtail y los sirve a Grafana. No expuesto al exterior — solo ClusterIP.",ports:[3100,9096],connects:[]},
+    {id:"promtail",name:"promtail",kind:"DaemonSet",replicas:"1/nodo",image:"grafana/promtail:2.9.3",icon:"🔍",desc:"Agente de logs desplegado en cada nodo. Lee /var/log y /var/lib/docker/containers del host. Enriquece cada log con metadata de Kubernetes (namespace, pod, container). Filtra solo namespaces relevantes del proyecto.",ports:[9080],connects:["loki"]},
+    {id:"jaeger",name:"jaeger",kind:"Deployment",replicas:"1",image:"jaegertracing/all-in-one:1.52",icon:"🔭",desc:"Recibe, almacena y visualiza trazas distribuidas. Modo all-in-one con almacenamiento in-memory (10.000 trazas). Acepta OTLP/gRPC (4317) y HTTP (4318). UI en puerto 16686. En producción se conectaría a Elasticsearch.",ports:[16686,4317,4318,14268],connects:[]},
+    {id:"otel-collector",name:"otel-collector",kind:"DaemonSet",replicas:"1/nodo",image:"otel/opentelemetry-collector-contrib:0.91.0",icon:"🔗",desc:"Pipeline de trazas: receivers OTLP → processors (memory_limiter + batch) → exporters hacia Jaeger. DaemonSet para latencia mínima — cada pod envía al agente local. Expone hostPort 4317/4318.",ports:[4317,4318],connects:["jaeger"]},
+  ]},
+  storage:{color:"#8B5CF6",glow:"#8B5CF620",label:"storage",desc:"Almacenamiento de objetos — MinIO S3-compatible",pods:[
+    {id:"minio",name:"minio",kind:"Deployment",replicas:"1",image:"minio/minio:latest",icon:"🗃️",desc:"Servidor S3-compatible. Almacena uploads de WordPress (bucket: wordpress-uploads, acceso público lectura) y backups de MariaDB y uploads (bucket: wordpress-backups). API en 9000, consola en 9001. PVC 10Gi.",ports:[9000,9001],connects:[]},
+  ]},
+  "cert-manager":{color:"#EC4899",glow:"#EC489920",label:"cert-manager",desc:"Gestión automática de certificados TLS",pods:[
+    {id:"cert-manager",name:"cert-manager",kind:"Operator",replicas:"1",image:"cert-manager:latest",icon:"🔐",desc:"Operador que gestiona el ciclo de vida de certificados TLS. Cadena de confianza: selfsigned-issuer → CA raíz (RSA 4096) → ca-issuer → certificados wordpress-tls y monitoring-tls. Renovación automática 30 días antes de expirar.",ports:[],connects:[]},
+  ]},
+  velero:{color:"#F97316",glow:"#F9731620",label:"velero",desc:"Backup completo del clúster Kubernetes",pods:[
+    {id:"velero",name:"velero",kind:"Deployment",replicas:"1",image:"velero:latest",icon:"💾",desc:"Backup completo de objetos K8s + snapshots de PVCs vía CSI. Schedule diario 1:00 AM (Europe/Madrid). Namespaces: wordpress + databases. Retención 30 días. Backend: MinIO bucket velero-backups. RTO ~15min.",ports:[],connects:["minio"]},
+  ]},
+};
+
+const NS_COLORS = {
+  wordpress:     {bg:"#1E3A5F",border:"#3B82F6",text:"#93C5FD",accent:"#3B82F6"},
+  databases:     {bg:"#3D2B0A",border:"#F59E0B",text:"#FCD34D",accent:"#F59E0B"},
+  monitoring:    {bg:"#0A2E1F",border:"#10B981",text:"#6EE7B7",accent:"#10B981"},
+  storage:       {bg:"#2D1B69",border:"#8B5CF6",text:"#C4B5FD",accent:"#8B5CF6"},
+  "cert-manager":{bg:"#4A0E2E",border:"#EC4899",text:"#F9A8D4",accent:"#EC4899"},
+  velero:        {bg:"#431407",border:"#F97316",text:"#FDBA74",accent:"#F97316"},
+};
+
+const FILES = [
+  {id:"00",name:"00-namespace.yaml",icon:"📁",category:"Infraestructura",desc:"Crea todos los namespaces del proyecto: wordpress, databases, monitoring, storage, cert-manager, velero, security. Aplica labels kubernetes.io/metadata.name necesarias para que los namespaceSelector de las NetworkPolicies funcionen correctamente.",concepts:["Namespace","Labels"]},
+  {id:"01",name:"01-secrets.yaml",icon:"🔑",category:"Seguridad",desc:"Define los Secrets de MariaDB (root + user password), Redis y MinIO en los namespaces que los necesitan. Los Secrets se duplican entre namespaces porque un pod solo puede referenciar Secrets de su propio namespace. Valores en base64.",concepts:["Secret","Opaque","base64"]},
+  {id:"02",name:"02-configmap.yaml",icon:"⚙️",category:"Configuración",desc:"ConfigMaps con datos no sensibles: host de MariaDB, nombre de BD, usuario y URL del sitio para WordPress; nombre de BD y usuario para MariaDB. Separa configuración de código y permite actualizarla sin reconstruir imágenes.",concepts:["ConfigMap","Separación config/código"]},
+  {id:"03",name:"03-pvc.yaml",icon:"💿",category:"Almacenamiento",desc:"PersistentVolumeClaim de 2Gi para WordPress (core, plugins, themes). ReadWriteOnce — en Minikube con un solo nodo funciona con múltiples réplicas. MariaDB y Redis NO tienen PVC aquí: usan volumeClaimTemplates en sus StatefulSets.",concepts:["PVC","ReadWriteOnce","StorageClass"]},
+  {id:"04",name:"04-mariadb.yaml",icon:"🗄️",category:"Base de datos",desc:"StatefulSet de 2 réplicas para MariaDB HA. Un script de entrypoint detecta el ordinal del pod (0=PRIMARY, 1=REPLICA) y arranca con la configuración correcta. Service 'mariadb' apunta solo a mariadb-0 via label statefulset.kubernetes.io/pod-name.",concepts:["StatefulSet","Headless Service","podAntiAffinity","initContainers"]},
+  {id:"04b",name:"04b-mariadb-replication-job.yaml",icon:"🔄",category:"Base de datos",desc:"Job de inicialización que configura la replicación MariaDB: espera a que ambos pods estén listos, crea el usuario 'replicator' en el primary, captura la posición del binary log y ejecuta CHANGE MASTER TO en la réplica. Se autoeliminan tras 5 minutos.",concepts:["Job","ttlSecondsAfterFinished","Binary Log Replication"]},
+  {id:"05",name:"05-redis.yaml",icon:"⚡",category:"Caché",desc:"StatefulSet de 3 pods Redis (1 master + 2 replicas) cada uno con un sidecar Sentinel. El script start-redis.sh detecta el ordinal para arrancar como master o replica. Quorum de Sentinel = 2, garantiza failover automático si el master falla.",concepts:["StatefulSet","Sidecar pattern","Redis Sentinel","Quorum"]},
+  {id:"06",name:"06-wordpress.yaml",icon:"🌐",category:"Aplicación",desc:"Deployment de WordPress 6.4 con SecurityContext completo (runAsUser:33, readOnlyRootFilesystem, DROP ALL capabilities). Configura Redis Sentinel, MinIO S3 y OpenTelemetry via WORDPRESS_CONFIG_EXTRA. emptyDir para /tmp y /var/run/apache2.",concepts:["Deployment","SecurityContext","podAntiAffinity","startupProbe"]},
+  {id:"07",name:"07-network-policy.yaml",icon:"🔒",category:"Seguridad",desc:"19 NetworkPolicies implementando modelo zero-trust: default-deny en todos los namespaces + políticas explícitas de allow. Cubre: WordPress↔MariaDB/Redis/MinIO/OTel, Prometheus scraping, Loki↔Promtail/Grafana, backups CronJobs, replicación MariaDB.",concepts:["NetworkPolicy","Zero-trust","namespaceSelector","podSelector"]},
+  {id:"08",name:"08-ingress.yaml",icon:"🚪",category:"Red",desc:"Dos recursos Ingress NGINX: wordpress-ingress (wp-k8s.local, proxy-body-size 64m) y monitoring-ingress (grafana + prometheus con certificado multi-SAN). TLS forzado con cert-manager via anotación cluster-issuer.",concepts:["Ingress","IngressClass","TLS termination","Virtual hosting"]},
+  {id:"09",name:"09-hpa-wordpress.yaml",icon:"📈",category:"Escalado",desc:"HorizontalPodAutoscaler v2 con dos métricas: CPU >50% y Memoria >70%. Rango 2–5 réplicas. Los techos están calibrados contra la ResourceQuota del namespace (5 pods × requests = dentro del límite de 2Gi).",concepts:["HPA v2","autoscaling/v2","múltiples métricas","Metrics Server"]},
+  {id:"10",name:"10-prometheus.yaml",icon:"📊",category:"Observabilidad",desc:"Prometheus + Alertmanager completos. Service Discovery con RBAC para nodos, cAdvisor y pods. Reglas de alerta: PodDown, OOMKill, HighCPU, MariaDBDown. SLOs con burn rate multi-ventana (14.4x crítico, 3x warning). Slack como canal de notificación.",concepts:["ClusterRole","kubernetes_sd_configs","relabeling","SLO burn rate"]},
+  {id:"11",name:"11-loki.yaml",icon:"📋",category:"Observabilidad",desc:"Loki con schema v13/TSDB y Promtail DaemonSet. Retención 31 días con compactor automático. Promtail monta hostPath del nodo y usa Service Discovery para enriquecer logs con metadata de pods. Filtra solo namespaces del proyecto.",concepts:["DaemonSet","hostPath","ClusterRole","log aggregation"]},
+  {id:"12",name:"12-grafana.yaml",icon:"📉",category:"Observabilidad",desc:"Grafana con provisioning como código: datasources (Prometheus + Loki), proveedor de dashboards y dos dashboards JSON embebidos en ConfigMaps. subPath para montar ficheros individuales. Credenciales desde Secret.",concepts:["Provisioning","subPath volumeMount","Dashboard as code"]},
+  {id:"13",name:"13-pdb.yaml",icon:"🛡️",category:"Disponibilidad",desc:"PodDisruptionBudget para WordPress con minAvailable:1. Garantiza que kubectl drain y rolling updates nunca dejan el servicio sin pods. Solo protege contra disrupciones voluntarias — no contra fallos de nodo.",concepts:["PodDisruptionBudget","disrupciones voluntarias","minAvailable"]},
+  {id:"14",name:"14-resource-quota.yaml",icon:"⚖️",category:"Gobernanza",desc:"LimitRange + ResourceQuota para namespaces wordpress y databases. Valores calculados para soportar HPA maxReplicas:5. LimitRange asigna defaults a pods sin resources declarados. Aislamiento de recursos entre namespaces.",concepts:["LimitRange","ResourceQuota","requests vs limits","QoS"]},
+  {id:"15",name:"15-cert-manager.yaml",icon:"🔐",category:"Seguridad",desc:"Cadena de confianza TLS self-signed en 5 pasos: selfsigned-issuer → CA raíz RSA 4096 → ca-issuer → certificados wordpress-tls y monitoring-tls (multi-SAN). Renovación automática 30 días antes de expirar. CA en namespace cert-manager.",concepts:["ClusterIssuer","Certificate","SAN","PKI chain"]},
+  {id:"16",name:"16-minio.yaml",icon:"🗃️",category:"Almacenamiento",desc:"MinIO S3-compatible en namespace storage. Job de inicialización crea buckets wordpress-uploads (público lectura) y wordpress-backups. Secrets duplicados en namespaces storage y wordpress. Hace WordPress stateless respecto a media.",concepts:["Object Storage","S3 API","Job init pattern","stateless apps"]},
+  {id:"17",name:"17-tracing.yaml",icon:"🔭",category:"Observabilidad",desc:"Jaeger all-in-one + OTel Collector DaemonSet. Pipeline: WordPress → OTel Collector (hostPort 4317/4318) → Jaeger (memoria, 10k trazas) → Grafana datasource. Dos Services para Jaeger: jaeger-collector y jaeger-query (alias para Grafana).",concepts:["OpenTelemetry","DaemonSet","hostPort","OTLP protocol"]},
+  {id:"18",name:"18-backup.yaml",icon:"💿",category:"Backup",desc:"3 CronJobs: mariadb-backup (2AM, mysqldump + gzip → MinIO), wordpress-uploads-backup (3AM, tar.gz → MinIO), backup-cleanup (domingo 4AM, elimina >30 días). Job de restauración suspendido con instrucciones inline. RPO ~24h, RTO ~15min.",concepts:["CronJob","concurrencyPolicy","ttlSecondsAfterFinished","RPO/RTO"]},
+  {id:"19",name:"19-velero.yaml",icon:"💾",category:"Backup",desc:"Velero backup completo: objetos K8s + snapshots CSI de PVCs. Backend MinIO (bucket velero-backups). Schedule diario 1AM. NetworkPolicy permite egress hacia MinIO:9000 y API K8s:6443. Restauración: velero restore create --from-backup.",concepts:["Velero","CSI snapshots","NetworkPolicy egress","cluster backup"]},
+];
+
+const CAT_COLORS = {
+  "Infraestructura":"#64748B","Seguridad":"#EC4899","Configuración":"#F59E0B",
+  "Almacenamiento":"#8B5CF6","Base de datos":"#F59E0B","Caché":"#EF4444",
+  "Aplicación":"#3B82F6","Red":"#06B6D4","Escalado":"#10B981",
+  "Observabilidad":"#10B981","Disponibilidad":"#3B82F6","Gobernanza":"#64748B","Backup":"#F97316",
+};
+
+const ARCH_NODES = [
+  {id:"user",       label:"Usuario",              icon:"👤", x:20,  y:185, color:"#64748B", ns:null},
+  {id:"ingress",    label:"NGINX Ingress",         icon:"🚪", x:155, y:185, color:"#3B82F6", ns:"kube-system"},
+  {id:"wordpress",  label:"WordPress\n2–5 pods",   icon:"🌐", x:310, y:120, color:"#3B82F6", ns:"wordpress"},
+  {id:"mariadb",    label:"MariaDB\nPrimary+Replica",icon:"🗄️",x:310, y:268, color:"#F59E0B", ns:"databases"},
+  {id:"redis",      label:"Redis Sentinel\n1M+2R",  icon:"⚡", x:460, y:268, color:"#F59E0B", ns:"databases"},
+  {id:"minio",      label:"MinIO\nS3 Storage",      icon:"🗃️", x:460, y:120, color:"#8B5CF6", ns:"storage"},
+  {id:"prometheus", label:"Prometheus",             icon:"📊", x:610, y:100, color:"#10B981", ns:"monitoring"},
+  {id:"grafana",    label:"Grafana",                icon:"📈", x:610, y:210, color:"#10B981", ns:"monitoring"},
+  {id:"loki",       label:"Loki + Promtail",        icon:"📋", x:610, y:320, color:"#10B981", ns:"monitoring"},
+  {id:"jaeger",     label:"Jaeger + OTel",          icon:"🔭", x:760, y:180, color:"#10B981", ns:"monitoring"},
+  {id:"velero",     label:"Velero Backup",           icon:"💾", x:760, y:320, color:"#F97316", ns:"velero"},
+  {id:"certmgr",    label:"cert-manager\nTLS",      icon:"🔐", x:155, y:320, color:"#EC4899", ns:"cert-manager"},
+];
+const ARCH_EDGES = [
+  {from:"user",to:"ingress",label:"HTTPS"},
+  {from:"ingress",to:"wordpress",label:"HTTP/80"},
+  {from:"ingress",to:"grafana",label:"HTTP/3000"},
+  {from:"wordpress",to:"mariadb",label:"3306"},
+  {from:"wordpress",to:"redis",label:"26379"},
+  {from:"wordpress",to:"minio",label:"S3/9000"},
+  {from:"prometheus",to:"wordpress",label:"scrape"},
+  {from:"prometheus",to:"mariadb",label:"scrape"},
+  {from:"grafana",to:"prometheus",label:"query"},
+  {from:"grafana",to:"loki",label:"query"},
+  {from:"grafana",to:"jaeger",label:"traces"},
+  {from:"wordpress",to:"jaeger",label:"OTLP"},
+  {from:"velero",to:"minio",label:"backup"},
+  {from:"certmgr",to:"ingress",label:"TLS certs"},
+];
+
+// ── STATE ──────────────────────────────────────────────────────────────────
+
+let activeTab = 'diagram';
+let selectedItem = null;
+let fileFilter = 'Todos';
+let nsExpanded = {};
+Object.keys(NAMESPACES).forEach(k => nsExpanded[k] = true);
+
+// ── TABS ───────────────────────────────────────────────────────────────────
+
+function switchTab(tab) {
+  activeTab = tab;
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.textContent.includes(
+      tab==='diagram'?'Arquitectura':tab==='files'?'Archivos':'Namespaces'
+    ));
+  });
+  closePanel();
+}
+
+// ── DIAGRAM ────────────────────────────────────────────────────────────────
+
+function buildDiagram() {
+  const svg = document.getElementById('arch-svg');
+  const nodeMap = {};
+  ARCH_NODES.forEach(n => nodeMap[n.id] = n);
+  const NW = 115, NH = 56;
+
+  // defs
+  svg.innerHTML = `<defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#334155"/>
+    </marker>
+  </defs>`;
+
+  // edges
+  ARCH_EDGES.forEach(e => {
+    const f = nodeMap[e.from], t = nodeMap[e.to];
+    if (!f || !t) return;
+    const fx = f.x + NW/2, fy = f.y + NH/2;
+    const tx = t.x + NW/2, ty = t.y + NH/2;
+    const mx = (fx+tx)/2, my = (fy+ty)/2;
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',fx); line.setAttribute('y1',fy);
+    line.setAttribute('x2',tx); line.setAttribute('y2',ty);
+    line.setAttribute('stroke','#2A3441'); line.setAttribute('stroke-width','1.5');
+    line.setAttribute('stroke-dasharray','4 3');
+    line.setAttribute('marker-end','url(#arrow)');
+    svg.appendChild(line);
+
+    const labels = (e.label||'').split('\n');
+    labels.forEach((l,li) => {
+      const txt = document.createElementNS('http://www.w3.org/2000/svg','text');
+      txt.setAttribute('x',mx); txt.setAttribute('y',my+18+li*11-((labels.length-1)*5));
+      txt.setAttribute('fill','#475569'); txt.setAttribute('font-size','9');
+      txt.setAttribute('text-anchor','middle'); txt.setAttribute('font-family','monospace');
+      txt.textContent = l;
+      svg.appendChild(txt);
+    });
+  });
+
+  // nodes
+  ARCH_NODES.forEach(node => {
+    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+    g.style.cursor = 'pointer';
+
+    const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    rect.setAttribute('x',node.x); rect.setAttribute('y',node.y);
+    rect.setAttribute('width',NW); rect.setAttribute('height',NH);
+    rect.setAttribute('rx','8'); rect.setAttribute('fill','#0D1117');
+    rect.setAttribute('stroke','#2A3441'); rect.setAttribute('stroke-width','1');
+    g.appendChild(rect);
+
+    const ico = document.createElementNS('http://www.w3.org/2000/svg','text');
+    ico.setAttribute('x',node.x+10); ico.setAttribute('y',node.y+22);
+    ico.setAttribute('font-size','18'); ico.textContent = node.icon;
+    g.appendChild(ico);
+
+    const lines = node.label.split('\n');
+    lines.forEach((l,li) => {
+      const txt = document.createElementNS('http://www.w3.org/2000/svg','text');
+      txt.setAttribute('x',node.x+NW/2); txt.setAttribute('y',node.y+32+li*13);
+      txt.setAttribute('fill','#94A3B8'); txt.setAttribute('font-size',li===0?'10':'9');
+      txt.setAttribute('font-weight',li===0?'600':'400'); txt.setAttribute('text-anchor','middle');
+      txt.setAttribute('font-family',li===0?'inherit':'monospace');
+      txt.textContent = l;
+      g.appendChild(txt);
+    });
+
+    if (node.ns) {
+      const ns = document.createElementNS('http://www.w3.org/2000/svg','text');
+      ns.setAttribute('x',node.x+NW/2); ns.setAttribute('y',node.y+NH+13);
+      ns.setAttribute('fill',node.color); ns.setAttribute('font-size','8');
+      ns.setAttribute('text-anchor','middle'); ns.setAttribute('opacity','0.6');
+      ns.textContent = node.ns;
+      g.appendChild(ns);
+    }
+
+    g.addEventListener('mouseenter',()=>{
+      rect.setAttribute('fill',node.color+'22');
+      rect.setAttribute('stroke',node.color);
+      rect.setAttribute('stroke-width','2');
+      g.querySelectorAll('text').forEach((t,i)=>{ if(i>=1) t.setAttribute('fill',node.color); });
+    });
+    g.addEventListener('mouseleave',()=>{
+      rect.setAttribute('fill','#0D1117');
+      rect.setAttribute('stroke','#2A3441');
+      rect.setAttribute('stroke-width','1');
+      g.querySelectorAll('text').forEach((t,i)=>{ if(i>=1) t.setAttribute('fill','#94A3B8'); });
+      if (node.ns) g.querySelectorAll('text')[g.querySelectorAll('text').length-1].setAttribute('fill',node.color);
+    });
+    g.addEventListener('click',()=>selectNode(node));
+    svg.appendChild(g);
+  });
+}
+
+function buildLegend() {
+  const legend = document.getElementById('legend');
+  [
+    {color:"#3B82F6",label:"wordpress"},
+    {color:"#F59E0B",label:"databases"},
+    {color:"#10B981",label:"monitoring"},
+    {color:"#8B5CF6",label:"storage"},
+    {color:"#EC4899",label:"cert-manager"},
+    {color:"#F97316",label:"velero"},
+  ].forEach(({color,label}) => {
+    legend.innerHTML += `<div class="legend-item">
+      <div class="legend-dot" style="background:${color}"></div>
+      <span class="legend-text">${label}</span>
+    </div>`;
+  });
+}
+
+function selectNode(node) {
+  const nsKey = node.ns;
+  const ns = NAMESPACES[nsKey];
+  if (ns) {
+    const pod = ns.pods.find(p => p.id===node.id || p.name===node.id);
+    if (pod) { openPanel(pod,'pod',NS_COLORS[nsKey]); return; }
+  }
+  openPanel({
+    icon: node.icon,
+    name: node.label.replace('\n',' '),
+    kind: node.ns||'sistema',
+    desc: `Componente ${node.label.replace('\n',' ')} del namespace ${node.ns||'sistema'}`,
+    image:null, ports:[], connects:[]
+  },'pod',{accent:node.color,text:node.color,bg:'#1E293B'});
+}
+
+// ── FILES ──────────────────────────────────────────────────────────────────
+
+function buildFiles() {
+  const cats = ['Todos',...[...new Set(FILES.map(f=>f.category))]];
+  const bar = document.getElementById('filter-bar');
+  bar.innerHTML = cats.map(c =>
+    `<button class="filter-btn${c===fileFilter?' active':''}" onclick="setFilter('${c}')">${c}</button>`
+  ).join('');
+
+  const filtered = fileFilter==='Todos' ? FILES : FILES.filter(f=>f.category===fileFilter);
+  const grid = document.getElementById('files-grid');
+  grid.innerHTML = filtered.map(file => {
+    const cc = CAT_COLORS[file.category]||'#3B82F6';
+    const shortDesc = file.desc.length>120 ? file.desc.slice(0,120)+'…' : file.desc;
+    return `<button class="file-card" onclick="openPanel(FILES.find(f=>f.id==='${file.id}'),'file',{accent:'${cc}',text:'${cc}',bg:'#1E293B'})"
+      onmouseenter="this.style.borderColor='${cc}'" onmouseleave="this.style.borderColor='#1E293B'">
+      <div class="file-card-top">
+        <div class="file-card-left">
+          <span style="font-size:20px">${file.icon}</span>
+          <span class="file-name">${file.name}</span>
+        </div>
+        <span class="file-badge" style="color:${cc};background:${cc}22;border-color:${cc}44">${file.category}</span>
+      </div>
+      <div class="file-desc">${shortDesc}</div>
+    </button>`;
+  }).join('');
+}
+
+function setFilter(cat) {
+  fileFilter = cat;
+  buildFiles();
+}
+
+// ── NAMESPACES ─────────────────────────────────────────────────────────────
+
+function buildNamespaces() {
+  const list = document.getElementById('ns-list');
+  list.innerHTML = Object.entries(NAMESPACES).map(([nsKey,ns]) => {
+    const c = NS_COLORS[nsKey]||{bg:'#1E293B',border:'#334155',text:'#94A3B8',accent:'#64748B'};
+    const isOpen = nsExpanded[nsKey];
+    const podsHtml = ns.pods.map(pod => {
+      const portsStr = pod.ports&&pod.ports.length ? `:${pod.ports.join(', :')}` : '';
+      return `<button class="pod-card" style="border-color:${c.border}44"
+        onclick="openPanel(getPod('${nsKey}','${pod.id}'),'pod',NS_COLORS['${nsKey}'])"
+        onmouseenter="this.style.borderColor='${c.accent}';this.style.background='${c.accent}11'"
+        onmouseleave="this.style.borderColor='${c.border}44';this.style.background='#0D1117'">
+        <div class="pod-icon">${pod.icon}</div>
+        <div class="pod-name" style="color:${c.text}">${pod.name}</div>
+        <div class="pod-badges">
+          <span class="pod-badge" style="background:${c.accent}22;color:${c.accent}">${pod.kind}</span>
+          <span class="pod-badge" style="background:#1E293B;color:#64748B">${pod.replicas}</span>
+        </div>
+        ${portsStr ? `<div class="pod-ports">${portsStr}</div>` : ''}
+      </button>`;
+    }).join('');
+
+    return `<div class="ns-block" style="background:${c.bg}88;border-color:${c.border}44">
+      <button class="ns-header" onclick="toggleNs('${nsKey}')">
+        <div class="ns-header-left">
+          <div class="ns-dot-live" style="background:${c.accent};box-shadow:0 0 8px ${c.accent}"></div>
+          <span class="ns-title" style="color:${c.text}">namespace/${nsKey}</span>
+          <span class="ns-desc">${ns.desc}</span>
+        </div>
+        <div class="ns-right">
+          <span class="ns-count" style="background:${c.accent}22;color:${c.accent};border-color:${c.accent}44">${ns.pods.length} pod${ns.pods.length!==1?'s':''}</span>
+          <span class="ns-toggle">${isOpen?'▲':'▼'}</span>
+        </div>
+      </button>
+      ${isOpen ? `<div class="ns-body" id="nsbody-${nsKey}">${podsHtml}</div>` : `<div id="nsbody-${nsKey}" style="display:none">${podsHtml}</div>`}
+    </div>`;
+  }).join('');
+}
+
+function getPod(nsKey, podId) {
+  return NAMESPACES[nsKey].pods.find(p=>p.id===podId);
+}
+
+function toggleNs(nsKey) {
+  nsExpanded[nsKey] = !nsExpanded[nsKey];
+  const body = document.getElementById('nsbody-'+nsKey);
+  const block = body.closest('.ns-block');
+  const toggle = block.querySelector('.ns-toggle');
+  if (nsExpanded[nsKey]) {
+    body.style.display = 'grid';
+    toggle.textContent = '▲';
+  } else {
+    body.style.display = 'none';
+    toggle.textContent = '▼';
+  }
+}
+
+// ── DETAIL PANEL ───────────────────────────────────────────────────────────
+
+function openPanel(item, type, nsColor) {
+  const c = nsColor || {accent:'#3B82F6',text:'#93C5FD',bg:'#1E3A5F'};
+  const panel = document.getElementById('detail-panel');
+  panel.style.borderLeft = `1px solid ${c.accent}44`;
+  panel.style.boxShadow = `-8px 0 32px ${c.accent}22`;
+
+  document.getElementById('dp-icon').textContent = item.icon||'📦';
+  document.getElementById('dp-kind').textContent = type==='pod' ? item.kind : item.category;
+  document.getElementById('dp-kind').style.color = c.accent;
+  document.getElementById('dp-name').textContent = item.name;
+
+  const imgBox = document.getElementById('dp-image-box');
+  if (item.image) {
+    document.getElementById('dp-image').textContent = item.image;
+    imgBox.style.display = 'block';
+  } else { imgBox.style.display = 'none'; }
+
+  document.getElementById('dp-desc').textContent = item.desc||'';
+
+  const portsWrap = document.getElementById('dp-ports-wrap');
+  const portsTags = document.getElementById('dp-ports');
+  if (item.ports && item.ports.length) {
+    portsTags.innerHTML = item.ports.map(p =>
+      `<span class="dp-tag" style="background:${c.accent}22;border:1px solid ${c.accent}44;color:${c.text}">${p}</span>`
+    ).join('');
+    portsWrap.style.display = 'block';
+  } else { portsWrap.style.display = 'none'; }
+
+  const conWrap = document.getElementById('dp-connects-wrap');
+  const conTags = document.getElementById('dp-connects');
+  if (item.connects && item.connects.length) {
+    conTags.innerHTML = item.connects.map(c2 =>
+      `<span class="dp-tag" style="background:#161B22;border:1px solid #2A3441;color:#94A3B8">${c2}</span>`
+    ).join('');
+    conWrap.style.display = 'block';
+  } else { conWrap.style.display = 'none'; }
+
+  const concsWrap = document.getElementById('dp-concepts-wrap');
+  const concsTags = document.getElementById('dp-concepts');
+  if (item.concepts && item.concepts.length) {
+    concsTags.innerHTML = item.concepts.map(c3 =>
+      `<span class="dp-concept">${c3}</span>`
+    ).join('');
+    concsWrap.style.display = 'block';
+  } else { concsWrap.style.display = 'none'; }
+
+  panel.classList.add('open');
+  document.getElementById('main').classList.add('panel-open');
+}
+
+function closePanel() {
+  document.getElementById('detail-panel').classList.remove('open');
+  document.getElementById('main').classList.remove('panel-open');
+}
+
+// ── INIT ───────────────────────────────────────────────────────────────────
+
+buildDiagram();
+buildLegend();
+buildFiles();
+buildNamespaces();
+</script>
+</body>
+</html>
