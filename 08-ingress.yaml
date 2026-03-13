@@ -1,5 +1,8 @@
 # ============================================================
 # 08-ingress.yaml — Ingress con TLS (cert-manager self-signed)
+# Expone WordPress y el stack de monitoring al exterior del clúster
+# mediante el controlador NGINX Ingress, con TLS terminado en el
+# Ingress y redirección forzada HTTP → HTTPS.
 # ============================================================
 
 # ------------------------------------------------------------
@@ -13,34 +16,36 @@ metadata:
   name: wordpress-ingress
   namespace: wordpress
   annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
-    nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+    nginx.ingress.kubernetes.io/rewrite-target: /          # Normaliza la ruta raíz al backend
+    nginx.ingress.kubernetes.io/proxy-body-size: "64m"     # Permite subir ficheros de hasta 64 MB (uploads WordPress)
     # Fuerza redirect HTTP → HTTPS
-    nginx.ingress.kubernetes.io/ssl-redirect: "true"
-    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"       # Activa redirect 308 de HTTP a HTTPS
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true" # Redundante con la anterior; garantiza redirect incluso si el cliente envía HTTP/1.0
     # cert-manager genera el certificado automáticamente
-    cert-manager.io/cluster-issuer: "ca-issuer"
+    cert-manager.io/cluster-issuer: "ca-issuer"            # Indica a cert-manager qué ClusterIssuer usar para emitir el TLS
 spec:
-  ingressClassName: nginx
+  ingressClassName: nginx  # Selecciona el controlador NGINX Ingress instalado en el clúster
   tls:
     - hosts:
-        - wp-k8s.local
-      secretName: wordpress-tls    # cert-manager crea este Secret
+        - wp-k8s.local             # Hostname para el que se solicita el certificado TLS
+      secretName: wordpress-tls   # Secret donde cert-manager almacenará el certificado y la clave privada
   rules:
-    - host: wp-k8s.local
+    - host: wp-k8s.local          # Enrutamiento basado en Host HTTP header
       http:
         paths:
           - path: /
-            pathType: Prefix
+            pathType: Prefix      # Coincide con cualquier ruta que empiece por '/'
             backend:
               service:
-                name: wordpress
+                name: wordpress   # Service destino definido en 06-wordpress.yaml
                 port:
                   number: 80
 
 ---
 # ------------------------------------------------------------
 # Ingress para Grafana y Prometheus — namespace 'monitoring'
+# Un único recurso Ingress gestiona dos hosts virtuales distintos,
+# permitiendo reutilizar el mismo secreto TLS para ambos servicios.
 # ------------------------------------------------------------
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -51,15 +56,16 @@ metadata:
     nginx.ingress.kubernetes.io/rewrite-target: /
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
-    cert-manager.io/cluster-issuer: "ca-issuer"
+    cert-manager.io/cluster-issuer: "ca-issuer"           # Mismo ClusterIssuer que WordPress, emite el certificado monitoring-tls
 spec:
   ingressClassName: nginx
   tls:
     - hosts:
-        - grafana.monitoring.local
-        - prometheus.monitoring.local
-      secretName: monitoring-tls
+        - grafana.monitoring.local      # SAN 1 del certificado monitoring-tls
+        - prometheus.monitoring.local   # SAN 2 del certificado monitoring-tls (multi-dominio)
+      secretName: monitoring-tls        # Un único Secret cubre ambos hostnames
   rules:
+    # Virtual host para Grafana — UI de dashboards en puerto 3000
     - host: grafana.monitoring.local
       http:
         paths:
@@ -67,9 +73,10 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: grafana
+                name: grafana           # Service definido en 12-grafana.yaml
                 port:
                   number: 3000
+    # Virtual host para Prometheus — UI y API en puerto 9090
     - host: prometheus.monitoring.local
       http:
         paths:
@@ -77,6 +84,6 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: prometheus
+                name: prometheus        # Service definido en 10-prometheus.yaml
                 port:
                   number: 9090
