@@ -20,9 +20,9 @@ réplicas_deseadas = ceil(réplicas_actuales × (uso_actual / umbral))
 
 ## Decisiones de diseño
 
-**Mínimo de 2 réplicas** garantiza alta disponibilidad: si un nodo falla o se drena para mantenimiento, siempre queda al menos una réplica activa sirviendo tráfico. Esto se complementa con el `PodDisruptionBudget` de `13-pdb.yaml`.
+**Mínimo de 2 réplicas** garantiza alta disponibilidad: si un nodo falla o se drena para mantenimiento, siempre queda al menos una réplica activa sirviendo tráfico. Esto se complementa con el `PodDisruptionBudget` de `pdb.yaml`.
 
-**Máximo de 5 réplicas** está calibrado para mantenerse dentro de los límites del `ResourceQuota` del namespace (`14-resource-quota.yaml`). Con 5 réplicas y los requests declarados (100m CPU, 256Mi memoria por pod), el namespace consume exactamente 500m CPU y 1.28Gi memoria en requests, dentro del techo de 1 CPU y 2Gi definido en la quota.
+**Máximo de 5 réplicas** está calibrado para mantenerse dentro de los límites del `ResourceQuota` del namespace (`resource-quota.yaml`). Con 5 réplicas y los requests declarados (100m CPU, 256Mi memoria por pod), el namespace consume exactamente 500m CPU y 1.28Gi memoria en requests, dentro del techo de 1 CPU y 2Gi definido en la quota.
 
 **Umbral de CPU al 50%** es conservador para WordPress, que puede tener picos de CPU durante la renderización de páginas con plugins pesados. Un umbral bajo asegura que el escalado ocurre antes de que los usuarios noten degradación.
 
@@ -32,13 +32,13 @@ réplicas_deseadas = ceil(réplicas_actuales × (uso_actual / umbral))
 
 | Archivo | Relación |
 |---|---|
-| `06-wordpress.yaml` | Define el Deployment `wordpress` que este HPA controla |
-| `14-resource-quota.yaml` | Los limits del HPA deben estar dentro de la ResourceQuota del namespace |
-| `13-pdb.yaml` | Trabaja en coordinación: el PDB garantiza disponibilidad mínima durante los scale-downs |
+| `wordpress.yaml` | Define el Deployment `wordpress` que este HPA controla |
+| `resource-quota.yaml` | Los limits del HPA deben estar dentro de la ResourceQuota del namespace |
+| `pdb.yaml` | Trabaja en coordinación: el PDB garantiza disponibilidad mínima durante los scale-downs |
 
 ## Advertencias y puntos críticos
 
 - El HPA requiere que los pods tengan `resources.requests` declarados. Sin requests, las métricas de porcentaje de utilización no se pueden calcular y el HPA entra en estado de error.
 - En Minikube, Metrics Server debe activarse explícitamente: `minikube addons enable metrics-server`. Se puede verificar con `kubectl top pods -n wordpress`.
 - El tiempo de estabilización por defecto del HPA para scale-down es 5 minutos. Esto evita oscilaciones (flapping) pero significa que tras un pico de tráfico el sistema tarda varios minutos en reducir réplicas.
-- El HPA de `autoscaling/v2` con múltiples métricas puede entrar en conflicto con KEDA si ambos gestionan el mismo Deployment. En este proyecto, el archivo `09-keda-wordpress.yaml` reemplaza al HPA nativo para el escalado por requests/segundo. Solo uno de los dos debe estar activo en producción.
+- El HPA de `autoscaling/v2` con múltiples métricas puede entrar en conflicto con KEDA si ambos gestionan el mismo Deployment. En este proyecto, el archivo `keda-wordpress.yaml` reemplaza al HPA nativo para el escalado por requests/segundo. Solo uno de los dos debe estar activo en producción.
