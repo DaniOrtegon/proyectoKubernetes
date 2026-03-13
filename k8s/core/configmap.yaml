@@ -1,5 +1,5 @@
 # ============================================================
-# 02-configmap.yaml — ConfigMaps del proyecto
+# onfigmap.yaml — ConfigMaps del proyecto
 #
 # Un ConfigMap almacena configuración no sensible en formato
 # clave-valor. A diferencia de los Secrets, los valores NO
