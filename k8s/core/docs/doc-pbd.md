@@ -1,4 +1,4 @@
-# DOC-13 — PodDisruptionBudget (`13-pdb.yaml`)
+# PodDisruptionBudget (`13-pdb.yaml`)
 
 ## Qué hace este archivo
 
@@ -24,8 +24,8 @@ Definir el PDB como un recurso independiente (en lugar de incrustarlo en el Depl
 
 | Archivo | Relación |
 |---|---|
-| `06-wordpress.yaml` | Define el Deployment `wordpress` cuyos pods selecciona este PDB via `matchLabels: app: wordpress` |
-| `09-hpa-wordpress.yaml` | El HPA mantiene un mínimo de 2 réplicas, lo que hace el PDB efectivo; con 1 réplica el PDB bloquearía cualquier drain |
+| `wordpress.yaml` | Define el Deployment `wordpress` cuyos pods selecciona este PDB via `matchLabels: app: wordpress` |
+| `hpa-wordpress.yaml` | El HPA mantiene un mínimo de 2 réplicas, lo que hace el PDB efectivo; con 1 réplica el PDB bloquearía cualquier drain |
 
 ## Advertencias y puntos críticos
 
