@@ -2,6 +2,8 @@
 # PodDisruptionBudget para WordPress
 # Garantiza que siempre hay al menos 1 pod disponible durante
 # operaciones de mantenimiento (kubectl drain, rolling updates).
+# Actúa como contrato entre el operador del clúster y el workload:
+# ninguna operación voluntaria puede dejar el Deployment sin pods.
 # ============================================================
 apiVersion: policy/v1
 kind: PodDisruptionBudget
@@ -9,7 +11,7 @@ metadata:
   name: wordpress-pdb
   namespace: wordpress
 spec:
-  minAvailable: 1
+  minAvailable: 1          # Al menos 1 pod debe permanecer disponible en todo momento
   selector:
     matchLabels:
-      app: wordpress
+      app: wordpress        # Selecciona los pods del Deployment de WordPress (06-wordpress.yaml)
