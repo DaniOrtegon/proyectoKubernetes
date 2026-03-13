@@ -1,6 +1,12 @@
 # ============================================================
 # 00-namespace.yaml — Namespaces del proyecto
 #
+# Los namespaces dividen el clúster en zonas lógicas aisladas.
+# Cada componente del proyecto vive en su propio namespace para:
+#   - Aplicar políticas de seguridad independientes
+#   - Limitar el radio de explosión si un componente falla
+#   - Facilitar la gestión de permisos (RBAC) por área
+#
 # Pod Security Standards (Kubernetes 1.25+):
 #   - enforce: baseline  → rechaza pods que violen el perfil
 #   - warn:    restricted → avisa si el pod no cumple restricted
@@ -16,17 +22,30 @@
 # sin romper las imágenes actuales que corren como root.
 # ============================================================
 
+# ------------------------------------------------------------
+# Namespace: wordpress
+# Contiene: Deployment WordPress, Service, Ingress, KEDA,
+#           PDB, SealedSecrets, ConfigMaps
+# ------------------------------------------------------------
 apiVersion: v1
 kind: Namespace
 metadata:
   name: wordpress
   labels:
+    # Rechaza pods privilegiados, hostPID/hostNetwork, etc.
     pod-security.kubernetes.io/enforce: baseline
     pod-security.kubernetes.io/enforce-version: latest
+    # Avisa si el pod no cumple el perfil más estricto (restricted)
     pod-security.kubernetes.io/warn: restricted
+    # Registra en audit log los incumplimientos del perfil restricted
     pod-security.kubernetes.io/audit: restricted
 
 ---
+# ------------------------------------------------------------
+# Namespace: databases
+# Contiene: StatefulSet MariaDB (primary+replica), StatefulSet Redis
+#           (master+replicas+sentinels), SealedSecrets, PVCs
+# ------------------------------------------------------------
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -38,6 +57,11 @@ metadata:
     pod-security.kubernetes.io/audit: restricted
 
 ---
+# ------------------------------------------------------------
+# Namespace: monitoring
+# Contiene: Prometheus, Alertmanager, Grafana, Loki, Promtail,
+#           Jaeger, OpenTelemetry Collector
+# ------------------------------------------------------------
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -49,6 +73,11 @@ metadata:
     pod-security.kubernetes.io/audit: restricted
 
 ---
+# ------------------------------------------------------------
+# Namespace: security
+# Contiene: cert-manager (gestión de certificados TLS),
+#           Sealed Secrets Controller
+# ------------------------------------------------------------
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -60,6 +89,11 @@ metadata:
     pod-security.kubernetes.io/audit: restricted
 
 ---
+# ------------------------------------------------------------
+# Namespace: storage
+# Contiene: MinIO (almacenamiento S3 compatible para uploads
+#           de WordPress y backups), CronJob de limpieza
+# ------------------------------------------------------------
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -71,11 +105,18 @@ metadata:
     pod-security.kubernetes.io/audit: restricted
 
 ---
-# Namespace velero — perfil privileged necesario para snapshots de PVCs
+# ------------------------------------------------------------
+# Namespace: velero
+# Contiene: Velero (backup completo del clúster + snapshots PVCs)
+# NOTA: usa perfil 'privileged' porque Velero necesita acceso
+#       especial al nodo para hacer snapshots de volúmenes CSI.
+#       Es la única excepción justificada al perfil baseline.
+# ------------------------------------------------------------
 apiVersion: v1
 kind: Namespace
 metadata:
   name: velero
   labels:
+    # Excepción: privileged necesario para snapshots de PVCs via CSI
     pod-security.kubernetes.io/enforce: privileged
     pod-security.kubernetes.io/enforce-version: latest
