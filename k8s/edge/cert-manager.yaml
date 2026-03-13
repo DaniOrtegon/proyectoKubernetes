@@ -1,5 +1,5 @@
 # ============================================================
-# 15-cert-manager.yaml
+# cert-manager.yaml
 # TLS end-to-end con cert-manager en Minikube (self-signed)
 #
 # NOTA: Let's Encrypt requiere dominio público accesible desde
