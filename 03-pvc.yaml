@@ -7,23 +7,41 @@
 # 'mariadb-storage-mariadb-0'). Definir mariadb-pvc aquí sería un PVC huérfano
 # que consumiría cuota sin ser usado por ningún Pod.
 # ============================================================
+
+# Recurso de tipo PersistentVolumeClaim: solicita almacenamiento persistente al clúster.
+# Kubernetes buscará (o creará dinámicamente) un PersistentVolume que cumpla los requisitos.
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: wordpress-pvc        # Nombre del PVC, utilizado por el Deployment de WordPress
-  namespace: wordpress       # Mismo namespace que el Deployment de WordPress
+  name: wordpress-pvc        # Nombre del PVC; referenciado en el Deployment de WordPress
+                             # bajo spec.volumes[].persistentVolumeClaim.claimName
+  namespace: wordpress       # Debe coincidir con el namespace del Deployment consumidor
 spec:
   accessModes:
-    # R-8: ReadWriteOnce solo permite montar el volumen en UN único nodo.
-    # Con HPA (minReplicas:2) en clúster MULTI-NODO esto impide que réplicas
-    # en nodos distintos compartan el mismo PVC → pods quedarán en Pending.
-    # SOLUCIÓN para producción multi-nodo:
-    #   - Cambiar a ReadWriteMany con una StorageClass que lo soporte (NFS, CephFS, EFS…)
-    #   - O usar un Object Storage externo (S3 + plugin wp-offload-media) para uploads.
-    # En Minikube (1 nodo) ReadWriteOnce funciona con múltiples réplicas en el mismo nodo.
+    # ReadWriteOnce (RWO): el volumen solo puede montarse en lectura/escritura
+    # desde UN único nodo al mismo tiempo.
+    #
+    # ⚠️  LIMITACIÓN CRÍTICA EN PRODUCCIÓN MULTI-NODO:
+    #   Con KEDA escalando a ≥2 réplicas en nodos distintos, los Pods programados
+    #   en un segundo nodo quedarán en estado Pending ("volume node affinity conflict").
+    #   Minikube es single-node, por lo que todas las réplicas comparten el mismo nodo
+    #   y RWO funciona correctamente en este entorno.
+    #
+    # ALTERNATIVAS para producción real:
+    #   - ReadWriteMany (RWX) con StorageClass compatible: NFS, CephFS, AWS EFS, etc.
+    #   - Externalizar uploads a Object Storage (MinIO/S3) con wp-offload-media,
+    #     eliminando la necesidad de un volumen compartido entre réplicas.
     - ReadWriteOnce
   resources:
     requests:
-      storage: 2Gi           # Más espacio que MariaDB, WordPress almacena media y plugins
-  storageClassName: standard  # Clase de almacenamiento por defecto
-  volumeMode: Filesystem      # Modo de volumen de sistema de archivos
+      # 2 GiB para uploads de WordPress (imágenes, PDFs, temas, plugins).
+      # MariaDB usa su propio volumen (via volumeClaimTemplates en el StatefulSet),
+      # por lo que este tamaño cubre exclusivamente el contenido de WordPress.
+      storage: 2Gi
+  # StorageClass que utilizará el aprovisionador dinámico de Minikube.
+  # 'standard' es la StorageClass por defecto en Minikube (respaldada por hostPath).
+  # En producción, reemplazar por la StorageClass del proveedor cloud (gp2, managed-premium…).
+  storageClassName: standard
+  # Filesystem: el volumen se expone como un sistema de archivos POSIX estándar.
+  # La alternativa (Block) expone el dispositivo raw, no adecuado para WordPress.
+  volumeMode: Filesystem
