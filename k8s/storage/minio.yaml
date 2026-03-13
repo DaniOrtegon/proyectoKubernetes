@@ -1,5 +1,5 @@
 # ============================================================
-# 16-minio.yaml — MinIO para almacenamiento de uploads WordPress
+# minio.yaml — MinIO para almacenamiento de uploads WordPress
 #
 # ARQUITECTURA:
 #   - MinIO corre como Deployment en namespace 'storage'
