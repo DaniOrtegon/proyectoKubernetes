@@ -19,6 +19,7 @@
 
 # ------------------------------------------------------------
 # ConfigMap OTel Collector
+# Define el pipeline de procesamiento de trazas: recepción → procesamiento → exportación
 # ------------------------------------------------------------
 apiVersion: v1
 kind: ConfigMap
@@ -34,30 +35,30 @@ data:
       otlp:
         protocols:
           grpc:
-            endpoint: 0.0.0.0:4317
+            endpoint: 0.0.0.0:4317   # Escucha OTLP/gRPC en todas las interfaces del nodo
           http:
-            endpoint: 0.0.0.0:4318
+            endpoint: 0.0.0.0:4318   # Escucha OTLP/HTTP — útil para aplicaciones que no soportan gRPC
 
     processors:
       batch:
-        timeout: 5s
-        send_batch_size: 1024
+        timeout: 5s              # Acumula spans durante 5s antes de enviar al exporter (reduce llamadas de red)
+        send_batch_size: 1024    # Envía cuando acumula 1024 spans, aunque no hayan pasado los 5s
       memory_limiter:
-        limit_mib: 128
-        spike_limit_mib: 32
-        check_interval: 5s
+        limit_mib: 128           # Límite de memoria del Collector; si se supera, descarta spans entrantes
+        spike_limit_mib: 32      # Margen adicional para picos transitorios antes de activar el throttling
+        check_interval: 5s       # Frecuencia de comprobación del uso de memoria
 
     exporters:
       otlp:
-        endpoint: jaeger-collector.monitoring.svc.cluster.local:4317
+        endpoint: jaeger-collector.monitoring.svc.cluster.local:4317  # Reenvía trazas a Jaeger via OTLP/gRPC
         tls:
-          insecure: true
+          insecure: true         # Sin TLS en la comunicación interna entre Collector y Jaeger (mismo namespace)
 
     service:
       pipelines:
         traces:
           receivers: [otlp]
-          processors: [memory_limiter, batch]
+          processors: [memory_limiter, batch]   # memory_limiter primero: protege antes de acumular en batch
           exporters: [otlp]
 
 ---
@@ -78,7 +79,7 @@ metadata:
     app.kubernetes.io/part-of: wordpress-ha
     app.kubernetes.io/component: tracing
 spec:
-  replicas: 1
+  replicas: 1   # all-in-one no soporta escalado horizontal; para HA usar arquitectura Jaeger distribuida
   selector:
     matchLabels:
       app: jaeger
@@ -92,23 +93,23 @@ spec:
       containers:
         - name: jaeger
           image: jaegertracing/all-in-one:1.52
-          imagePullPolicy: Never
+          imagePullPolicy: Never   # Imagen precargada en Minikube
           ports:
-            - containerPort: 16686  # UI
+            - containerPort: 16686  # UI web de Jaeger — exploración y búsqueda de trazas
               name: ui
-            - containerPort: 4317   # OTLP gRPC
+            - containerPort: 4317   # OTLP gRPC — recepción de trazas desde el OTel Collector
               name: otlp-grpc
-            - containerPort: 4318   # OTLP HTTP
+            - containerPort: 4318   # OTLP HTTP — alternativa HTTP para recepción de trazas
               name: otlp-http
-            - containerPort: 14268  # Jaeger HTTP collector
+            - containerPort: 14268  # Jaeger HTTP collector (formato nativo Jaeger, legacy)
               name: collector-http
           env:
             - name: COLLECTOR_OTLP_ENABLED
-              value: "true"
+              value: "true"          # Activa el receptor OTLP en Jaeger (además del formato nativo Jaeger)
             - name: SPAN_STORAGE_TYPE
-              value: memory
+              value: memory          # Almacenamiento en memoria: simple pero no persistente entre reinicios
             - name: MEMORY_MAX_TRACES
-              value: "10000"
+              value: "10000"         # Máximo de trazas en memoria; las más antiguas se descartan al superarlo
           resources:
             requests:
               cpu: 100m
@@ -130,7 +131,8 @@ spec:
             periodSeconds: 20
 
 ---
-# Service Jaeger — UI + collector endpoints
+# --- Service Jaeger — UI + endpoints de recepción ---
+# 'jaeger-collector' es el nombre usado por el OTel Collector como destino de exportación
 apiVersion: v1
 kind: Service
 metadata:
@@ -145,21 +147,23 @@ spec:
   ports:
     - name: ui
       port: 16686
-      targetPort: 16686
+      targetPort: 16686   # UI de consulta de trazas
     - name: otlp-grpc
       port: 4317
-      targetPort: 4317
+      targetPort: 4317    # Receptor OTLP/gRPC — destino del exporter del OTel Collector
     - name: otlp-http
       port: 4318
-      targetPort: 4318
+      targetPort: 4318    # Receptor OTLP/HTTP
     - name: collector-http
       port: 14268
-      targetPort: 14268
+      targetPort: 14268   # Receptor Jaeger nativo (formato Thrift HTTP)
   selector:
     app: jaeger
 
 ---
-# Alias 'jaeger-query' para el datasource de Grafana
+# --- Alias 'jaeger-query' para el datasource de Grafana ---
+# Separar semánticamente la función de query (Grafana) de la función de colección (OTel Collector)
+# Facilita la migración futura a una arquitectura Jaeger distribuida sin cambiar la config de Grafana
 apiVersion: v1
 kind: Service
 metadata:
@@ -174,14 +178,16 @@ spec:
   ports:
     - name: ui
       port: 16686
-      targetPort: 16686
+      targetPort: 16686   # Solo expone la UI; Grafana usa este Service como datasource de trazas
   selector:
     app: jaeger
 
 ---
 # ------------------------------------------------------------
 # OTel Collector DaemonSet — uno por nodo, recoge trazas
-# de todos los pods y las reenvía a Jaeger
+# de todos los pods y las reenvía a Jaeger.
+# DaemonSet garantiza que siempre hay un agente local en cada nodo,
+# reduciendo la latencia de envío de trazas frente a un Deployment centralizado.
 # ------------------------------------------------------------
 apiVersion: apps/v1
 kind: DaemonSet
@@ -212,27 +218,28 @@ spec:
           ports:
             - containerPort: 4317
               name: otlp-grpc
-              hostPort: 4317
+              hostPort: 4317   # Expone el puerto en la IP del nodo — permite enviar a 'localhost:4317' desde otros pods del nodo
             - containerPort: 4318
               name: otlp-http
-              hostPort: 4318
+              hostPort: 4318   # Expone el puerto HTTP en el nodo para aplicaciones que no usan gRPC
           resources:
             requests:
               cpu: 50m
               memory: 64Mi
             limits:
               cpu: 200m
-              memory: 128Mi
+              memory: 128Mi   # Coherente con memory_limiter.limit_mib: 128 del ConfigMap
           volumeMounts:
             - name: otel-config
-              mountPath: /etc/otel
+              mountPath: /etc/otel   # Monta el ConfigMap con el pipeline de procesamiento
       volumes:
         - name: otel-config
           configMap:
             name: otel-collector-config
 
 ---
-# Service OTel Collector — WordPress envía trazas aquí
+# --- Service OTel Collector — WordPress envía trazas aquí ---
+# Alternativa al hostPort cuando las aplicaciones prefieren DNS en lugar de localhost
 apiVersion: v1
 kind: Service
 metadata:
@@ -247,7 +254,7 @@ spec:
   ports:
     - name: otlp-grpc
       port: 4317
-      targetPort: 4317
+      targetPort: 4317   # WordPress puede enviar trazas a otel-collector.monitoring.svc.cluster.local:4317
     - name: otlp-http
       port: 4318
       targetPort: 4318
