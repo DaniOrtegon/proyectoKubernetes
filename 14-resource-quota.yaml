@@ -2,6 +2,7 @@
 # LimitRange para namespace 'wordpress'
 # Define valores por defecto para pods que no declaren resources.
 # Evita que un pod sin limits consuma recursos ilimitados.
+# Se aplica a nivel de Container dentro del namespace.
 # ============================================================
 apiVersion: v1
 kind: LimitRange
@@ -11,13 +12,13 @@ metadata:
 spec:
   limits:
     - type: Container
-      default:
+      default:            # Límites que se asignan automáticamente si el pod no los declara
         cpu: 500m
         memory: 256Mi
-      defaultRequest:
+      defaultRequest:     # Requests que se asignan automáticamente si el pod no los declara
         cpu: 100m
         memory: 128Mi
-      max:
+      max:                # Techo absoluto: ningún container del namespace puede superar estos valores
         cpu: "1"
         memory: 1Gi
 
@@ -38,16 +39,18 @@ metadata:
   namespace: wordpress
 spec:
   hard:
-    requests.cpu: "1"
-    requests.memory: 2Gi
-    limits.cpu: "3"
-    limits.memory: 3Gi
-    pods: "10"
-    persistentvolumeclaims: "5"
+    requests.cpu: "1"          # Suma máxima de CPU requests de todos los pods del namespace
+    requests.memory: 2Gi       # Suma máxima de memory requests — calculada para soportar 5 réplicas HPA
+    limits.cpu: "3"            # Suma máxima de CPU limits
+    limits.memory: 3Gi         # Suma máxima de memory limits
+    pods: "10"                 # Máximo número de pods en el namespace (incluye pods de Jobs/CronJobs)
+    persistentvolumeclaims: "5" # Máximo número de PVCs en el namespace
 
 ---
 # ============================================================
 # LimitRange para namespace 'databases'
+# MariaDB y Redis requieren más memoria que WordPress,
+# por eso los defaults son más altos.
 # ============================================================
 apiVersion: v1
 kind: LimitRange
@@ -59,7 +62,7 @@ spec:
     - type: Container
       default:
         cpu: 500m
-        memory: 512Mi
+        memory: 512Mi      # Default más alto que WordPress: DBs son más intensivas en memoria
       defaultRequest:
         cpu: 100m
         memory: 128Mi
@@ -87,7 +90,7 @@ spec:
     # Limits: Redis 3×320Mi=960Mi + MariaDB 2×640Mi=1280Mi = ~2.2Gi → techo en 4Gi
     limits.cpu: "4"
     limits.memory: 4Gi
-    # 3 pods redis + 2 pods mariadb = 5 pods mínimo
+    # 3 pods redis + 2 pods mariadb = 5 pods mínimo; margen para sidecars y jobs
     pods: "10"
-    # 3 PVCs redis + 2 PVCs mariadb = 5 PVCs
+    # 3 PVCs redis + 2 PVCs mariadb = 5 PVCs mínimo; margen para PVCs adicionales
     persistentvolumeclaims: "8"
