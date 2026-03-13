@@ -1,5 +1,5 @@
 # ============================================================
-# 19-velero.yaml — Backup completo del clúster con Velero
+# velero.yaml — Backup completo del clúster con Velero
 #
 # ESTRATEGIA:
 #   - Backend: MinIO local (bucket: velero-backups)
