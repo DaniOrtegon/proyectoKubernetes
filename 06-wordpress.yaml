@@ -1,11 +1,22 @@
 # ============================================================
-# Deployment para WordPress en el namespace 'wordpress'
+# 06-wordpress.yaml — Deployment de WordPress en HA
+#
+# ARQUITECTURA:
+#   - Deployment con réplica inicial = 1 (KEDA escala desde 2 en 09-keda-wordpress.yaml)
+#   - readOnlyRootFilesystem + runAsUser=33 (www-data) → seguridad reforzada
+#   - Conecta a MariaDB primary, Redis Sentinel y MinIO S3
+#   - Probes HTTP en /wp-login.php con header Host correcto
 # ============================================================
+
+# --- RECURSO 1: Deployment WordPress ---
+# Deployment (no StatefulSet): WordPress es stateless por diseño cuando
+# los uploads van a MinIO/S3. El estado (sesiones, caché) se externaliza
+# a Redis, y la BD a MariaDB. Cada réplica es equivalente e intercambiable.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: wordpress
-  namespace: wordpress
+  namespace: wordpress        # Namespace separado de databases por segmentación de red
   labels:
     app: wordpress
     app.kubernetes.io/name: wordpress
@@ -13,6 +24,9 @@ metadata:
     app.kubernetes.io/part-of: wordpress-ha
     app.kubernetes.io/component: frontend
 spec:
+  # replicas: 1 aquí, pero KEDA (09-keda-wordpress.yaml) toma el control
+  # y escala entre minReplicas:2 y maxReplicas:10 según carga.
+  # El valor 1 solo aplica antes de que KEDA esté activo.
   replicas: 1
   selector:
     matchLabels:
@@ -43,66 +57,85 @@ spec:
                       operator: In
                       values:
                         - wordpress
-                topologyKey: kubernetes.io/hostname
-      # R-SEC-1: SecurityContext a nivel de Pod.
-      # runAsUser 33 = www-data en Debian (usuario del servidor web).
-      # fsGroup 33 garantiza que el volumen montado sea legible por www-data.
-      # seccompProfile RuntimeDefault filtra syscalls peligrosas sin coste operacional.
+                topologyKey: kubernetes.io/hostname   # Un Pod de WordPress por nodo físico
+
+      # --- SecurityContext a nivel de Pod ---
+      # Aplica a todos los contenedores del Pod como política base.
+      # R-SEC-1: runAsUser 33 = www-data en Debian (usuario del servidor web Apache/PHP).
+      # fsGroup 33 garantiza que los volúmenes montados (PVC, emptyDir) sean accesibles
+      # por el proceso www-data sin necesidad de chown en un init container.
+      # seccompProfile RuntimeDefault activa el perfil seccomp del sistema operativo,
+      # filtrando syscalls peligrosas (ptrace, mount, etc.) con impacto mínimo en rendimiento.
       securityContext:
-        runAsNonRoot: true
-        runAsUser: 33
-        fsGroup: 33
+        runAsNonRoot: true          # El proceso principal nunca puede ser uid 0 (root)
+        runAsUser: 33               # www-data: usuario estándar de Apache/PHP en Debian
+        fsGroup: 33                 # GID del grupo propietario de los volumenes montados
         seccompProfile:
-          type: RuntimeDefault
+          type: RuntimeDefault      # Perfil seccomp del nodo: bloquea syscalls innecesarias
+
       containers:
         - name: wordpress
-          image: wordpress:6.4  # Versión estable actual, evitamos 5.7 (desactualizada) y latest
+          # wordpress:6.4 = versión LTS estable. Evitar 'latest' en producción
+          # porque un pull inesperado puede cambiar el comportamiento sin control.
+          image: wordpress:6.4
           ports:
-            - containerPort: 80
-          # R-SEC-1: SecurityContext a nivel de contenedor.
-          # readOnlyRootFilesystem impide que un atacante escriba en el FS del contenedor.
-          # allowPrivilegeEscalation: false bloquea sudo/setuid dentro del proceso.
-          # capabilities drop ALL elimina todos los privilegios de kernel innecesarios.
+            - containerPort: 80    # Apache escucha en el puerto estándar HTTP
+
+          # --- SecurityContext a nivel de contenedor ---
+          # Restricciones adicionales que se suman al contexto del Pod.
+          # readOnlyRootFilesystem: el FS raíz del contenedor es inmutable.
+          # Un atacante que ejecute código arbitrario no puede modificar binarios
+          # ni escribir ficheros persistentes fuera de los volúmenes explícitamente montados.
+          # CONSECUENCIA: PHP necesita /tmp y Apache necesita /var/run/apache2 → emptyDirs.
           securityContext:
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false    # Bloquea sudo, setuid y escalada de privilegios
+            readOnlyRootFilesystem: true       # FS raíz inmutable (requiere emptyDirs para /tmp)
             capabilities:
-              drop: ["ALL"]
+              drop: ["ALL"]                   # Elimina todas las capabilities de Linux kernel
+
           env:
+            # --- Variables no sensibles desde ConfigMap ---
+            # WORDPRESS_DB_HOST apunta al Service ClusterIP del primary MariaDB
+            # (definido en 04-mariadb.yaml como 'mariadb.databases.svc.cluster.local')
             - name: WORDPRESS_DB_HOST
               valueFrom:
                 configMapKeyRef:
                   name: wordpress-config
                   key: WORDPRESS_DB_HOST
 
-            # Datos no sensibles desde el ConfigMap 'wordpress-config'
             - name: WORDPRESS_DB_NAME
               valueFrom:
                 configMapKeyRef:
                   name: wordpress-config
                   key: WORDPRESS_DB_NAME
+
             - name: WORDPRESS_DB_USER
               valueFrom:
                 configMapKeyRef:
                   name: wordpress-config
                   key: WORDPRESS_DB_USER
 
-            # Contraseña desde el Secret 'mariadb-secret'
-            # IMPORTANTE: Este Secret está en namespace 'databases'.
-            # Para que WordPress pueda usarlo, debes crear una copia del Secret
-            # en el namespace 'wordpress' o usar External Secrets Operator.
-            # Por simplicidad en prácticas, duplicamos el Secret en 01-secrets.yaml.
+            # --- Credenciales desde Secrets ---
+            # IMPORTANTE: mariadb-secret está en el namespace 'databases',
+            # pero este Pod está en 'wordpress'. Los Secrets son namespace-scoped
+            # → no se pueden referenciar cross-namespace directamente.
+            # Solución implementada: duplicar el Secret en 01-secrets.yaml para ambos namespaces.
+            # Alternativa más robusta: External Secrets Operator o Vault Agent Injector.
             - name: WORDPRESS_DB_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: mariadb-secret
+                  name: mariadb-secret         # Debe existir en namespace 'wordpress'
                   key: mariadb-user-password
 
+            # Password de Redis inyectada en runtime; se referencia en WORDPRESS_CONFIG_EXTRA
+            # via getenv('REDIS_PASSWORD') para evitar escribirla en texto plano en el PHP.
             - name: REDIS_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: redis-secret
                   key: redis-password
+
+            # Credenciales MinIO para el plugin WP Offload Media (AS3CF)
             - name: MINIO_ACCESS_KEY
               valueFrom:
                 secretKeyRef:
@@ -114,51 +147,74 @@ spec:
                   name: minio-secret
                   key: secret-key
 
-            # Configuración extra de WordPress via PHP
+            # WORDPRESS_CONFIG_EXTRA: bloque PHP inyectado en wp-config.php por el entrypoint
+            # de la imagen oficial de WordPress. Permite configurar constantes de WordPress
+            # sin modificar wp-config.php directamente ni reconstruir la imagen.
             - name: WORDPRESS_CONFIG_EXTRA
               value: |
+                // --- URLs de WordPress ---
                 define('WP_HOME', 'http://wp-k8s.local');
                 define('WP_SITEURL', 'http://wp-k8s.local');
-                // Redis HA via Sentinel
+
+                // --- Redis HA via Sentinel ---
+                // WP_REDIS_SENTINEL: nombre lógico del grupo en Sentinel ('mymaster')
+                // WP_REDIS_SENTINEL_CONNECTION: Service ClusterIP del Sentinel (no el Redis directo)
+                // Usar Sentinel garantiza que el plugin siempre conecte al master actual,
+                // incluso después de un failover automático.
                 define('WP_REDIS_SENTINEL', 'mymaster');
                 define('WP_REDIS_SENTINEL_CONNECTION', 'redis-sentinel.databases.svc.cluster.local:26379');
                 define('WP_REDIS_PASSWORD', getenv('REDIS_PASSWORD'));
-                define('WP_REDIS_TIMEOUT', 1);
-                define('WP_REDIS_READ_TIMEOUT', 1);
-                // OpenTelemetry — tracing distribuido
+                define('WP_REDIS_TIMEOUT', 1);           // Timeout de conexión en segundos
+                define('WP_REDIS_READ_TIMEOUT', 1);      // Timeout de lectura en segundos
+
+                // --- OpenTelemetry (tracing distribuido) ---
                 // Requiere plugin: wp-packages/opentelemetry-wordpress
-                // Las trazas se envían al OTel Collector del nodo
+                // Las trazas se envían al OTel Collector definido en 17-tracing.yaml.
+                // OTEL_PHP_AUTOLOAD_ENABLED activa la instrumentación automática de PHP.
                 putenv('OTEL_PHP_AUTOLOAD_ENABLED=true');
                 putenv('OTEL_SERVICE_NAME=wordpress');
                 putenv('OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector.monitoring.svc.cluster.local:4318');
                 putenv('OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf');
-                // MinIO S3 — uploads van a MinIO, pods WordPress stateless
+
+                // --- MinIO S3 (uploads stateless) ---
+                // AS3CF_SETTINGS configura el plugin WP Offload Media para enviar
+                // uploads a MinIO en lugar del disco local.
+                // Esto hace los Pods de WordPress completamente stateless (sin PVC de uploads).
+                // 'provider' => 'aws': MinIO es compatible con la API S3 de AWS.
+                // ⚠️ 'remove-local-file' => false: los uploads se guardan TAMBIÉN en /var/www/html.
+                //    Cambiar a true para un diseño realmente stateless y ahorrar espacio en PVC.
+                // ⚠️ 'force-https' => false: MinIO en Minikube usa HTTP. En producción: true.
                 define('AS3CF_SETTINGS', serialize([
                   'provider'                 => 'aws',
                   'access-key-id'            => getenv('MINIO_ACCESS_KEY'),
                   'secret-access-key'        => getenv('MINIO_SECRET_KEY'),
                   'bucket'                   => 'wordpress-uploads',
-                  'region'                   => 'us-east-1',
+                  'region'                   => 'us-east-1',         // MinIO ignora la región
                   'use-server-roles'         => false,
                   'enable-object-prefix'     => true,
                   'object-prefix'            => 'uploads/',
-                  'force-https'              => false,
-                  'remove-local-file'        => false,
+                  'force-https'              => false,               // HTTP en Minikube
+                  'remove-local-file'        => false,               // Ver advertencia arriba
                   'custom-domain'            => 'minio.storage.svc.cluster.local:9000',
                   'enable-delivery-domain'   => true,
                 ]));
 
+          # Límites de recursos: ajustados para un Pod WordPress con PHP-Apache.
+          # WordPress puede consumir más memoria con plugins pesados → monitorizar en producción.
           resources:
             requests:
-              cpu: 100m
+              cpu: 100m       # Garantía mínima de CPU para el scheduler
               memory: 256Mi
             limits:
               cpu: 500m
-              memory: 512Mi
-          # R-SEC-2: Probes necesarias para que el Service no envíe tráfico
-          # a pods que aún están arrancando o que han quedado en estado zombie.
-          # startupProbe da hasta 5 minutos al primer arranque de PHP-FPM+WP
-          # antes de que readiness/liveness empiecen a evaluarse.
+              memory: 512Mi   # OOMKill si se supera → revisar si WordPress crece
+
+          # --- startupProbe ---
+          # PHP-FPM + WordPress puede tardar >30s en el primer arranque (instalación de WP,
+          # conexión a BD). startupProbe da hasta failureThreshold × periodSeconds = 5 minutos
+          # antes de que Kubernetes considere el Pod fallido.
+          # Durante este tiempo, readiness y liveness NO se evalúan.
+          # El header Host es necesario porque el vhost de Apache responde por 'wp-k8s.local'.
           startupProbe:
             httpGet:
               path: /wp-login.php
@@ -168,6 +224,11 @@ spec:
                   value: wp-k8s.local
             failureThreshold: 30
             periodSeconds: 10          # hasta 5 minutos para el primer startup
+
+          # --- readinessProbe ---
+          # Determina si el Pod puede recibir tráfico del Service.
+          # Mientras no pase, el Pod se excluye del balanceo.
+          # successThreshold: 1 → un solo check positivo basta para volver a incluirlo.
           readinessProbe:
             httpGet:
               path: /wp-login.php
@@ -179,6 +240,11 @@ spec:
             periodSeconds: 10
             failureThreshold: 3
             successThreshold: 1
+
+          # --- livenessProbe ---
+          # Detecta Pods bloqueados o en estado zombie y los reinicia.
+          # Más tolerante que readiness (failureThreshold: 5) para evitar
+          # reinicios durante picos de carga legítimos.
           livenessProbe:
             httpGet:
               path: /wp-login.php
@@ -188,34 +254,46 @@ spec:
                   value: wp-k8s.local
             initialDelaySeconds: 60
             periodSeconds: 20
-            failureThreshold: 5        # tolerante a picos de carga
+            failureThreshold: 5        # Tolerante a picos de carga
+
           volumeMounts:
-            # R-1: wordpress-uploads-pvc no existía → se usa un único PVC 'wordpress-pvc'
-            # montado en /var/www/html que cubre tanto el core de WP como wp-content/uploads.
+            # PVC wordpress-pvc (definido en 03-pvc.yaml) montado en la raíz de WordPress.
+            # Cubre tanto el core de WP como wp-content (plugins, temas, uploads locales).
+            # Con readOnlyRootFilesystem:true, este es el único punto de escritura del FS.
             - name: wordpress-storage
               mountPath: /var/www/html
-            # R-SEC-1: Con readOnlyRootFilesystem: true, PHP necesita /tmp escribible
-            # para ficheros temporales, sesiones y compilación de plantillas.
+
+            # emptyDir efímero para /tmp: requerido por PHP para ficheros temporales,
+            # sesiones en disco y compilación de plantillas.
+            # Se vacía al terminar el Pod → sin coste de almacenamiento persistente.
             - name: tmp-dir
               mountPath: /tmp
+
+            # emptyDir para el directorio de PIDs y sockets de Apache.
+            # Apache necesita escribir aquí sus ficheros de runtime (apache2.pid, etc.)
             - name: apache-run
               mountPath: /var/run/apache2
+
       volumes:
+        # PVC creado en 03-pvc.yaml — almacenamiento persistente del core WordPress
         - name: wordpress-storage
           persistentVolumeClaim:
             claimName: wordpress-pvc
-        # R-SEC-1: emptyDir proporciona /tmp efímero y escribible por www-data (uid 33).
-        # Se vacía automáticamente al terminar el pod, sin coste de almacenamiento persistente.
+
+        # Directorio temporal efímero y escribible para PHP/Apache
         - name: tmp-dir
           emptyDir: {}
+
+        # Directorio de runtime de Apache (PIDs, sockets)
         - name: apache-run
           emptyDir: {}
 
 ---
-# ============================================================
-# Servicio para WordPress en el namespace 'wordpress'
-# Usamos NodePort para acceso externo sin necesidad de LoadBalancer
-# ============================================================
+# --- RECURSO 2: Service NodePort ---
+# Expone WordPress fuera del clúster sin necesidad de un LoadBalancer externo.
+# NodePort abre el puerto 30080 en TODOS los nodos del clúster.
+# En Minikube: accesible via http://<minikube-ip>:30080
+# En producción: preferir un Ingress (ya definido en 08-ingress.yaml) sobre NodePort.
 apiVersion: v1
 kind: Service
 metadata:
@@ -229,8 +307,8 @@ metadata:
 spec:
   type: NodePort          # Compatible con Minikube y clústeres sin LoadBalancer
   ports:
-    - port: 80
-      targetPort: 80
-      nodePort: 30080     # Puerto accesible desde fuera del clúster: http://<IP-nodo>:30080
+    - port: 80            # Puerto del Service dentro del clúster
+      targetPort: 80      # Puerto del contenedor al que se redirige el tráfico
+      nodePort: 30080     # Puerto externo fijo: http://<IP-nodo>:30080
   selector:
-    app: wordpress
+    app: wordpress        # Selecciona todos los Pods con label app=wordpress
