@@ -1,285 +1,272 @@
-# ⎈ KubeNet — WordPress HA en Kubernetes
+# KubeNet — WordPress HA en Kubernetes
 
-> WordPress 6.4 en alta disponibilidad sobre Minikube. Stack completo de producción: bases de datos replicadas, escalado automático, observabilidad full-stack, seguridad zero-trust y backup automatizado.
+Despliegue de WordPress en Alta Disponibilidad sobre Minikube. Arquitectura de producción completa con HA, observabilidad, seguridad, backup y escalado automático, usando manifiestos YAML planos y un script `deploy.sh` que automatiza todo el proceso.
 
----
-
-## Arquitectura general
-
-```
-Internet / Usuario
-        │
-        ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  edge/          NGINX Ingress + cert-manager (TLS self-signed)  │
-└─────────────────────────────────────────────────────────────────┘
-        │ wp-k8s.local          │ grafana.monitoring.local
-        ▼                       ▼
-┌───────────────┐     ┌─────────────────────────────────────────┐
-│  app/         │     │  observability/                         │
-│  WordPress    │────▶│  Prometheus · Loki · Grafana · Jaeger   │
-│  2–5 pods HPA │     └─────────────────────────────────────────┘
-└───────┬───────┘
-        │ 3306          │ 6379/26379       │ S3:9000
-        ▼               ▼                  ▼
-┌─────────────────────────────┐   ┌──────────────┐
-│  data/                      │   │  storage/    │
-│  MariaDB Primary + Replica  │   │  MinIO S3    │
-│  Redis Master + 2R + 3 Sentinel   Velero Backup│
-└─────────────────────────────┘   └──────────────┘
-        │
-┌──────────────────────────────────────────────────┐
-│  core/   Namespaces · Secrets · NetworkPolicies  │
-│          ResourceQuota · LimitRange · PDB        │
-└──────────────────────────────────────────────────┘
-```
+**Entorno:** Minikube · Kubernetes 1.25+ · Docker · Debian Linux
 
 ---
 
-## Stack tecnológico
+## Índice
 
-| Capa | Tecnología | Versión |
-|---|---|---|
-| CMS | WordPress | 6.4 |
-| Base de datos | MariaDB HA (Primary + Replica) | 10.6 |
-| Caché / sesiones | Redis Sentinel (1M + 2R + 3S) | 6.2 |
-| Object storage | MinIO S3-compatible | latest |
-| Ingress | NGINX Ingress Controller | — |
-| TLS | cert-manager self-signed CA | — |
-| Escalado | HPA v2 (CPU + Memoria) | autoscaling/v2 |
-| Métricas | Prometheus + Alertmanager | 2.48.0 / 0.26.0 |
-| Logs | Loki + Promtail | 2.9.3 |
-| Dashboards | Grafana | 10.2.3 |
-| Trazas | Jaeger + OpenTelemetry Collector | 1.52 / 0.91.0 |
-| Backup clúster | Velero + MinIO | — |
-| Plataforma | Minikube | 1 nodo |
+- [Requisitos](#requisitos)
+- [Despliegue rápido](#despliegue-rápido)
+- [Arquitectura](#arquitectura)
+- [Archivos del proyecto](#archivos-del-proyecto)
+- [Alta Disponibilidad](#alta-disponibilidad)
+- [Seguridad](#seguridad)
+- [Escalado con KEDA](#escalado-con-keda)
+- [Observabilidad](#observabilidad)
+- [Backup y recuperación](#backup-y-recuperación)
+- [CI/CD](#cicd)
+- [URLs de acceso](#urls-de-acceso)
+- [Comandos útiles](#comandos-útiles)
+- [Decisiones de diseño](#decisiones-de-diseño)
 
 ---
 
-## Estructura del repositorio
-
-```
-proyectoKubernetes/
-├── README.md
-├── .gitignore
-├── docs/
-│   └── runbook.md              # Procedimientos operacionales
-├── scripts/
-│   ├── deploy.sh               # Despliegue completo en orden
-│   └── cleanup.sh              # Limpieza del clúster
-├── dashboards/
-│   └── Kubernetes_Dashboard.json
-└── k8s/
-    ├── core/                   # Namespaces, Secrets, NetworkPolicies, Quotas
-    ├── storage/                # PVC, MinIO, Backup, Velero
-    ├── data/                   # MariaDB, Redis
-    ├── app/                    # WordPress, HPA
-    ├── edge/                   # Ingress, cert-manager
-    └── observability/          # Prometheus, Loki, Grafana, Jaeger
-```
-
-Cada carpeta contiene su propio `README.md` con descripción de archivos y un directorio `docs/` con documentación técnica detallada de cada recurso.
-
----
-
-## Requisitos previos
+## Requisitos
 
 ```bash
-# Minikube con recursos suficientes
-minikube start --cpus=4 --memory=8192 --disk-size=30g
-
-# Addons necesarios
-minikube addons enable ingress
-minikube addons enable metrics-server
-minikube addons enable volumesnapshots
-minikube addons enable csi-hostpath-driver
-
-# Herramientas
-kubectl   >= 1.28
-helm      >= 3.0      # Para cert-manager y Velero
+minikube, kubectl, helm, docker, kubeseal
 ```
+
+Recursos mínimos recomendados para Minikube: **4 CPUs, 8GB RAM, 40GB disco**.
 
 ---
 
 ## Despliegue rápido
 
 ```bash
-# Clonar el repositorio
-git clone <repo-url>
-cd proyectoKubernetes
+# 1. Clonar el repositorio
+git clone <repo> && cd KubeNet
 
-# Despliegue completo (orden correcto garantizado)
-chmod +x scripts/deploy.sh
-./scripts/deploy.sh
+# 2. Ejecutar el script de despliegue
+chmod +x deploy.sh && ./deploy.sh
 
-# Verificar estado
-kubectl get pods -A
-kubectl get ingress -A
+# 3. En una terminal separada, abrir el tunnel
+minikube tunnel
+
+# 4. Acceder a WordPress
+https://wp-k8s.local
 ```
 
-### Orden de aplicación manual
+El script es **idempotente** — se puede ejecutar múltiples veces sin romper el entorno.
 
-```bash
-# 1. Fundamentos
-kubectl apply -f k8s/core/namespace.yaml
-kubectl apply -f k8s/core/secrets.yaml
-kubectl apply -f k8s/core/configmap.yaml
-kubectl apply -f k8s/core/network-policy.yaml
-kubectl apply -f k8s/core/resource-quota.yaml
-kubectl apply -f k8s/core/pdb.yaml
+---
 
-# 2. Almacenamiento
-kubectl apply -f k8s/storage/pvc.yaml
-kubectl apply -f k8s/storage/minio.yaml
+## Arquitectura
 
-# 3. Bases de datos
-kubectl apply -f k8s/data/mariadb.yaml
-kubectl wait --for=condition=ready pod/mariadb-0 -n databases --timeout=120s
-kubectl apply -f k8s/data/mariadb-replication-job.yaml
-kubectl apply -f k8s/data/redis.yaml
+### Stack de aplicación
 
-# 4. Aplicación
-kubectl apply -f k8s/app/wordpress.yaml
-kubectl apply -f k8s/app/hpa-wordpress.yaml
+| Componente | Imagen | Namespace | Réplicas |
+|---|---|---|---|
+| WordPress | `wordpress:6.4` | wordpress | 2 mín · 10 máx (KEDA) |
+| MariaDB primary | `mariadb:10.6` | databases | 1 (mariadb-0) |
+| MariaDB replica | `mariadb:10.6` | databases | 1 (mariadb-1) |
+| Redis master + réplicas | `redis:7-alpine` | databases | 3 pods + 3 Sentinels |
+| MinIO | `minio/minio:latest` | storage | 1 |
 
-# 5. Borde de entrada
-kubectl apply -f k8s/edge/cert-manager.yaml
-kubectl apply -f k8s/edge/ingress.yaml
+### Namespaces
 
-# 6. Observabilidad
-kubectl apply -f k8s/observability/prometheus.yaml
-kubectl apply -f k8s/observability/loki.yaml
-kubectl apply -f k8s/observability/grafana.yaml
-kubectl apply -f k8s/observability/tracing.yaml
+| Namespace | Contenido | Pod Security |
+|---|---|---|
+| `wordpress` | WordPress, Ingress, KEDA, PDB | enforce: baseline |
+| `databases` | MariaDB HA, Redis HA | enforce: baseline |
+| `monitoring` | Prometheus, Grafana, Loki, Jaeger, OTel | enforce: baseline |
+| `security` | cert-manager, Sealed Secrets | enforce: baseline |
+| `storage` | MinIO, CronJobs backup | enforce: baseline |
+| `velero` | Velero backup agent | enforce: privileged |
 
-# 7. Backup
-kubectl apply -f k8s/storage/backup.yaml
-kubectl apply -f k8s/storage/velero.yaml
+### Flujo de una petición
+
+```
+Browser → minikube tunnel → nginx Ingress (TLS) → Service wordpress
+       → Pod WordPress → Redis Sentinel (caché) / MariaDB primary (BD)
 ```
 
 ---
 
-## Acceso a los servicios
+## Archivos del proyecto
 
-```bash
-# Obtener IP de Minikube
-minikube ip   # → X.X.X.X
+| Archivo | Descripción |
+|---|---|
+| `namespace.yaml` | 7 namespaces con Pod Security Standards |
+| `secrets.yaml` | Plantilla de credenciales (fallback manual — no se aplica directamente) |
+| `configmap.yaml` | Configuración no sensible de MariaDB y WordPress |
+| `pvc.yaml` | PVC wordpress-pvc (2Gi) |
+| `mariadb.yaml` | StatefulSet MariaDB HA primary + replica |
+| `mariadb-replication-job.yaml` | Job que configura la replicación activa |
+| `redis.yaml` | StatefulSet Redis HA + Sentinels |
+| `wordpress.yaml` | Deployment WordPress + Service |
+| `network-policy.yaml` | 19 NetworkPolicies (default-deny + allow explícitos) |
+| `ingress.yaml` | Ingress con TLS para WordPress y monitoring |
+| `keda-wordpress.yaml` | ScaledObject KEDA (req/s + CPU fallback) |
+| `prometheus.yaml` | Prometheus + Alertmanager + SLOs + Slack |
+| `loki.yaml` | Loki + Promtail DaemonSet |
+| `grafana.yaml` | Grafana con datasources y dashboards provisionados |
+| `pdb.yaml` | PodDisruptionBudget WordPress |
+| `resource-quota.yaml` | LimitRange + ResourceQuota por namespace |
+| `cert-manager.yaml` | CA self-signed + certificados TLS automáticos |
+| `minio.yaml` | MinIO + buckets wordpress-uploads y wordpress-backups |
+| `tracing.yaml` | Jaeger all-in-one + OTel Collector DaemonSet |
+| `backup.yaml` | CronJobs backup MariaDB, uploads y limpieza + Job restore |
+| `velero.yaml` | Bucket setup + NetworkPolicy para Velero |
+| `deploy.sh` | Script de despliegue automatizado e idempotente |
+| `cleanup.sh` | Desinstalador rápido |
+| `RUNBOOK.md` | 6 runbooks operacionales con RTO documentado |
+| `MEJORAS.md` | Tabla de 20 mejoras con estado implementado/pendiente |
 
-# Añadir al /etc/hosts
-echo "$(minikube ip) wp-k8s.local grafana.monitoring.local prometheus.monitoring.local" | sudo tee -a /etc/hosts
-```
+---
+
+## Alta Disponibilidad
+
+### WordPress
+- Mínimo 2 réplicas garantizadas por KEDA
+- `PodDisruptionBudget` con `minAvailable: 1` — rolling updates sin downtime
+- Readiness y liveness probes configuradas
+
+### MariaDB
+- `mariadb-0` actúa como primary, `mariadb-1` como replica
+- Replicación activa configurada automáticamente por Job post-despliegue
+- Service `mariadb` → primary · Service `mariadb-read` → replica (lectura)
+- PVC independiente por pod via `volumeClaimTemplates`
+
+### Redis con Sentinel
+- 1 master (`redis-0`) + 2 réplicas + 3 Sentinels (sidecar por pod)
+- Failover automático: si el master falla, los Sentinels votan y promueven una réplica
+- WordPress conecta via Sentinel — el failover es transparente para la aplicación
+
+---
+
+## Seguridad
+
+### NetworkPolicies — 19 políticas
+Arquitectura **default-deny** en todos los namespaces. Solo se permite tráfico explícitamente declarado: Ingress→WordPress, WordPress→MariaDB/Redis/OTel/MinIO, Prometheus scrape, Promtail→Loki, OTel→Jaeger, backups→MinIO, Velero→MinIO+API.
+
+### Sealed Secrets
+Secrets cifrados con `kubeseal` antes de guardarse en el repositorio. El descifrado solo es posible con la clave privada del clúster donde se generaron.
+
+### TLS con cert-manager
+- CA self-signed propia del clúster (`selfsigned-issuer` → `ca-issuer`)
+- Renovación automática 30 días antes de expirar
+- `wordpress-tls` para `wp-k8s.local` · `monitoring-tls` con SAN para grafana y prometheus
+
+### Pod Security Standards
+- `enforce: baseline` — rechaza pods privilegiados, hostPID/hostNetwork, escalada de privilegios
+- `warn/audit: restricted` — informa de mejoras posibles sin bloquear
+- `velero`: `privileged` (necesario para snapshots CSI)
+
+---
+
+## Escalado con KEDA
+
+KEDA reemplaza al HPA nativo para escalar WordPress de forma **proactiva** por tráfico real, no por CPU.
+
+| Parámetro | Valor |
+|---|---|
+| minReplicaCount | 2 |
+| maxReplicaCount | 10 |
+| Trigger principal | req/s en Ingress via Prometheus · threshold: 100 req/s |
+| Trigger fallback | CPU > 70% |
+| Scale up | +2 pods cada 30s · estabilización 30s |
+| Scale down | -1 pod cada 60s · estabilización 120s |
+
+El HPA original (`hpa-wordpress.yaml`) se conserva como referencia y fallback.
+
+---
+
+## Observabilidad
+
+| Herramienta | Versión | Función |
+|---|---|---|
+| Prometheus | v2.48.0 | Métricas, SLOs, Service Discovery automático |
+| Alertmanager | v0.26.0 | Alertas a Slack via webhook |
+| Grafana | v10.2.3 | Dashboards unificados, datasources provisionados automáticamente |
+| Loki | v2.9.3 | Logs centralizados, retención 31 días |
+| Promtail | v2.9.3 | DaemonSet recolector de logs por nodo |
+| Jaeger | v1.52 | Trazas distribuidas |
+| OTel Collector | v0.91.0 | DaemonSet receptor OTLP |
+
+**SLOs:** disponibilidad ≥ 99.5% · latencia p95 ≤ 2s
+
+---
+
+## Backup y recuperación
+
+| CronJob | Horario | Origen | Destino |
+|---|---|---|---|
+| `mariadb-backup` | 2:00 AM diario | mysqldump completo | MinIO `wordpress-backups/mariadb/` |
+| `wordpress-uploads-backup` | 3:00 AM diario | PVC wp-content/uploads | MinIO `wordpress-backups/uploads/` |
+| `backup-cleanup` | 4:00 AM domingos | Backups >30 días | Eliminación automática |
+
+**RPO:** ~24h · **RTO:** ~15 min
+
+Velero hace snapshot completo del clúster a la 1:00 AM (namespaces wordpress + databases, TTL 30 días, backend MinIO).
+
+---
+
+## CI/CD
+
+Pipeline GitHub Actions con validación en cada push:
+
+- **kubeval + kubeconform** — sintaxis y schemas de Kubernetes
+- **kube-score** — mejores prácticas (security, resources, probes)
+- **detect-secrets** — detección de credenciales hardcodeadas
+- **Script Python** — verifica `resources.requests/limits` en todos los contenedores
+
+---
+
+## URLs de acceso
+
+> Requisito previo: `minikube tunnel` en terminal separada
 
 | Servicio | URL | Credenciales |
 |---|---|---|
 | WordPress | https://wp-k8s.local | — |
 | Grafana | https://grafana.monitoring.local | admin / admin123 |
 | Prometheus | https://prometheus.monitoring.local | — |
-| MinIO Console | `kubectl port-forward -n storage svc/minio 9001:9001` → localhost:9001 | minioadmin / Minio#2024! |
-| Jaeger UI | `kubectl port-forward -n monitoring svc/jaeger-query 16686:16686` → localhost:16686 | — |
-
-> ⚠️ El certificado TLS es self-signed. El navegador mostrará un aviso de seguridad — es esperado en entorno local.
+| MinIO | http://minio.storage.local | minioadmin / Minio#2024! |
+| Jaeger | `kubectl port-forward -n monitoring svc/jaeger-query 16686:16686` | — |
 
 ---
 
-## Namespaces
+## Comandos útiles
 
-| Namespace | Contenido |
-|---|---|
-| `wordpress` | WordPress Deployment, HPA, PVC, Secrets |
-| `databases` | MariaDB StatefulSet, Redis StatefulSet |
-| `monitoring` | Prometheus, Alertmanager, Grafana, Loki, Promtail, Jaeger, OTel |
-| `storage` | MinIO, CronJobs de backup |
-| `cert-manager` | Operador cert-manager, CA raíz |
-| `velero` | Velero backup del clúster |
-| `security` | Recursos de seguridad adicionales |
+```bash
+# Estado general
+kubectl get pods -A
+
+# Escalado KEDA
+kubectl get scaledobject -n wordpress
+
+# Logs
+kubectl logs -n wordpress -l app=wordpress -f
+kubectl logs -n databases -l app=mariadb -f
+
+# Estado replicación MariaDB
+kubectl exec -n databases mariadb-1 -- mysql -u root -p'RootDB#2026!' \
+  -e 'SHOW SLAVE STATUS\G' 2>/dev/null | grep -E 'Running|Behind'
+
+# Backups Velero
+velero backup get
+velero backup create manual --include-namespaces wordpress,databases
+velero restore create --from-backup <nombre-backup>
+
+# Deshacer todo
+./cleanup.sh
+```
 
 ---
 
-## Alta disponibilidad
+## Decisiones de diseño
 
-| Componente | Estrategia HA | Failover |
+| Decisión | Alternativa descartada | Motivo |
 |---|---|---|
-| WordPress | HPA 2–5 réplicas + PDB minAvailable:1 | Automático (<30s) |
-| MariaDB | Primary + Replica asíncrona | Manual (replica es read-only) |
-| Redis | 1 Master + 2 Replicas + 3 Sentinels (quorum=2) | Automático (<5s) |
-| MinIO | Single node + backup diario | Restauración manual |
-
----
-
-## Observabilidad
-
-### SLO definido
-- **Disponibilidad WordPress**: 99.9% de requests exitosas
-- **Error budget mensual**: 43 minutos
-- **Burn rate crítico** (x14.4): alerta en <1h de consumir el budget
-- **Burn rate warning** (x3): alerta si se agota en ~5 días
-
-### Alertas configuradas
-- `PodDown` — pod fuera de Running >2 min → **critical**
-- `MariaDBPodDown` — pod MariaDB fuera de Running >1 min → **critical**
-- `OOMKill` — contenedor terminado por falta de memoria → **warning**
-- `HighCPUUsage` — CPU >80% durante 5 min → **warning**
-- `HighMemoryUsage` — Memoria >80% durante 5 min → **warning**
-- `WordPressSLOBurnRateHigh` — burn rate x14.4 → **critical**
-
----
-
-## Seguridad
-
-- **19 NetworkPolicies** con modelo default-deny en todos los namespaces
-- **Pod Security Standards** perfil `baseline` en todos los workloads
-- `readOnlyRootFilesystem: true` en WordPress
-- `runAsNonRoot: true` + `capabilities: DROP ALL` en todos los contenedores
-- Certificados TLS gestionados automáticamente por cert-manager
-- Secrets en base64 (reemplazables por Sealed Secrets en producción)
-
----
-
-## Backup y recuperación
-
-| Backup | Horario | Destino | Retención |
-|---|---|---|---|
-| MariaDB dump | Diario 2:00 AM | MinIO `wordpress-backups/mariadb/` | 30 días |
-| WordPress uploads | Diario 3:00 AM | MinIO `wordpress-backups/uploads/` | 30 días |
-| Clúster completo (Velero) | Diario 1:00 AM | MinIO `velero-backups/` | 30 días |
-| Limpieza backups | Domingo 4:00 AM | — | — |
-
-**RTO estimado**: ~15 minutos  
-**RPO estimado**: ~24 horas
-
-### Restaurar backup de MariaDB
-
-```bash
-# 1. Editar el Job de restauración con el nombre del backup
-kubectl edit job mariadb-restore-manual -n databases
-# Cambiar: suspend: true → false
-#          BACKUP_FILE: "CHANGE_ME.sql.gz" → "wordpress_20240101_020000.sql.gz"
-
-# 2. Ver logs de la restauración
-kubectl logs -n databases job/mariadb-restore-manual -f
-```
-
----
-
-## Limpieza
-
-```bash
-./scripts/cleanup.sh
-
-# O manualmente
-minikube delete
-```
-
----
-
-## Documentación
-
-Cada bloque tiene su propia documentación técnica en `docs/`:
-
-- [`k8s/core/docs/`](k8s/core/docs/) — Namespaces, Secrets, NetworkPolicies, Quotas, PDB
-- [`k8s/storage/docs/`](k8s/storage/docs/) — PVC, MinIO, Backup, Velero
-- [`k8s/data/docs/`](k8s/data/docs/) — MariaDB, Redis
-- [`k8s/app/docs/`](k8s/app/docs/) — WordPress, HPA
-- [`k8s/edge/docs/`](k8s/edge/docs/) — Ingress, cert-manager
-- [`k8s/observability/docs/`](k8s/observability/docs/) — Prometheus, Loki, Grafana, Jaeger
-- [`docs/runbook.md`](docs/runbook.md) — Procedimientos operacionales completos
+| YAMLs planos | Helm Chart propio | Claridad y control directo |
+| KEDA | HPA nativo | Escalado proactivo por req/s vs reactivo por CPU |
+| Sealed Secrets | External Secrets Operator | Sin dependencia de proveedor externo |
+| MinIO local | Amazon S3 | Entorno local, API S3 compatible |
+| Jaeger in-memory | Jaeger + Elasticsearch | Sin dependencia adicional en Minikube |
+| PSS baseline | PSS restricted | Imágenes corren como root por defecto |
+| imagePullPolicy: Never | IfNotPresent | Red de Minikube sin acceso a registries externos |
+| minikube tunnel manual | Servicio systemd | Más simple y fiable en desarrollo local |
