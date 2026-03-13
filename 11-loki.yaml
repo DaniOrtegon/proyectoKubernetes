@@ -1,9 +1,11 @@
 # ============================================================
 # LOKI - Namespace: monitoring
-# Sistema de agregación de logs, consumido por Grafana
+# Sistema de agregación de logs, consumido por Grafana.
+# Compuesto por dos piezas: Loki (almacén) + Promtail (agente recolector).
 # ============================================================
 
 # --- PersistentVolumeClaim para Loki ---
+# Almacena los chunks de logs y el índice TSDB en disco
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -11,14 +13,15 @@ metadata:
   namespace: monitoring
 spec:
   accessModes:
-    - ReadWriteOnce
+    - ReadWriteOnce      # Un único pod escribe; Loki no soporta escritura concurrente con filesystem local
   resources:
     requests:
-      storage: 10Gi
-  storageClassName: standard
+      storage: 10Gi      # Suficiente para 31 días de logs de 4 namespaces con retención configurada
+  storageClassName: standard  # StorageClass por defecto de Minikube (hostPath)
 
 ---
 # --- ConfigMap con la configuración de Loki ---
+# Loki lee este fichero al arrancar; se monta en /etc/loki/loki.yml
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -26,42 +29,42 @@ metadata:
   namespace: monitoring
 data:
   loki.yml: |
-    auth_enabled: false   # Sin autenticación (entorno de prácticas)
+    auth_enabled: false   # Sin autenticación (entorno de prácticas); en producción habilitar con tenant IDs
 
     server:
-      http_listen_port: 3100
-      grpc_listen_port: 9096
+      http_listen_port: 3100   # Puerto principal de la API HTTP de Loki (push + query)
+      grpc_listen_port: 9096   # Puerto gRPC para comunicación interna entre componentes Loki
 
     common:
-      path_prefix: /loki
+      path_prefix: /loki        # Directorio raíz donde Loki almacena todos sus datos
       storage:
-        filesystem:
-          chunks_directory: /loki/chunks
-          rules_directory: /loki/rules
-      replication_factor: 1
+        filesystem:             # Backend de almacenamiento local (no S3); suficiente para Minikube
+          chunks_directory: /loki/chunks  # Bloques de logs comprimidos
+          rules_directory: /loki/rules    # Reglas de alerting (vacío en este proyecto)
+      replication_factor: 1     # Sin replicación; en producción usar ≥ 2 con almacenamiento distribuido
       ring:
         instance_addr: 127.0.0.1
         kvstore:
-          store: inmemory
+          store: inmemory       # Coordinación entre instancias en memoria (válido para réplica única)
 
     schema_config:
       configs:
-        - from: "2024-01-01"
-          store: tsdb
+        - from: "2024-01-01"   # Fecha desde la que aplica este schema
+          store: tsdb           # TSDB: índice más eficiente y moderno de Loki (introducido en v2.8)
           object_store: filesystem
-          schema: v13
+          schema: v13           # Versión de schema más reciente; mejor rendimiento de consulta
           index:
-            prefix: index_
-            period: 24h
+            prefix: index_      # Prefijo de los ficheros de índice
+            period: 24h         # Crea un nuevo fichero de índice cada 24 horas
 
     limits_config:
-      retention_period: 744h    # Retención de logs: 31 días
-      ingestion_rate_mb: 16
-      ingestion_burst_size_mb: 32
+      retention_period: 744h    # Retención de logs: 31 días (alineado con política de backup)
+      ingestion_rate_mb: 16     # Tasa máxima de ingesta: 16 MB/s (protección contra floods de logs)
+      ingestion_burst_size_mb: 32  # Permite picos puntuales de hasta 32 MB antes de throttling
 
     compactor:
       working_directory: /loki/compactor
-      retention_enabled: true   # Activa la limpieza automática según retention_period
+      retention_enabled: true   # Activa la limpieza automática según retention_period (sin esto los datos nunca se borran)
 
 ---
 # --- Deployment de Loki ---
@@ -73,7 +76,7 @@ metadata:
   labels:
     app: loki
 spec:
-  replicas: 1
+  replicas: 1   # Una sola réplica; con replication_factor: 1 no tiene sentido escalar horizontalmente
   selector:
     matchLabels:
       app: loki
@@ -83,16 +86,16 @@ spec:
         app: loki
     spec:
       securityContext:
-        fsGroup: 10001
-        runAsUser: 10001
-        runAsNonRoot: true
+        fsGroup: 10001      # Grupo que tiene acceso de escritura al PVC montado en /loki
+        runAsUser: 10001    # Usuario no-root específico de la imagen oficial de Loki
+        runAsNonRoot: true  # Cumple con PodSecurityStandard 'baseline': rechaza ejecución como root
       containers:
         - name: loki
-          image: grafana/loki:2.9.3    # Versión fija estable
+          image: grafana/loki:2.9.3    # Versión fija estable; no usar 'latest' en producción
           args:
-            - "-config.file=/etc/loki/loki.yml"
+            - "-config.file=/etc/loki/loki.yml"  # Apunta al fichero del ConfigMap montado
           ports:
-            - containerPort: 3100       # Puerto HTTP de Loki
+            - containerPort: 3100       # Puerto HTTP de Loki (API push y query)
             - containerPort: 9096       # Puerto gRPC de Loki
           resources:
             requests:
@@ -103,9 +106,9 @@ spec:
               memory: 512Mi
           volumeMounts:
             - name: loki-config
-              mountPath: /etc/loki
+              mountPath: /etc/loki       # Monta el ConfigMap 'loki-config' como directorio
             - name: loki-storage
-              mountPath: /loki
+              mountPath: /loki           # Monta el PVC para persistencia de chunks e índices
           readinessProbe:
             httpGet:
               path: /ready
@@ -129,13 +132,14 @@ spec:
 ---
 # --- Service de Loki (solo ClusterIP, no necesita exposición externa) ---
 # Grafana lo consume internamente via: http://loki.monitoring.svc.cluster.local:3100
+# Promtail también apunta a esta dirección para el envío de logs
 apiVersion: v1
 kind: Service
 metadata:
   name: loki
   namespace: monitoring
 spec:
-  type: ClusterIP
+  type: ClusterIP   # Acceso solo interno; Loki no debe estar expuesto al exterior
   ports:
     - name: http
       port: 3100
@@ -149,6 +153,7 @@ spec:
 ---
 # --- DaemonSet de Promtail: recolector de logs en cada nodo ---
 # Promtail envía los logs de todos los contenedores a Loki
+# ConfigMap con la configuración del agente Promtail
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -157,38 +162,41 @@ metadata:
 data:
   promtail.yml: |
     server:
-      http_listen_port: 9080
-      grpc_listen_port: 0
+      http_listen_port: 9080   # Puerto de métricas y health de Promtail
+      grpc_listen_port: 0      # gRPC desactivado (0 = no escucha)
 
     positions:
-      filename: /tmp/positions.yaml
+      filename: /tmp/positions.yaml  # Fichero que registra hasta dónde ha leído cada log (checkpoint)
 
     clients:
-      - url: http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push
+      - url: http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push  # Endpoint de ingesta de Loki
 
     scrape_configs:
       - job_name: kubernetes-pods
         pipeline_stages:
-          - docker: {}
+          - docker: {}   # Parsea el formato JSON de logs de Docker (timestamp, stream, log)
         kubernetes_sd_configs:
-          - role: pod
+          - role: pod    # Descubre todos los pods del clúster via API de Kubernetes
         relabel_configs:
           - source_labels: [__meta_kubernetes_pod_node_name]
-            target_label: __host__
+            target_label: __host__   # Asocia cada log al nodo donde corre el pod
           - action: labelmap
-            regex: __meta_kubernetes_pod_label_(.+)
+            regex: __meta_kubernetes_pod_label_(.+)   # Propaga las labels del pod como labels del log
           - source_labels: [__meta_kubernetes_namespace]
-            target_label: namespace
+            target_label: namespace   # Label 'namespace' en cada log: permite filtrar en Grafana
           - source_labels: [__meta_kubernetes_pod_name]
-            target_label: pod
+            target_label: pod         # Label 'pod': identifica el pod origen del log
           - source_labels: [__meta_kubernetes_container_name]
-            target_label: container
-          # Foco especial en los namespaces clave del proyecto
+            target_label: container   # Label 'container': identifica el contenedor dentro del pod
+          # Filtro de namespaces: solo recolecta logs de los namespaces relevantes del proyecto
+          # Ignora kube-system, kube-public y otros namespaces de infraestructura
           - source_labels: [__meta_kubernetes_namespace]
             regex: wordpress|databases|monitoring|security
             action: keep
 
 ---
+# --- ServiceAccount para Promtail ---
+# Necesario para que Promtail pueda leer metadatos de pods via la API de Kubernetes
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -196,6 +204,8 @@ metadata:
   namespace: monitoring
 
 ---
+# --- ClusterRole: permisos de lectura sobre pods, namespaces y nodos ---
+# Promtail usa estos permisos para enriquecer los logs con metadatos de Kubernetes
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -203,9 +213,10 @@ metadata:
 rules:
   - apiGroups: [""]
     resources: ["pods", "namespaces", "nodes"]
-    verbs: ["get", "list", "watch"]
+    verbs: ["get", "list", "watch"]   # Solo lectura; Promtail nunca modifica recursos del clúster
 
 ---
+# --- ClusterRoleBinding: vincula el ClusterRole con el ServiceAccount de Promtail ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
@@ -220,6 +231,8 @@ subjects:
     namespace: monitoring
 
 ---
+# --- DaemonSet de Promtail ---
+# Un pod por nodo; monta los directorios de logs del host en modo lectura
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -236,17 +249,17 @@ spec:
       labels:
         app: promtail
     spec:
-      serviceAccountName: promtail
+      serviceAccountName: promtail   # Usa el ServiceAccount con permisos RBAC para service discovery
       tolerations:
         - key: node-role.kubernetes.io/master
-          effect: NoSchedule
+          effect: NoSchedule   # Permite que Promtail corra también en el nodo master de Minikube
       containers:
         - name: promtail
-          image: grafana/promtail:2.9.3
+          image: grafana/promtail:2.9.3   # Misma versión que Loki para compatibilidad garantizada
           args:
             - "-config.file=/etc/promtail/promtail.yml"
           ports:
-            - containerPort: 9080
+            - containerPort: 9080   # Puerto de métricas de Promtail (scrapeado por Prometheus si se configura)
           resources:
             requests:
               cpu: 50m
@@ -256,20 +269,20 @@ spec:
               memory: 128Mi
           volumeMounts:
             - name: config
-              mountPath: /etc/promtail
+              mountPath: /etc/promtail                    # Configuración desde ConfigMap
             - name: varlog
               mountPath: /var/log
-              readOnly: true
+              readOnly: true                              # Logs del sistema y del kubelet
             - name: varlibdockercontainers
               mountPath: /var/lib/docker/containers
-              readOnly: true
+              readOnly: true                              # Logs de contenedores Docker (stdout/stderr)
       volumes:
         - name: config
           configMap:
             name: promtail-config
         - name: varlog
           hostPath:
-            path: /var/log
+            path: /var/log                              # Directorio de logs del nodo host
         - name: varlibdockercontainers
           hostPath:
-            path: /var/lib/docker/containers
+            path: /var/lib/docker/containers            # Directorio de logs de contenedores Docker en el nodo
