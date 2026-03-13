@@ -1,29 +1,58 @@
 # ============================================================
-# ConfigMap para el namespace 'databases'
-# Contiene la configuración no sensible que necesita MariaDB
+# 02-configmap.yaml — ConfigMaps del proyecto
+#
+# Un ConfigMap almacena configuración no sensible en formato
+# clave-valor. A diferencia de los Secrets, los valores NO
+# están cifrados — nunca usar para contraseñas o tokens.
+#
+# Los pods acceden a estos valores como variables de entorno
+# o como archivos montados en un volumen.
 # ============================================================
+
+# ------------------------------------------------------------
+# ConfigMap: mariadb-config (namespace: databases)
+# Usado por: StatefulSet MariaDB (mariadb-0 primary, mariadb-1 replica)
+# Propósito: configuración inicial de la base de datos
+# ------------------------------------------------------------
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: mariadb-config        # Referenciado por el Deployment de MariaDB
+  name: mariadb-config        # Referenciado por el StatefulSet de MariaDB
   namespace: databases        # Mismo namespace que MariaDB y el Secret
 data:
-  MYSQL_DATABASE: wordpress_db   # Nombre de la base de datos que se creará automáticamente
-  MYSQL_USER: wordpress_user     # Usuario de la BD (distinto de root)
+  MYSQL_DATABASE: wordpress_db   # Nombre de la BD que MariaDB crea automáticamente al arrancar
+  MYSQL_USER: wordpress_user     # Usuario no-root con acceso solo a wordpress_db
+                                 # La contraseña de este usuario viene del Secret mariadb-secret
 
 ---
-# ============================================================
-# ConfigMap para el namespace 'wordpress'
-# Contiene la configuración no sensible que necesita WordPress
-# ============================================================
+# ------------------------------------------------------------
+# ConfigMap: wordpress-config (namespace: wordpress)
+# Usado por: Deployment WordPress
+# Propósito: configuración de conexión y parámetros del sitio
+#
+# IMPORTANTE: los valores de DB_NAME y DB_USER deben coincidir
+# exactamente con los definidos en mariadb-config arriba.
+# Una discrepancia aquí causa "Error establishing a database connection"
+# ------------------------------------------------------------
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: wordpress-config      # Referenciado por el Deployment de WordPress
   namespace: wordpress        # Mismo namespace que WordPress
 data:
-  WORDPRESS_DB_HOST: "mariadb.databases.svc.cluster.local"  # Service alias → apunta siempre al primary (mariadb-0)
-  WORDPRESS_DB_NAME: "wordpress_db"                          # Debe coincidir con MYSQL_DATABASE de mariadb-config
-  WORDPRESS_DB_USER: "wordpress_user"                        # Debe coincidir con MYSQL_USER de mariadb-config
-  WORDPRESS_SITE_URL: "http://wp-k8s.local"                  # URL pública de la instalación de WordPress
-  WORDPRESS_ADMIN_EMAIL: "admin@example.com"                 # Email del administrador (no sensible)
+  # DNS interno del Service MariaDB — apunta siempre al primary (mariadb-0)
+  # Formato: <service>.<namespace>.svc.cluster.local
+  WORDPRESS_DB_HOST: "mariadb.databases.svc.cluster.local"
+
+  # Debe coincidir con MYSQL_DATABASE en mariadb-config
+  WORDPRESS_DB_NAME: "wordpress_db"
+
+  # Debe coincidir con MYSQL_USER en mariadb-config
+  WORDPRESS_DB_USER: "wordpress_user"
+
+  # URL pública del sitio — usada por WordPress para generar enlaces
+  # Si no coincide con el dominio real, los redirects fallan
+  WORDPRESS_SITE_URL: "http://wp-k8s.local"
+
+  # Email del administrador de WordPress — no es información sensible
+  WORDPRESS_ADMIN_EMAIL: "admin@example.com"
