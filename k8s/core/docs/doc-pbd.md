@@ -1,4 +1,4 @@
-# PodDisruptionBudget (`13-pdb.yaml`)
+# PodDisruptionBudget (`pdb.yaml`)
 
 ## Qué hace este archivo
 
