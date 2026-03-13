@@ -1,4 +1,4 @@
-# DOC-18 — Backup y Recuperación ante Desastres (`18-backup.yaml`)
+# Backup y Recuperación ante Desastres (`backup.yaml`)
 
 ## Qué hace este archivo
 
@@ -35,10 +35,10 @@ La estrategia documenta RTO ~15 minutos y RPO ~24 horas. Esto es coherente con u
 
 | Archivo | Relación |
 |---|---|
-| `16-minio.yaml` | Destino de todos los backups; los buckets `wordpress-backups` deben existir antes de la primera ejecución |
-| `04-mariadb.yaml` | Define el Secret `mariadb-secret` con `mariadb-root-password`, requerido por el CronJob de backup |
-| `03-pvc.yaml` | Define el PVC `wordpress-pvc` montado por el CronJob de uploads |
-| `01-secrets.yaml` | El Secret `minio-secret` en los namespaces `databases` y `wordpress` debe existir con las claves `access-key`/`secret-key` |
+| `minio.yaml` | Destino de todos los backups; los buckets `wordpress-backups` deben existir antes de la primera ejecución |
+| `mariadb.yaml` | Define el Secret `mariadb-secret` con `mariadb-root-password`, requerido por el CronJob de backup |
+| `pvc.yaml` | Define el PVC `wordpress-pvc` montado por el CronJob de uploads |
+| `secrets.yaml` | El Secret `minio-secret` en los namespaces `databases` y `wordpress` debe existir con las claves `access-key`/`secret-key` |
 
 ## Advertencias y puntos críticos
 
