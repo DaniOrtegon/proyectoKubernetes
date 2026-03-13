@@ -1,4 +1,4 @@
-#configmap.yaml — Documento de referencia
+# configmap.yaml — Documento de referencia
 
 ## ¿Qué hace este archivo?
 
