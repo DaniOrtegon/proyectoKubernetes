@@ -1,5 +1,5 @@
 # ============================================================
-# 18-backup.yaml — Backup y Recuperación ante Desastres
+# backup.yaml — Backup y Recuperación ante Desastres
 #
 # ESTRATEGIA:
 #   - MariaDB: mysqldump diario a las 2:00 AM → MinIO
@@ -100,7 +100,7 @@ spec:
                   valueFrom:
                     secretKeyRef:
                       name: mariadb-secret
-                      key: mariadb-root-password   # Secret definido en 01-secrets.yaml
+                      key: mariadb-root-password   # Secret definido en secrets.yaml
                 - name: MINIO_ACCESS_KEY
                   valueFrom:
                     secretKeyRef:
