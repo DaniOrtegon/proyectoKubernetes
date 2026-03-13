@@ -1,4 +1,4 @@
-# DOC-16 — MinIO (`16-minio.yaml`)
+# MinIO (`minio.yaml`)
 
 ## Qué hace este archivo
 
@@ -31,7 +31,7 @@ La consola web de MinIO (puerto 9001) está disponible internamente pero no se e
 
 | Archivo | Relación |
 |---|---|
-| `00-namespace.yaml` | Crea el namespace `storage` |
+| `namespace.yaml` | Crea el namespace `storage` |
 | `06-wordpress.yaml` | WordPress consume el Secret `minio-secret` del namespace `wordpress` para el plugin S3 |
 | `18-backup.yaml` | Los CronJobs de backup escriben en los buckets `wordpress-backups` de MinIO |
 | `19-velero.yaml` | El Job `velero-bucket-setup` crea el bucket `velero-backups` en esta instancia de MinIO |
