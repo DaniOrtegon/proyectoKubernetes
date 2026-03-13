@@ -1054,13 +1054,18 @@ apply_file "08-ingress.yaml" "Ingress con TLS (wp-k8s.local + monitoring.local)"
 # 20. HPA
 # 21. KEDA — reemplaza el HPA por escalado basado en métricas de Prometheus
 install_keda
-# Eliminar HPA anterior si existe — KEDA no puede coexistir con un HPA manual
-if kubectl get hpa wordpress-hpa -n wordpress &>/dev/null 2>&1; then
-  log_info "Eliminando HPA anterior (wordpress-hpa) para que KEDA tome el control..."
-  kubectl delete hpa wordpress-hpa -n wordpress 2>/dev/null || true
-  log_success "HPA eliminado"
+# Si el ScaledObject ya existe, KEDA ya está gestionando el escalado → saltar
+if kubectl get scaledobject wordpress-scaledobject -n wordpress &>/dev/null 2>&1; then
+  log_success "KEDA ScaledObject ya existe — saltando"
+else
+  # Eliminar HPA anterior si existe — KEDA no puede coexistir con un HPA manual
+  if kubectl get hpa wordpress-hpa -n wordpress &>/dev/null 2>&1; then
+    log_info "Eliminando HPA anterior para que KEDA tome el control..."
+    kubectl delete hpa wordpress-hpa -n wordpress 2>/dev/null || true
+    log_success "HPA eliminado"
+  fi
+  apply_file "09-keda-wordpress.yaml" "KEDA ScaledObject WordPress (min:2 max:10, trigger: req/s + CPU)"
 fi
-apply_file "09-keda-wordpress.yaml" "KEDA ScaledObject WordPress (min:2 max:10, trigger: req/s + CPU)"
 
 # 21. PDB
 apply_file "13-pdb.yaml" "PodDisruptionBudget de WordPress"
