@@ -1,5 +1,5 @@
 # ============================================================
-# 00-namespace.yaml — Namespaces del proyecto
+# namespace.yaml — Namespaces del proyecto
 #
 # Los namespaces dividen el clúster en zonas lógicas aisladas.
 # Cada componente del proyecto vive en su propio namespace para:
