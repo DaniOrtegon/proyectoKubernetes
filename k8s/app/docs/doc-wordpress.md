@@ -1,8 +1,8 @@
-# DOC-06 — Deployment de WordPress en Alta Disponibilidad
+# Deployment de WordPress en Alta Disponibilidad
 
 ## ¿Qué hace este archivo?
 
-Define el `Deployment` de WordPress y su `Service` NodePort. El Deployment arranca con una réplica (KEDA tomará el control desde `09-keda-wordpress.yaml` para escalar entre 2 y 10) y configura WordPress para operar en modo quasi-stateless: la base de datos va a MariaDB primary, la caché de objetos a Redis via Sentinel, los uploads a MinIO/S3, y el tracing distribuido al OTel Collector. El `SecurityContext` aplica un perfil de seguridad reforzado con sistema de ficheros raíz inmutable.
+Define el `Deployment` de WordPress y su `Service` NodePort. El Deployment arranca con una réplica (KEDA tomará el control desde `keda-wordpress.yaml` para escalar entre 2 y 10) y configura WordPress para operar en modo quasi-stateless: la base de datos va a MariaDB primary, la caché de objetos a Redis via Sentinel, los uploads a MinIO/S3, y el tracing distribuido al OTel Collector. El `SecurityContext` aplica un perfil de seguridad reforzado con sistema de ficheros raíz inmutable.
 
 ---
 
@@ -35,7 +35,7 @@ WordPress tiene una cadena de tres probes con responsabilidades distintas:
 El `startupProbe` es imprescindible: sin él, `livenessProbe` reiniciaría WordPress antes de que termine de arrancar la primera vez. Las probes usan `/wp-login.php` con el header `Host: wp-k8s.local` porque este endpoint fuerza a WordPress a verificar la conexión a BD y Redis, siendo una prueba de salud más completa que un simple ping de red.
 
 ### NodePort + Ingress (coexistencia)
-El Service usa `NodePort: 30080` para acceso directo sin Ingress, útil durante el desarrollo en Minikube. El archivo `08-ingress.yaml` define además un Ingress con TLS para acceso por nombre de dominio. Ambos coexisten: el Ingress es el path recomendado para acceso externo; el NodePort proporciona un acceso directo de diagnóstico.
+El Service usa `NodePort: 30080` para acceso directo sin Ingress, útil durante el desarrollo en Minikube. El archivo `ingress.yaml` define además un Ingress con TLS para acceso por nombre de dominio. Ambos coexisten: el Ingress es el path recomendado para acceso externo; el NodePort proporciona un acceso directo de diagnóstico.
 
 ---
 
@@ -43,7 +43,7 @@ El Service usa `NodePort: 30080` para acceso directo sin Ingress, útil durante 
 
 | Decisión | Justificación |
 |---|---|
-| `replicas: 1` en el Deployment | KEDA gestiona el número de réplicas a partir de su configuración en `09-keda-wordpress.yaml`. El valor 1 es el estado inicial antes de que KEDA entre en funcionamiento. |
+| `replicas: 1` en el Deployment | KEDA gestiona el número de réplicas a partir de su configuración en `keda-wordpress.yaml`. El valor 1 es el estado inicial antes de que KEDA entre en funcionamiento. |
 | `readOnlyRootFilesystem: true` | Defensa en profundidad: limita el impacto de una eventual ejecución de código arbitrario en PHP, impidiendo la modificación de ficheros del contenedor. |
 | Redis via Sentinel | Usar `WP_REDIS_SENTINEL_CONNECTION` garantiza que el plugin `Redis Object Cache` siempre conecte al master actual, incluso tras un failover automático de Sentinel. |
 | Secrets duplicados en ambos namespaces | Los Secrets son namespace-scoped en Kubernetes. `mariadb-secret` se replica en el namespace `wordpress` para que el Deployment pueda referenciarlo directamente. Es una solución pragmática y explícita para el entorno Minikube. |
@@ -56,17 +56,17 @@ El Service usa `NodePort: 30080` para acceso directo sin Ingress, útil durante 
 
 | Archivo | Relación |
 |---|---|
-| `00-namespace.yaml` | El namespace `wordpress` debe existir. |
-| `01-secrets.yaml` | Deben existir `mariadb-secret`, `redis-secret` y `minio-secret` en el namespace `wordpress`. |
-| `02-configmap.yaml` | El ConfigMap `wordpress-config` debe proveer `WORDPRESS_DB_HOST`, `WORDPRESS_DB_NAME`, `WORDPRESS_DB_USER`. |
-| `03-pvc.yaml` | El PVC `wordpress-pvc` debe estar en estado `Bound` antes de que el Deployment arranque. |
-| `04-mariadb.yaml` | MariaDB primary debe estar listo en `mariadb.databases.svc.cluster.local:3306`. |
-| `05-redis.yaml` | Redis Sentinel debe estar listo en `redis-sentinel.databases.svc.cluster.local:26379`. |
-| `07-network-policy.yaml` | Las NetworkPolicies deben permitir los flujos necesarios desde WordPress hacia sus dependencias. |
-| `08-ingress.yaml` | El Ingress apunta al Service `wordpress:80` para acceso por nombre de dominio con TLS. |
-| `09-keda-wordpress.yaml` | KEDA toma el control del número de réplicas del Deployment. |
-| `16-minio.yaml` | MinIO debe estar operativo con el bucket `wordpress-uploads` creado. |
-| `17-tracing.yaml` | El OTel Collector debe estar desplegado en `monitoring` para recibir trazas. |
+| `namespace.yaml` | El namespace `wordpress` debe existir. |
+| `secrets.yaml` | Deben existir `mariadb-secret`, `redis-secret` y `minio-secret` en el namespace `wordpress`. |
+| `configmap.yaml` | El ConfigMap `wordpress-config` debe proveer `WORDPRESS_DB_HOST`, `WORDPRESS_DB_NAME`, `WORDPRESS_DB_USER`. |
+| `pvc.yaml` | El PVC `wordpress-pvc` debe estar en estado `Bound` antes de que el Deployment arranque. |
+| `mariadb.yaml` | MariaDB primary debe estar listo en `mariadb.databases.svc.cluster.local:3306`. |
+| `redis.yaml` | Redis Sentinel debe estar listo en `redis-sentinel.databases.svc.cluster.local:26379`. |
+| `network-policy.yaml` | Las NetworkPolicies deben permitir los flujos necesarios desde WordPress hacia sus dependencias. |
+| `ingress.yaml` | El Ingress apunta al Service `wordpress:80` para acceso por nombre de dominio con TLS. |
+| `keda-wordpress.yaml` | KEDA toma el control del número de réplicas del Deployment. |
+| `minio.yaml` | MinIO debe estar operativo con el bucket `wordpress-uploads` creado. |
+| `tracing.yaml` | El OTel Collector debe estar desplegado en `monitoring` para recibir trazas. |
 
 ---
 
