@@ -8,47 +8,59 @@
 #   - El script de entrypoint gestiona todo según el ordinal
 # ============================================================
 
+# --- RECURSO 1: ConfigMap ---
+# Almacena configuración no sensible y el script de arranque.
+# Las credenciales (passwords) van en el Secret referenciado más adelante.
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: mariadb-config
-  namespace: databases
+  namespace: databases       # Namespace separado de WordPress por segmentación de red
   labels:
     app: mariadb
     app.kubernetes.io/name: mariadb
     app.kubernetes.io/part-of: wordpress-ha
 data:
-  MYSQL_DATABASE: wordpress_db
-  MYSQL_USER: wordpress_user
+  # Variables de entorno no sensibles consumidas por el contenedor MariaDB
+  MYSQL_DATABASE: wordpress_db      # Base de datos creada automáticamente al iniciar
+  MYSQL_USER: wordpress_user        # Usuario de aplicación (password viene del Secret)
 
-  # Script que decide el rol según el ordinal del StatefulSet
-  # La replicación se configura por separado via Job (04b-mariadb-replication-job.yaml)
+  # Script de arranque embebido en el ConfigMap.
+  # Determina el rol del Pod (PRIMARY o REPLICA) basándose en el ordinal del hostname.
+  # Los StatefulSets nombran los Pods como <nombre>-<ordinal> (mariadb-0, mariadb-1…),
+  # lo que permite extraer el ordinal con parsing de string y actuar en consecuencia.
   start-mariadb.sh: |
     #!/bin/bash
+    # Extrae el ordinal del hostname (ej: "mariadb-1" → "1")
     ORDINAL=$(echo $HOSTNAME | rev | cut -d'-' -f1 | rev)
     if [ "$ORDINAL" = "0" ]; then
       echo "=== Arrancando como PRIMARY (server-id=1) ==="
       exec docker-entrypoint.sh mysqld \
-        --server-id=1 \
-        --log-bin=mysql-bin \
-        --binlog-format=ROW \
-        --binlog-do-db=wordpress_db \
-        --sync-binlog=1 \
-        --character-set-server=utf8mb4 \
-        --collation-server=utf8mb4_unicode_ci \
-        --max-connections=200
+        --server-id=1 \           # ID único del servidor en el grupo de replicación
+        --log-bin=mysql-bin \     # Habilita el binary log (imprescindible para replicación)
+        --binlog-format=ROW \     # ROW: registra cambios a nivel de fila (más seguro que STATEMENT)
+        --binlog-do-db=wordpress_db \  # Replica solo esta base de datos (filtro)
+        --sync-binlog=1 \         # Sincroniza el binlog a disco en cada commit (durabilidad)
+        --character-set-server=utf8mb4 \        # Soporte completo Unicode (emojis, etc.)
+        --collation-server=utf8mb4_unicode_ci \ # Collation case-insensitive compatible con WordPress
+        --max-connections=200     # Límite de conexiones simultáneas
     else
       echo "=== Arrancando como REPLICA (server-id=2) ==="
       exec docker-entrypoint.sh mysqld \
-        --server-id=2 \
-        --relay-log=relay-bin \
-        --read-only=1 \
+        --server-id=2 \           # ID distinto al primary, debe ser único en el grupo
+        --relay-log=relay-bin \   # Activa el relay log donde se almacenan los eventos recibidos
+        --read-only=1 \           # Impide escrituras directas en la réplica (solo SQL thread puede escribir)
         --character-set-server=utf8mb4 \
         --collation-server=utf8mb4_unicode_ci \
         --max-connections=200
     fi
 
 ---
+# --- RECURSO 2: Service Headless ---
+# Un Service headless (clusterIP: None) no tiene VIP propio.
+# En vez de balancear tráfico, expone directamente los registros DNS A de cada Pod.
+# Esto es obligatorio para StatefulSets: permite direccionar Pods individualmente
+# via DNS estable: mariadb-0.mariadb-headless.databases.svc.cluster.local
 apiVersion: v1
 kind: Service
 metadata:
@@ -59,16 +71,19 @@ metadata:
     app.kubernetes.io/name: mariadb
     app.kubernetes.io/part-of: wordpress-ha
 spec:
-  clusterIP: None
+  clusterIP: None              # Sin VIP: el DNS resuelve directamente a IPs de Pods
   ports:
     - port: 3306
       targetPort: 3306
   selector:
-    app: mariadb
+    app: mariadb               # Selecciona todos los Pods del StatefulSet
 
 ---
-# Service 'mariadb' — apunta siempre al primary (mariadb-0)
-# WordPress usa este service como WORDPRESS_DB_HOST
+# --- RECURSO 3: Service ClusterIP para el PRIMARY ---
+# Service con selector fijo al Pod mariadb-0 (el primary).
+# WordPress apunta aquí como WORDPRESS_DB_HOST — siempre escribe al primary.
+# En caso de failover manual, este selector debería actualizarse para apuntar al nuevo primary.
+# NOTA: No hay failover automático — no hay Orchestrator, ProxySQL ni Galera en este diseño.
 apiVersion: v1
 kind: Service
 metadata:
@@ -85,9 +100,13 @@ spec:
       targetPort: 3306
   selector:
     app: mariadb
-    statefulset.kubernetes.io/pod-name: mariadb-0
+    statefulset.kubernetes.io/pod-name: mariadb-0   # Selector fijo al Pod primary
 
 ---
+# --- RECURSO 4: StatefulSet MariaDB ---
+# StatefulSet garantiza: identidad de red estable, orden de arranque/parada,
+# y volúmenes persistentes individuales por Pod (via volumeClaimTemplates).
+# A diferencia de un Deployment, los Pods tienen nombres predecibles y persistentes.
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -100,8 +119,9 @@ metadata:
     app.kubernetes.io/part-of: wordpress-ha
     app.kubernetes.io/component: database
 spec:
+  # El StatefulSet usa el Service headless para gestionar la identidad DNS de los Pods
   serviceName: mariadb-headless
-  replicas: 2
+  replicas: 2                  # 2 Pods: mariadb-0 (primary) y mariadb-1 (replica)
   selector:
     matchLabels:
       app: mariadb
@@ -112,49 +132,63 @@ spec:
         app.kubernetes.io/name: mariadb
         app.kubernetes.io/part-of: wordpress-ha
     spec:
+      # Política de anti-afinidad: intenta colocar los Pods en nodos distintos.
+      # 'preferred' (soft): no impide el arranque si no hay nodos suficientes (Minikube = 1 nodo).
+      # Mejora la disponibilidad en clústeres multi-nodo sin bloquear el despliegue.
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
-            - weight: 100
+            - weight: 100             # Peso máximo: se aplica con máxima preferencia
               podAffinityTerm:
                 labelSelector:
                   matchLabels:
                     app: mariadb
-                topologyKey: kubernetes.io/hostname
+                topologyKey: kubernetes.io/hostname  # Un Pod por hostname (nodo físico)
+
+      # --- Init Containers ---
+      # Se ejecutan secuencialmente y deben completar con éxito antes de iniciar el contenedor principal.
       initContainers:
+        # Init 1: corrige permisos del directorio de datos de MariaDB.
+        # El contenedor principal corre como uid 999 (mysql), pero el volumen puede
+        # montarse con uid 0 (root). chown asegura que MariaDB pueda escribir sus datos.
         - name: fix-perms
           image: mariadb:10.6
           command: ["chown", "-R", "999:999", "/var/lib/mysql"]
           securityContext:
-            runAsUser: 0
+            runAsUser: 0             # Necesita root solo para ejecutar chown
           volumeMounts:
             - name: mariadb-storage
               mountPath: /var/lib/mysql
 
+        # Init 2: copia el script de arranque desde el ConfigMap al volumen emptyDir compartido.
+        # No se puede ejecutar directamente desde el ConfigMap porque el entrypoint
+        # necesita permisos de ejecución, que se asignan con chmod aquí.
         - name: init-scripts
           image: busybox
-          imagePullPolicy: Never
+          imagePullPolicy: Never     # Usar imagen local (entorno Minikube sin acceso a registry)
           command:
             - sh
             - -c
             - cp /config/start-mariadb.sh /scripts/start-mariadb.sh && chmod +x /scripts/start-mariadb.sh
           volumeMounts:
-            - name: mariadb-config-vol
+            - name: mariadb-config-vol   # Fuente: ConfigMap montado como volumen
               mountPath: /config
-            - name: scripts
+            - name: scripts              # Destino: emptyDir compartido con el contenedor principal
               mountPath: /scripts
 
       containers:
         - name: mariadb
           image: mariadb:10.6
-          command: ["/scripts/start-mariadb.sh"]
+          command: ["/scripts/start-mariadb.sh"]   # Usa el script copiado por el init container
+          # Contexto de seguridad: principio de mínimo privilegio
           securityContext:
-            runAsUser: 999
-            runAsNonRoot: true
-            allowPrivilegeEscalation: false
+            runAsUser: 999               # Usuario 'mysql' dentro del contenedor
+            runAsNonRoot: true           # Garantiza que el proceso no sea root
+            allowPrivilegeEscalation: false  # Impide que el proceso escale privilegios
           ports:
             - containerPort: 3306
           env:
+            # Credenciales inyectadas desde Secrets (nunca en texto plano en el YAML)
             - name: MYSQL_ROOT_PASSWORD
               valueFrom:
                 secretKeyRef:
@@ -165,6 +199,7 @@ spec:
                 secretKeyRef:
                   name: mariadb-secret
                   key: mariadb-user-password
+            # Configuración no sensible desde ConfigMap
             - name: MYSQL_DATABASE
               valueFrom:
                 configMapKeyRef:
@@ -175,53 +210,65 @@ spec:
                 configMapKeyRef:
                   name: mariadb-config
                   key: MYSQL_USER
+          # Límites de recursos: requests = garantía mínima, limits = techo máximo.
+          # El scheduler usa requests para decidir en qué nodo colocar el Pod.
           resources:
             requests:
-              cpu: 100m
+              cpu: 100m       # 0.1 vCPU garantizados
               memory: 256Mi
             limits:
-              cpu: 500m
-              memory: 512Mi
+              cpu: 500m       # Máximo 0.5 vCPU (throttling si se supera)
+              memory: 512Mi   # Si se supera, el Pod es OOMKilled
+          # readinessProbe: determina si el Pod puede recibir tráfico.
+          # Hasta que no pase, no se añade al Service (evita tráfico a una BD no lista).
           readinessProbe:
             exec:
               command:
                 - sh
                 - -c
                 - mysqladmin -u root -p"${MYSQL_ROOT_PASSWORD}" ping -h localhost
-            initialDelaySeconds: 30
-            periodSeconds: 10
-            failureThreshold: 3
+            initialDelaySeconds: 30    # Espera inicial antes del primer check
+            periodSeconds: 10          # Frecuencia de comprobación
+            failureThreshold: 3        # Fallos consecutivos antes de marcar como Not Ready
+          # livenessProbe: determina si el proceso está vivo.
+          # Si falla, Kubernetes reinicia el contenedor (no el Pod entero).
           livenessProbe:
             exec:
               command:
                 - sh
                 - -c
                 - mysqladmin -u root -p"${MYSQL_ROOT_PASSWORD}" ping -h localhost
-            initialDelaySeconds: 60
+            initialDelaySeconds: 60    # Más tiempo que readiness: MariaDB puede tardar en arrancar
             periodSeconds: 20
-            failureThreshold: 5
+            failureThreshold: 5        # Más tolerante que readiness para evitar reinicios prematuros
           volumeMounts:
             - name: mariadb-storage
-              mountPath: /var/lib/mysql
+              mountPath: /var/lib/mysql    # Directorio de datos de MariaDB
             - name: scripts
-              mountPath: /scripts
+              mountPath: /scripts          # Script de arranque copiado por init-scripts
 
       volumes:
+        # Monta el script del ConfigMap para que el init container pueda copiarlo
         - name: mariadb-config-vol
           configMap:
             name: mariadb-config
             items:
               - key: start-mariadb.sh
                 path: start-mariadb.sh
+        # Volumen temporal compartido entre init container y contenedor principal.
+        # emptyDir: se crea vacío al arrancar el Pod y desaparece al terminar.
         - name: scripts
           emptyDir: {}
 
+  # volumeClaimTemplates: genera un PVC individual por cada réplica del StatefulSet.
+  # Resultado: mariadb-storage-mariadb-0 (5Gi) y mariadb-storage-mariadb-1 (5Gi).
+  # Estos PVCs persisten aunque el Pod sea eliminado y se reutilizan al recrearlo.
   volumeClaimTemplates:
     - metadata:
         name: mariadb-storage
       spec:
-        accessModes: ["ReadWriteOnce"]
-        storageClassName: standard
+        accessModes: ["ReadWriteOnce"]   # Cada Pod tiene su propio volumen exclusivo
+        storageClassName: standard       # Aprovisionador hostPath de Minikube
         resources:
           requests:
-            storage: 5Gi
+            storage: 5Gi                 # 5 GiB por instancia (primary y replica por separado)
