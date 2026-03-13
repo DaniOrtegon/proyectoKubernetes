@@ -1,4 +1,4 @@
-# DOC-07 — NetworkPolicies (Segmentación de Red)
+# NetworkPolicies (Segmentación de Red)
 
 ## ¿Qué hace este archivo?
 
