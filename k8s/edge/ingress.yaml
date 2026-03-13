@@ -1,5 +1,5 @@
 # ============================================================
-# 08-ingress.yaml — Ingress con TLS (cert-manager self-signed)
+# ingress.yaml — Ingress con TLS (cert-manager self-signed)
 # Expone WordPress y el stack de monitoring al exterior del clúster
 # mediante el controlador NGINX Ingress, con TLS terminado en el
 # Ingress y redirección forzada HTTP → HTTPS.
