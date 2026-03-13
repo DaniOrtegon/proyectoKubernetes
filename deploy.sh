@@ -412,7 +412,7 @@ generate_sealed_secrets() {
 
   kubectl create secret generic mariadb-secret \
     --namespace databases \
-    --from-literal=mariadb-root-password='RootDB#2024!' \
+    --from-literal=mariadb-root-password='RootDB#2026!' \
     --from-literal=mariadb-user-password='WpUser#2024!' \
     --dry-run=client -o yaml \
     | kubeseal --format yaml > sealed-mariadb-secret-databases.yaml \
@@ -1180,7 +1180,7 @@ echo -e "    Estado del escalado:      kubectl get scaledobject -n wordpress"
 echo -e "    Logs WordPress:           kubectl logs -n wordpress -l app=wordpress -f"
 echo -e "    Logs MariaDB:             kubectl logs -n databases -l app=mariadb -f"
 echo -e "    Logs Redis:               kubectl logs -n databases -l app=redis -f"
-echo -e "    Estado replicación:       kubectl exec -n databases mariadb-1 -- mysql -u root -p'RootDB#2024!' -e 'SHOW SLAVE STATUS\G' 2>/dev/null | grep -E 'Running|Behind'"
+echo -e "    Estado replicación:       kubectl exec -n databases mariadb-1 -- mysql -u root -p'RootDB#2026!' -e 'SHOW SLAVE STATUS\G' 2>/dev/null | grep -E 'Running|Behind'"
 echo -e "    Ver NetworkPolicies:      kubectl get networkpolicy -A"
 echo -e "    Ver SealedSecrets:        kubectl get sealedsecret -A"
 echo -e "    Ver certificados TLS:     kubectl get certificate -A"
