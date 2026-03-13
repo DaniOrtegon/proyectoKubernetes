@@ -326,7 +326,7 @@ apply_cert_manager_config() {
   fi
 
   log_info "Aplicando configuración de cert-manager (ClusterIssuers + Certificados)..."
-  apply_file "15-cert-manager.yaml" "ClusterIssuers self-signed + Certificados TLS"
+  apply_file "cert-manager.yaml" "ClusterIssuers self-signed + Certificados TLS"
 
   # Esperar a que los certificados estén Ready
   log_info "Esperando a que los certificados TLS estén Ready..."
@@ -624,7 +624,7 @@ install_velero() {
   # Crear bucket velero-backups en MinIO
   log_info "Creando bucket velero-backups en MinIO..."
   kubectl delete job velero-bucket-setup -n storage --ignore-not-found=true 2>/dev/null || true
-  apply_file "19-velero.yaml" "Velero — bucket setup + NetworkPolicy"
+  apply_file "velero.yaml" "Velero — bucket setup + NetworkPolicy"
   if ! kubectl wait --for=condition=complete job/velero-bucket-setup -n storage --timeout=60s 2>/dev/null; then
     log_warn "Job velero-bucket-setup no completó — verifica: kubectl logs -n storage job/velero-bucket-setup"
   else
@@ -975,7 +975,7 @@ install_cert_manager
 echo ""
 
 # 9. Namespaces
-apply_file "00-namespace.yaml" "Namespaces (security, wordpress, databases, monitoring)"
+apply_file "namespace.yaml" "Namespaces (security, wordpress, databases, monitoring)"
 sleep 2
 
 # 10. Generar SealedSecrets (requiere namespaces y controller activos)
@@ -989,10 +989,10 @@ apply_file "sealed-redis-secret-databases.yaml"    "SealedSecret Redis (database
 apply_file "sealed-redis-secret-wordpress.yaml"    "SealedSecret Redis (wordpress)"
 
 # 12. ConfigMaps
-apply_file "02-configmap.yaml" "ConfigMaps (mariadb-config + wordpress-config)"
+apply_file "configmap.yaml" "ConfigMaps (mariadb-config + wordpress-config)"
 
 # 13. PVCs
-apply_file "03-pvc.yaml" "PersistentVolumeClaims (wordpress-pvc)"
+apply_file "pvc.yaml" "PersistentVolumeClaims (wordpress-pvc)"
 
 # 14. MariaDB HA (primary + replica)
 # Si existe un StatefulSet previo con spec diferente, hay que borrarlo antes
@@ -1005,13 +1005,13 @@ if kubectl get statefulset mariadb -n databases &>/dev/null; then
     sleep 5
   fi
 fi
-apply_file "04-mariadb.yaml" "MariaDB HA — StatefulSet (primary + replica)"
+apply_file "mariadb.yaml" "MariaDB HA — StatefulSet (primary + replica)"
 wait_for_statefulset "databases" "mariadb" 180
 
 # Lanzar Job que configura la replicación una vez ambos pods están listos
 log_info "Configurando replicación MariaDB..."
 kubectl delete job mariadb-replication-setup -n databases --ignore-not-found=true 2>/dev/null || true
-apply_file "04b-mariadb-replication-job.yaml" "Job de configuración de replicación MariaDB"
+apply_file "mariadb-replication-job.yaml" "Job de configuración de replicación MariaDB"
 # Esperar a que el Job complete
 if kubectl wait --for=condition=complete job/mariadb-replication-setup -n databases --timeout=120s 2>/dev/null; then
   log_success "Replicación MariaDB configurada"
@@ -1020,15 +1020,15 @@ else
 fi
 
 # 15. Redis HA con Sentinel
-apply_file "05-redis.yaml" "Redis HA — StatefulSet (1 master + 2 replicas) + Sentinel sidecars"
+apply_file "redis.yaml" "Redis HA — StatefulSet (1 master + 2 replicas) + Sentinel sidecars"
 wait_for_statefulset "databases" "redis" 120
 
 # 16. MinIO (almacenamiento S3 para uploads WordPress)
-apply_file "16-minio.yaml" "MinIO — almacenamiento S3 para uploads WordPress stateless"
+apply_file "minio.yaml" "MinIO — almacenamiento S3 para uploads WordPress stateless"
 wait_for_deployment "storage" "minio" 60
 
 # Backup (CronJobs: MariaDB 2AM + Uploads 3AM + Limpieza domingos 4AM)
-apply_file "18-backup.yaml" "CronJobs backup → MinIO (RPO: 24h, RTO: ~15min)"
+apply_file "backup.yaml" "CronJobs backup → MinIO (RPO: 24h, RTO: ~15min)"
 log_info "Configurando buckets MinIO..."
 kubectl delete job minio-setup -n storage --ignore-not-found=true 2>/dev/null || true
 if kubectl wait --for=condition=complete job/minio-setup -n storage --timeout=60s 2>/dev/null; then
@@ -1038,18 +1038,18 @@ else
 fi
 
 # 17. WordPress
-apply_file "06-wordpress.yaml" "Deployment + Service de WordPress"
+apply_file "wordpress.yaml" "Deployment + Service de WordPress"
 wait_for_deployment "wordpress" "wordpress" 120
 
 # 17. NetworkPolicies
-apply_file "07-network-policy.yaml" "NetworkPolicies (databases + wordpress + monitoring)"
+apply_file "network-policy.yaml" "NetworkPolicies (databases + wordpress + monitoring)"
 
 # 18. cert-manager ClusterIssuers + Certificados
 apply_cert_manager_config
 echo ""
 
 # 19. Ingress (con TLS habilitado)
-apply_file "08-ingress.yaml" "Ingress con TLS (wp-k8s.local + monitoring.local)"
+apply_file "ingress.yaml" "Ingress con TLS (wp-k8s.local + monitoring.local)"
 
 # 20. HPA
 # 21. KEDA — reemplaza el HPA por escalado basado en métricas de Prometheus
@@ -1064,33 +1064,33 @@ else
     kubectl delete hpa wordpress-hpa -n wordpress 2>/dev/null || true
     log_success "HPA eliminado"
   fi
-  apply_file "09-keda-wordpress.yaml" "KEDA ScaledObject WordPress (min:2 max:10, trigger: req/s + CPU)"
+  apply_file "keda-wordpress.yaml" "KEDA ScaledObject WordPress (min:2 max:10, trigger: req/s + CPU)"
 fi
 
 # 21. PDB
-apply_file "13-pdb.yaml" "PodDisruptionBudget de WordPress"
+apply_file "pdb.yaml" "PodDisruptionBudget de WordPress"
 
 # 22. ResourceQuota + LimitRange
-apply_file "14-resource-quota.yaml" "ResourceQuota y LimitRange"
+apply_file "resource-quota.yaml" "ResourceQuota y LimitRange"
 
 # 23. Prometheus + Alertmanager
-apply_file "10-prometheus.yaml" "Prometheus + Alertmanager (RBAC + ConfigMap + Deployment + Service)"
+apply_file "prometheus.yaml" "Prometheus + Alertmanager (RBAC + ConfigMap + Deployment + Service)"
 wait_for_deployment "monitoring" "prometheus" 120
 wait_for_deployment "monitoring" "alertmanager" 60
 
 # 24. Loki + Promtail
-apply_file "11-loki.yaml" "Loki + Promtail (Deployment + DaemonSet)"
+apply_file "loki.yaml" "Loki + Promtail (Deployment + DaemonSet)"
 wait_for_deployment "monitoring" "loki" 120
 
 # 25. Jaeger + OTel Collector (tracing distribuido)
-apply_file "17-tracing.yaml" "Jaeger all-in-one + OTel Collector DaemonSet"
+apply_file "tracing.yaml" "Jaeger all-in-one + OTel Collector DaemonSet"
 wait_for_deployment "monitoring" "jaeger" 60
 
 # 26. Backup CronJobs (MariaDB + uploads → MinIO)
-apply_file "18-backup.yaml" "CronJobs de backup — MariaDB y uploads a MinIO"
+apply_file "backup.yaml" "CronJobs de backup — MariaDB y uploads a MinIO"
 
 # 27. Grafana
-apply_file "12-grafana.yaml" "Grafana (Deployment + Service)"
+apply_file "grafana.yaml" "Grafana (Deployment + Service)"
 wait_for_deployment "monitoring" "grafana" 120
 
 # 28. Velero — backup completo del clúster con MinIO como backend
