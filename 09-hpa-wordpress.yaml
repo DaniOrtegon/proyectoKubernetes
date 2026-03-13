@@ -1,31 +1,35 @@
 # ============================================================
 # HorizontalPodAutoscaler (HPA) para WordPress en el namespace 'wordpress'
+# Escala automáticamente el número de réplicas del Deployment 'wordpress'
+# en función del uso de CPU y memoria, dentro de los límites definidos.
 # Requiere Metrics Server instalado en el clúster.
 # En Minikube: minikube addons enable metrics-server
 # Verificar: kubectl top pods -n wordpress
 # ============================================================
-apiVersion: autoscaling/v2
+apiVersion: autoscaling/v2          # API v2 permite múltiples métricas simultáneas (CPU + memoria)
 kind: HorizontalPodAutoscaler
 metadata:
   name: wordpress-hpa
   namespace: wordpress
 spec:
-  scaleTargetRef:
+  scaleTargetRef:                   # Referencia al workload que se va a escalar
     apiVersion: apps/v1
     kind: Deployment
-    name: wordpress
-  minReplicas: 2      # Mínimo 2 réplicas para garantizar alta disponibilidad (HA)
-  maxReplicas: 5      # Máximo 5 réplicas para controlar el consumo de recursos
+    name: wordpress                 # Debe coincidir con el nombre del Deployment en 06-wordpress.yaml
+  minReplicas: 2      # Mínimo 2 réplicas para garantizar alta disponibilidad (HA): ningún mantenimiento deja el servicio sin pods
+  maxReplicas: 5      # Máximo 5 réplicas para controlar el consumo de recursos dentro del ResourceQuota del namespace
   metrics:
+    # Primera métrica de escalado: CPU
     - type: Resource
       resource:
         name: cpu
         target:
           type: Utilization
-          averageUtilization: 50  # Escala cuando el uso medio de CPU supere el 50%
+          averageUtilization: 50  # Escala cuando el uso medio de CPU supere el 50% del request declarado en el pod
+    # Segunda métrica de escalado: memoria
     - type: Resource
       resource:
         name: memory              # Segunda métrica: también escalamos por memoria
         target:
           type: Utilization
-          averageUtilization: 70  # Escala cuando el uso medio de memoria supere el 70%
+          averageUtilization: 70  # Escala cuando el uso medio de memoria supere el 70% del request declarado en el pod
