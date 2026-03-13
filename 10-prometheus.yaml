@@ -1,7 +1,11 @@
 # ============================================================
 # PROMETHEUS - Namespace: monitoring
+# Sistema de recolección y almacenamiento de métricas time-series.
+# Incluye también Alertmanager para el enrutamiento de alertas.
 # ============================================================
 
+# --- ConfigMap con la configuración principal de Prometheus ---
+# Define los targets de scraping y la integración con Alertmanager
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -10,43 +14,43 @@ metadata:
 data:
   prometheus.yml: |
     global:
-      scrape_interval: 15s
-      evaluation_interval: 15s
+      scrape_interval: 15s        # Frecuencia de recolección de métricas (cada 15 segundos)
+      evaluation_interval: 15s    # Frecuencia de evaluación de reglas de alerta
 
     alerting:
       alertmanagers:
         - static_configs:
             # R-5: Alertmanager desplegado en el mismo namespace 'monitoring'
-            - targets: ['alertmanager.monitoring.svc.cluster.local:9093']
+            - targets: ['alertmanager.monitoring.svc.cluster.local:9093']  # Dirección interna del Alertmanager
 
     rule_files:
-      - "/etc/prometheus/rules/*.yml"
+      - "/etc/prometheus/rules/*.yml"   # Carga todos los archivos de reglas del volumen 'rules' (prometheus-rules ConfigMap)
 
     scrape_configs:
       # Métricas del propio Prometheus
       - job_name: 'prometheus'
         static_configs:
-          - targets: ['localhost:9090']
+          - targets: ['localhost:9090']  # Prometheus se auto-monitoriza en su propio puerto
 
       # Métricas de cAdvisor via kubelet (container_cpu, container_memory, etc.)
       # Estas son las métricas que usa el dashboard de Kubernetes
       - job_name: 'kubernetes-cadvisor'
-        scheme: https
+        scheme: https              # Kubelet expone /metrics/cadvisor por HTTPS
         tls_config:
           ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-          insecure_skip_verify: true
-        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+          insecure_skip_verify: true  # Necesario en Minikube donde el cert del kubelet puede no coincidir con el CA del clúster
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token  # Token del ServiceAccount para autenticarse ante la API
         kubernetes_sd_configs:
-          - role: node
+          - role: node              # Service discovery dinámico: descubre todos los nodos del clúster
         relabel_configs:
           - action: labelmap
-            regex: __meta_kubernetes_node_label_(.+)
+            regex: __meta_kubernetes_node_label_(.+)   # Propaga las labels del nodo como labels de la métrica
           - target_label: __address__
-            replacement: kubernetes.default.svc:443
+            replacement: kubernetes.default.svc:443    # Redirige el scraping a través de la API de Kubernetes (proxy)
           - source_labels: [__meta_kubernetes_node_name]
             regex: (.+)
             target_label: __metrics_path__
-            replacement: /api/v1/nodes/$1/proxy/metrics/cadvisor
+            replacement: /api/v1/nodes/$1/proxy/metrics/cadvisor  # Ruta del endpoint cAdvisor por nodo
 
       # Métricas de los nodos via kubelet
       - job_name: 'kubernetes-nodes'
@@ -65,27 +69,28 @@ data:
           - source_labels: [__meta_kubernetes_node_name]
             regex: (.+)
             target_label: __metrics_path__
-            replacement: /api/v1/nodes/$1/proxy/metrics
+            replacement: /api/v1/nodes/$1/proxy/metrics  # Métricas generales del kubelet (no cAdvisor)
 
       # Métricas de todos los Pods via anotaciones
+      # Un pod se hace "scrapeado" añadiendo la anotación: prometheus.io/scrape: "true"
       - job_name: 'kubernetes-pods'
         kubernetes_sd_configs:
-          - role: pod
+          - role: pod               # Descubre todos los pods del clúster
         relabel_configs:
           - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
             action: keep
-            regex: true
+            regex: true             # Solo scrapea pods que tengan la anotación prometheus.io/scrape: "true"
           - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
             action: replace
             target_label: __metrics_path__
-            regex: (.+)
+            regex: (.+)             # Usa la ruta indicada en prometheus.io/path si existe (por defecto /metrics)
           - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
             action: replace
             regex: ([^:]+)(?::\d+)?;(\d+)
             replacement: $1:$2
-            target_label: __address__
+            target_label: __address__   # Reemplaza el puerto por el indicado en prometheus.io/port
           - action: labelmap
-            regex: __meta_kubernetes_pod_label_(.+)
+            regex: __meta_kubernetes_pod_label_(.+)   # Propaga labels del pod a la métrica
           - source_labels: [__meta_kubernetes_namespace]
             action: replace
             target_label: kubernetes_namespace
@@ -94,11 +99,14 @@ data:
             target_label: kubernetes_pod_name
 
       # Métricas de kube-state-metrics (kube_pod_*, kube_node_*, etc.)
+      # Requiere kube-state-metrics instalado en kube-system
       - job_name: 'kube-state-metrics'
         static_configs:
-          - targets: ['kube-state-metrics.kube-system.svc.cluster.local:8080']
+          - targets: ['kube-state-metrics.kube-system.svc.cluster.local:8080']  # Dirección fija de kube-state-metrics
 
 ---
+# --- ConfigMap con reglas de alerta y SLOs ---
+# Se monta en /etc/prometheus/rules/ y Prometheus lo recarga automáticamente
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -109,6 +117,7 @@ data:
     groups:
       - name: kubernetes-alerts
         rules:
+          # Alerta si un pod lleva más de 2 min sin estar en Running o Succeeded
           - alert: PodDown
             expr: kube_pod_status_phase{phase!~"Running|Succeeded"} == 1
             for: 2m
@@ -118,6 +127,7 @@ data:
               summary: "Pod caído: {{ $labels.pod }}"
               description: "El Pod {{ $labels.pod }} en namespace {{ $labels.namespace }} lleva más de 2 minutos sin estar Running."
 
+          # Alerta si un pod supera el 80% de su limit de CPU durante 5 minutos
           - alert: HighCPUUsage
             expr: |
               (sum(rate(container_cpu_usage_seconds_total{container!=""}[5m])) by (pod, namespace)
@@ -129,6 +139,7 @@ data:
               summary: "CPU alta en Pod: {{ $labels.pod }}"
               description: "El Pod {{ $labels.pod }} en {{ $labels.namespace }} supera el 80% de CPU durante más de 5 minutos."
 
+          # Alerta si un pod supera el 80% de su limit de memoria durante 5 minutos
           - alert: HighMemoryUsage
             expr: |
               (sum(container_memory_working_set_bytes{container!=""}) by (pod, namespace)
@@ -140,6 +151,7 @@ data:
               summary: "Memoria alta en Pod: {{ $labels.pod }}"
               description: "El Pod {{ $labels.pod }} en {{ $labels.namespace }} supera el 80% de memoria durante más de 5 minutos."
 
+          # Alerta específica para pods de MariaDB con umbral de 1 minuto (mayor criticidad)
           - alert: MariaDBPodDown
             expr: kube_pod_status_phase{namespace="databases",pod=~"mariadb-.*",phase!~"Running|Succeeded"} == 1
             for: 1m
@@ -149,9 +161,10 @@ data:
               summary: "Pod de MariaDB caído: {{ $labels.pod }}"
               description: "El pod {{ $labels.pod }} lleva más de 1 minuto fuera del estado Running."
 
+          # Alerta inmediata al detectar una terminación por OOM (sin espera 'for')
           - alert: OOMKill
             expr: kube_pod_container_status_last_terminated_reason{reason="OOMKilled"} == 1
-            for: 0m
+            for: 0m   # Se dispara al instante, sin espera, porque OOMKill es siempre relevante
             labels:
               severity: warning
             annotations:
@@ -216,6 +229,8 @@ data:
               ) / (1 - 0.999)
 
 ---
+# --- PVC para almacenamiento de series temporales de Prometheus ---
+# Retención configurada en 15 días (--storage.tsdb.retention.time=15d)
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -223,13 +238,15 @@ metadata:
   namespace: monitoring
 spec:
   accessModes:
-    - ReadWriteOnce
+    - ReadWriteOnce          # Un único nodo monta el volumen en escritura (Deployment de 1 réplica)
   resources:
     requests:
-      storage: 10Gi
-  storageClassName: standard
+      storage: 10Gi          # Suficiente para 15 días de métricas con 4 namespaces activos
+  storageClassName: standard # StorageClass por defecto de Minikube (hostPath)
 
 ---
+# --- ServiceAccount para Prometheus ---
+# Necesario para asociar el ClusterRoleBinding que permite leer recursos de la API
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -237,6 +254,8 @@ metadata:
   namespace: monitoring
 
 ---
+# --- ClusterRole: permisos de lectura sobre recursos de Kubernetes ---
+# Prometheus necesita descubrir pods, endpoints y nodos para el service discovery
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -244,14 +263,15 @@ metadata:
 rules:
   - apiGroups: [""]
     resources: ["nodes", "nodes/proxy", "nodes/metrics", "services", "endpoints", "pods", "namespaces"]
-    verbs: ["get", "list", "watch"]
+    verbs: ["get", "list", "watch"]   # Solo lectura — sin capacidad de modificar recursos
   - apiGroups: ["extensions", "networking.k8s.io"]
     resources: ["ingresses"]
-    verbs: ["get", "list", "watch"]
+    verbs: ["get", "list", "watch"]   # Permite descubrir Ingress para scraping de métricas del controlador NGINX
   - nonResourceURLs: ["/metrics", "/metrics/cadvisor"]
-    verbs: ["get"]
+    verbs: ["get"]                    # Acceso directo a los endpoints /metrics de kubelet y cAdvisor
 
 ---
+# --- ClusterRoleBinding: vincula el ClusterRole con el ServiceAccount ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
@@ -266,6 +286,7 @@ subjects:
     namespace: monitoring
 
 ---
+# --- Deployment de Prometheus ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -278,7 +299,7 @@ metadata:
     app.kubernetes.io/part-of: wordpress-ha
     app.kubernetes.io/component: monitoring
 spec:
-  replicas: 1
+  replicas: 1   # Una sola réplica: Prometheus no soporta HA nativa sin Thanos/Cortex
   selector:
     matchLabels:
       app: prometheus
@@ -287,21 +308,21 @@ spec:
       labels:
         app: prometheus
     spec:
-      serviceAccountName: prometheus
+      serviceAccountName: prometheus   # Usa el ServiceAccount con permisos RBAC para service discovery
       securityContext:
-        fsGroup: 65534
-        runAsUser: 65534
-        runAsNonRoot: true
+        fsGroup: 65534     # Grupo 'nobody' — permite al proceso de Prometheus escribir en el PVC
+        runAsUser: 65534   # Usuario 'nobody' — ejecuta sin privilegios de root
+        runAsNonRoot: true # Política de seguridad: rechaza si el proceso intenta ejecutar como root
       containers:
         - name: prometheus
-          image: prom/prometheus:v2.48.0
+          image: prom/prometheus:v2.48.0   # Versión fija para reproducibilidad
           args:
-            - "--config.file=/etc/prometheus/prometheus.yml"
-            - "--storage.tsdb.path=/prometheus"
-            - "--storage.tsdb.retention.time=15d"
-            - "--web.enable-lifecycle"
+            - "--config.file=/etc/prometheus/prometheus.yml"      # Ruta del ConfigMap montado como volumen
+            - "--storage.tsdb.path=/prometheus"                   # Directorio del PVC donde se almacenan las series
+            - "--storage.tsdb.retention.time=15d"                 # Retención de 15 días; ajustar según tamaño del PVC
+            - "--web.enable-lifecycle"                            # Permite recargar config via POST /-/reload sin reiniciar
           ports:
-            - containerPort: 9090
+            - containerPort: 9090   # Puerto de la API y UI de Prometheus
           resources:
             requests:
               cpu: 200m
@@ -311,11 +332,11 @@ spec:
               memory: 1Gi
           volumeMounts:
             - name: config
-              mountPath: /etc/prometheus
+              mountPath: /etc/prometheus              # Monta prometheus.yml desde prometheus-config ConfigMap
             - name: rules
-              mountPath: /etc/prometheus/rules
+              mountPath: /etc/prometheus/rules        # Monta alerts.yml desde prometheus-rules ConfigMap
             - name: prometheus-storage
-              mountPath: /prometheus
+              mountPath: /prometheus                  # Monta el PVC para persistencia de datos TSDB
           readinessProbe:
             httpGet:
               path: /-/ready
@@ -340,6 +361,8 @@ spec:
             claimName: prometheus-pvc
 
 ---
+# --- Service de Prometheus (ClusterIP) ---
+# Accesible desde Grafana internamente y expuesto al exterior via Ingress (08-ingress.yaml)
 apiVersion: v1
 kind: Service
 metadata:
@@ -370,20 +393,20 @@ metadata:
 data:
   alertmanager.yml: |
     global:
-      resolve_timeout: 5m
+      resolve_timeout: 5m   # Tiempo tras el que se considera resuelta una alerta sin datos
       # Ajustar en producción con SMTP real o receptor Slack/PagerDuty
       # smtp_smarthost: 'smtp.example.com:587'
       # smtp_from: 'alertmanager@example.com'
 
     route:
-      group_by: ['alertname', 'namespace']
-      group_wait: 30s
-      group_interval: 5m
-      repeat_interval: 12h
+      group_by: ['alertname', 'namespace']  # Agrupa alertas del mismo tipo y namespace en una sola notificación
+      group_wait: 30s          # Espera 30s antes de enviar el primer grupo (acumula alertas relacionadas)
+      group_interval: 5m       # Intervalo entre actualizaciones de grupos ya notificados
+      repeat_interval: 12h     # Reenvía la notificación cada 12h si la alerta sigue activa
       receiver: 'default-receiver'
       routes:
         - match:
-            severity: critical
+            severity: critical  # Enruta alertas críticas al receptor dedicado (no continúa al siguiente route)
           receiver: 'critical-receiver'
           continue: false
         - match:
@@ -392,14 +415,14 @@ data:
           continue: false
 
     receivers:
-      - name: 'default-receiver'
+      - name: 'default-receiver'   # Receptor vacío para alertas no enrutadas (sin-ops silencioso)
 
       - name: 'critical-receiver'
         slack_configs:
           - api_url: 'CHANGE_ME_SLACK_WEBHOOK_URL'  # Cambiar por tu Incoming Webhook de Slack
             channel: '#alertas-k8s'
             icon_emoji: ':fire:'
-            send_resolved: true
+            send_resolved: true    # Notifica también cuando la alerta se resuelve
             title: '[{{ .Status | toUpper }}] {{ .GroupLabels.alertname }}'
             text: |
               {{ range .Alerts }}
@@ -425,6 +448,8 @@ data:
               {{ end }}
 
     inhibit_rules:
+      # Si hay una alerta crítica sobre un pod, suprime las warnings del mismo pod
+      # Evita notificar por HighCPU si el pod ya está caído (PodDown)
       - source_match:
           severity: 'critical'
         target_match:
@@ -432,6 +457,7 @@ data:
         equal: ['alertname', 'namespace']
 
 ---
+# --- Deployment de Alertmanager ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -461,9 +487,9 @@ spec:
         - name: alertmanager
           image: prom/alertmanager:v0.26.0
           args:
-            - "--config.file=/etc/alertmanager/alertmanager.yml"
-            - "--storage.path=/alertmanager"
-            - "--web.listen-address=:9093"
+            - "--config.file=/etc/alertmanager/alertmanager.yml"  # Config desde ConfigMap
+            - "--storage.path=/alertmanager"                      # Almacenamiento en memoria (emptyDir)
+            - "--web.listen-address=:9093"                        # Puerto de escucha — referenciado en prometheus.yml
           ports:
             - containerPort: 9093
           resources:
@@ -489,15 +515,17 @@ spec:
             - name: config
               mountPath: /etc/alertmanager
             - name: storage
-              mountPath: /alertmanager
+              mountPath: /alertmanager   # emptyDir: el estado de silenciamientos se pierde en reinicios
       volumes:
         - name: config
           configMap:
             name: alertmanager-config
         - name: storage
-          emptyDir: {}
+          emptyDir: {}   # Sin persistencia: suficiente para entorno de prácticas
 
 ---
+# --- Service de Alertmanager (ClusterIP) ---
+# Solo necesita ser accesible desde Prometheus en el mismo namespace
 apiVersion: v1
 kind: Service
 metadata:
