@@ -1,4 +1,4 @@
-# 00-namespace.yaml — Documento de referencia
+# namespace.yaml — Documento de referencia
 
 ## ¿Qué hace este archivo?
 
@@ -37,4 +37,4 @@ Velero usa el perfil `privileged` (sin restricciones) porque necesita acceso esp
 
 ## Relación con otros archivos
 
-Las NetworkPolicies definidas en `07-network-policy.yaml` usan estos namespaces como unidades de aislamiento de red — `databases` solo acepta conexiones desde `wordpress`, `monitoring` solo acepta scraping desde Prometheus, etc. Sin los namespaces correctamente definidos, las NetworkPolicies no funcionan.
+Las NetworkPolicies definidas en `network-policy.yaml` usan estos namespaces como unidades de aislamiento de red — `databases` solo acepta conexiones desde `wordpress`, `monitoring` solo acepta scraping desde Prometheus, etc. Sin los namespaces correctamente definidos, las NetworkPolicies no funcionan.
