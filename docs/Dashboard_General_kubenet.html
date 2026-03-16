@@ -8,91 +8,97 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#060B12;font-family:'Inter',-apple-system,sans-serif;color:#E2E8F0;min-height:100vh}
 button{font-family:inherit;cursor:pointer}
-a{color:inherit;text-decoration:none}
-
-/* HEADER */
 #header{border-bottom:1px solid #1E293B;padding:16px 28px;display:flex;align-items:center;gap:16px;background:#0D1117;position:sticky;top:0;z-index:50;flex-wrap:wrap}
 .logo{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#3B82F6,#8B5CF6);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
-.logo-title{font-size:16px;font-weight:700;color:#F8FAFC;letter-spacing:-0.3px}
+.logo-title{font-size:16px;font-weight:700;color:#F8FAFC}
 .logo-sub{font-size:11px;color:#475569;font-family:monospace}
 .tabs{margin-left:auto;display:flex;gap:4px;flex-wrap:wrap}
 .tab-btn{background:transparent;border:1px solid transparent;color:#64748B;border-radius:8px;padding:8px 16px;font-size:13px;display:flex;align-items:center;gap:6px;transition:all .15s}
 .tab-btn.active{background:#1E293B;border-color:#3B82F6;color:#7DD3FC;font-weight:600}
-
-/* STATS BAR */
-#stats{display:flex;gap:0;border-bottom:1px solid #1E293B;background:#0D1117}
+#stats{display:flex;border-bottom:1px solid #1E293B;background:#0D1117}
 .stat{flex:1;padding:10px 20px;border-right:1px solid #1E293B;text-align:center}
 .stat-val{font-size:20px;font-weight:800;font-family:monospace}
 .stat-label{color:#475569;font-size:10px;margin-top:2px}
-
-/* MAIN */
 #main{padding:24px 28px;transition:padding-right .3s}
 #main.panel-open{padding-right:408px}
-
-/* TABS CONTENT */
 .tab-content{display:none}
 .tab-content.active{display:block}
-
 /* DIAGRAM */
-.diagram-hint{color:#64748B;font-size:12px;margin-bottom:12px;text-align:center}
+.diag-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px}
+.diag-hint{color:#64748B;font-size:12px}
+.diag-filters{display:flex;gap:6px;flex-wrap:wrap}
+.flt-btn{background:transparent;border:1px solid #2A3441;color:#64748B;border-radius:6px;padding:5px 12px;font-size:11px;font-family:monospace;transition:all .2s}
+.flt-btn.active{background:#1E293B;color:#E2E8F0;border-color:#475569}
 .diagram-wrap{overflow-x:auto}
 svg{display:block;margin:0 auto}
-.legend{display:flex;gap:20px;justify-content:center;margin-top:16px;flex-wrap:wrap}
+.legend{display:flex;gap:20px;justify-content:center;margin-top:14px;flex-wrap:wrap}
 .legend-item{display:flex;align-items:center;gap:6px}
 .legend-dot{width:10px;height:10px;border-radius:2px}
 .legend-text{color:#64748B;font-size:11px;font-family:monospace}
-
+#conn-tip{position:fixed;background:#0D1117;border:1px solid #334155;border-radius:8px;padding:10px 14px;font-size:11px;color:#94A3B8;pointer-events:none;z-index:300;max-width:240px;font-family:monospace;box-shadow:0 8px 32px #00000080;display:none}
 /* FILES */
 .filter-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
 .filter-btn{background:transparent;border:1px solid #2A3441;color:#64748B;border-radius:6px;padding:4px 12px;font-size:12px;transition:all .15s}
 .filter-btn.active{background:#1E293B;border-color:#3B82F6;color:#7DD3FC}
 .files-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px}
 .file-card{background:#0D1117;border:1px solid #1E293B;border-radius:10px;padding:16px;cursor:pointer;text-align:left;transition:all .15s;width:100%}
-.file-card:hover{background:#161B22}
 .file-card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
 .file-card-left{display:flex;align-items:center;gap:8px}
-.file-name{color:#E2E8F0;font-size:13px;font-weight:600;font-family:'JetBrains Mono',monospace}
-.file-badge{border-radius:4px;padding:2px 8px;font-size:10px;white-space:nowrap;border-width:1px;border-style:solid}
-.file-desc{color:#64748B;font-size:12px;line-height:1.6;text-align:left}
-
+.file-name{color:#E2E8F0;font-size:13px;font-weight:600;font-family:monospace}
+.file-badge{border-radius:4px;padding:2px 8px;font-size:10px;white-space:nowrap;border:1px solid}
+.file-desc{color:#64748B;font-size:12px;line-height:1.6}
 /* NAMESPACES */
 .ns-list{display:flex;flex-direction:column;gap:16px}
-.ns-block{border-radius:12px;overflow:hidden;border-width:1px;border-style:solid}
+.ns-block{border-radius:12px;overflow:hidden;border:1px solid}
 .ns-header{width:100%;background:none;border:none;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;cursor:pointer}
 .ns-header-left{display:flex;align-items:center;gap:12px}
-.ns-dot-live{width:8px;height:8px;border-radius:50%}
-.ns-title{font-size:15px;font-weight:700;font-family:'JetBrains Mono',monospace}
+.ns-dot{width:8px;height:8px;border-radius:50%}
+.ns-title{font-size:15px;font-weight:700;font-family:monospace}
 .ns-desc{color:#475569;font-size:12px}
 .ns-right{display:flex;align-items:center;gap:8px}
-.ns-count{border-radius:4px;padding:2px 8px;font-size:11px;border-width:1px;border-style:solid}
-.ns-toggle{color:#475569;font-size:14px}
+.ns-count{border-radius:4px;padding:2px 8px;font-size:11px;border:1px solid}
 .ns-body{padding:16px 20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
-.pod-card{background:#0D1117;border-radius:8px;padding:12px 14px;cursor:pointer;text-align:left;transition:all .15s;border-width:1px;border-style:solid;width:100%}
+.pod-card{background:#0D1117;border-radius:8px;padding:12px 14px;cursor:pointer;text-align:left;transition:all .15s;border:1px solid;width:100%}
 .pod-icon{font-size:22px;margin-bottom:6px}
-.pod-name{font-size:12px;font-weight:600;font-family:'JetBrains Mono',monospace;margin-bottom:4px}
+.pod-name{font-size:12px;font-weight:600;font-family:monospace;margin-bottom:4px}
 .pod-badges{display:flex;gap:4px;flex-wrap:wrap}
 .pod-badge{border-radius:3px;padding:1px 6px;font-size:10px}
 .pod-ports{margin-top:6px;color:#475569;font-size:10px;font-family:monospace}
-
 /* DETAIL PANEL */
-#detail-panel{position:fixed;right:0;top:0;bottom:0;width:380px;background:#0D1117;z-index:100;overflow-y:auto;padding:24px;display:none}
+#detail-panel{position:fixed;right:0;top:0;bottom:0;width:380px;background:#0D1117;z-index:100;overflow-y:auto;padding:24px;display:none;border-left:1px solid #1E293B}
 #detail-panel.open{display:block}
 .dp-close{background:none;border:1px solid #2A3441;color:#64748B;padding:4px 10px;border-radius:6px;margin-bottom:20px;font-size:12px}
 .dp-icon{font-size:32px;margin-bottom:12px}
-.dp-kind{font-size:11px;font-family:'JetBrains Mono',monospace;margin-bottom:6px;text-transform:uppercase;letter-spacing:2px}
+.dp-kind{font-size:11px;font-family:monospace;margin-bottom:6px;text-transform:uppercase;letter-spacing:2px}
 .dp-name{color:#E2E8F0;font-size:20px;font-weight:700;margin-bottom:16px;line-height:1.3}
 .dp-image-box{background:#161B22;border:1px solid #2A3441;border-radius:6px;padding:8px 12px;margin-bottom:16px}
 .dp-image-label{color:#64748B;font-size:10px;margin-bottom:4px;text-transform:uppercase;letter-spacing:1px}
-.dp-image-val{color:#7DD3FC;font-size:12px;font-family:'JetBrains Mono',monospace}
+.dp-image-val{color:#7DD3FC;font-size:12px;font-family:monospace}
 .dp-desc{color:#94A3B8;font-size:13px;line-height:1.7;margin-bottom:20px}
-.dp-section-label{color:#64748B;font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.dp-sec-label{color:#64748B;font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
 .dp-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px}
-.dp-tag{border-radius:4px;padding:2px 8px;font-size:12px;font-family:'JetBrains Mono',monospace}
+.dp-connect-item{background:#161B22;border:1px solid #2A3441;color:#94A3B8;border-radius:4px;padding:5px 10px;font-size:11px;font-family:monospace;display:flex;flex-direction:column;gap:2px}
+.dp-connect-proto{color:#475569;font-size:10px}
 .dp-concept{background:#1E293B;border:1px solid #334155;color:#94A3B8;border-radius:4px;padding:2px 8px;font-size:11px}
-
+/* FLOW */
+.flow-wrap{max-width:860px;margin:0 auto}
+.flow-step{display:flex;align-items:flex-start;gap:20px;margin-bottom:6px}
+.flow-left{display:flex;flex-direction:column;align-items:center;flex-shrink:0}
+.flow-num{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;font-family:monospace;border:2px solid;flex-shrink:0}
+.flow-vline{width:2px;flex:1;min-height:20px;margin-top:4px}
+.flow-body{background:#0D1117;border:1px solid #1E293B;border-radius:12px;padding:16px 20px;flex:1}
+.flow-title{font-size:14px;font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:8px}
+.flow-desc{color:#64748B;font-size:12px;line-height:1.7}
+.flow-children{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;margin-top:12px}
+.flow-child{background:#161B22;border:1px solid #2A3441;border-radius:8px;padding:10px;display:flex;gap:8px}
+.flow-child-name{color:#E2E8F0;font-size:11px;font-weight:600;margin-bottom:3px;font-family:monospace}
+.flow-child-desc{color:#64748B;font-size:11px;line-height:1.5}
+.flow-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.flow-tag{border-radius:4px;padding:2px 8px;font-size:10px;font-family:monospace;border:1px solid}
+.flow-arrow{text-align:center;color:#2A3441;font-size:16px;margin:0 0 6px 50px}
 @media(max-width:700px){
   #main.panel-open{padding-right:24px}
-  #detail-panel{width:100%;top:auto;height:65vh;overflow-y:auto}
+  #detail-panel{width:100%;top:auto;height:65vh}
   .files-grid{grid-template-columns:1fr}
   .tabs{margin-left:0}
   #stats{flex-wrap:wrap}
@@ -101,490 +107,571 @@ svg{display:block;margin:0 auto}
 </style>
 </head>
 <body>
-
-<!-- HEADER -->
 <div id="header">
   <div class="logo">⎈</div>
-  <div>
-    <div class="logo-title">KubeNet</div>
-    <div class="logo-sub">WordPress HA · Minikube · 7 namespaces · 19 NetworkPolicies</div>
-  </div>
+  <div><div class="logo-title">KubeNet</div><div class="logo-sub">WordPress HA · Minikube · 7 namespaces · 19 NetworkPolicies</div></div>
   <div class="tabs">
-    <button class="tab-btn active" onclick="switchTab('diagram')"><span>🗺️</span> Arquitectura</button>
-    <button class="tab-btn" onclick="switchTab('files')"><span>📄</span> Archivos</button>
-    <button class="tab-btn" onclick="switchTab('namespaces')"><span>📦</span> Namespaces</button>
+    <button class="tab-btn active" onclick="switchTab('diagram')">🗺️ Arquitectura</button>
+    <button class="tab-btn" onclick="switchTab('files')">📄 Archivos</button>
+    <button class="tab-btn" onclick="switchTab('namespaces')">📦 Namespaces</button>
+    <button class="tab-btn" onclick="switchTab('flow')">🔄 Flujo</button>
   </div>
 </div>
-
-<!-- STATS -->
 <div id="stats">
   <div class="stat"><div class="stat-val" style="color:#3B82F6">7</div><div class="stat-label">Namespaces</div></div>
   <div class="stat"><div class="stat-val" style="color:#10B981">14</div><div class="stat-label">Workloads</div></div>
-  <div class="stat"><div class="stat-val" style="color:#F59E0B">20</div><div class="stat-label">Archivos YAML</div></div>
+  <div class="stat"><div class="stat-val" style="color:#F59E0B">21</div><div class="stat-label">Archivos YAML</div></div>
   <div class="stat"><div class="stat-val" style="color:#EC4899">19</div><div class="stat-label">NetworkPolicies</div></div>
   <div class="stat"><div class="stat-val" style="color:#8B5CF6">2</div><div class="stat-label">Certificados TLS</div></div>
   <div class="stat"><div class="stat-val" style="color:#F97316">3</div><div class="stat-label">CronJobs</div></div>
 </div>
-
-<!-- MAIN -->
 <div id="main">
-
-  <!-- DIAGRAM TAB -->
+  <!-- DIAGRAM -->
   <div id="tab-diagram" class="tab-content active">
-    <div class="diagram-hint">Haz clic en cualquier componente para ver detalles</div>
-    <div class="diagram-wrap">
-      <svg id="arch-svg" width="900" height="460" viewBox="0 0 900 460"></svg>
+    <div class="diag-toolbar">
+      <div class="diag-hint">Hover para resaltar conexiones · Clic para ver detalles</div>
+      <div class="diag-filters">
+        <button class="flt-btn active" onclick="setLayer('all')">Todo</button>
+        <button class="flt-btn" onclick="setLayer('app')" style="color:#3B82F6">App</button>
+        <button class="flt-btn" onclick="setLayer('data')" style="color:#F59E0B">Datos</button>
+        <button class="flt-btn" onclick="setLayer('obs')" style="color:#10B981">Observabilidad</button>
+        <button class="flt-btn" onclick="setLayer('sec')" style="color:#EC4899">Seguridad</button>
+        <button class="flt-btn" onclick="setLayer('bkp')" style="color:#F97316">Backup</button>
+      </div>
     </div>
+    <div class="diagram-wrap"><svg id="arch-svg" width="980" height="490" viewBox="0 0 980 490"></svg></div>
     <div class="legend" id="legend"></div>
   </div>
-
-  <!-- FILES TAB -->
+  <!-- FILES -->
   <div id="tab-files" class="tab-content">
     <div class="filter-bar" id="filter-bar"></div>
     <div class="files-grid" id="files-grid"></div>
   </div>
-
-  <!-- NAMESPACES TAB -->
+  <!-- NAMESPACES -->
   <div id="tab-namespaces" class="tab-content">
     <div class="ns-list" id="ns-list"></div>
   </div>
+  <!-- FLOW -->
+  <div id="tab-flow" class="tab-content">
+    <div class="flow-wrap" id="flow-container"></div>
+  </div>
 </div>
-
-<!-- DETAIL PANEL -->
+<!-- PANEL -->
 <div id="detail-panel">
   <button class="dp-close" onclick="closePanel()">← cerrar</button>
   <div class="dp-icon" id="dp-icon"></div>
   <div class="dp-kind" id="dp-kind"></div>
   <div class="dp-name" id="dp-name"></div>
-  <div id="dp-image-box" class="dp-image-box" style="display:none">
-    <div class="dp-image-label">Image</div>
-    <div class="dp-image-val" id="dp-image"></div>
-  </div>
+  <div id="dp-image-box" class="dp-image-box" style="display:none"><div class="dp-image-label">Image</div><div class="dp-image-val" id="dp-image"></div></div>
   <div class="dp-desc" id="dp-desc"></div>
-  <div id="dp-ports-wrap" style="margin-bottom:16px;display:none">
-    <div class="dp-section-label">Puertos</div>
-    <div class="dp-tags" id="dp-ports"></div>
-  </div>
-  <div id="dp-connects-wrap" style="margin-bottom:16px;display:none">
-    <div class="dp-section-label">Conecta con</div>
-    <div class="dp-tags" id="dp-connects"></div>
-  </div>
-  <div id="dp-concepts-wrap" style="display:none">
-    <div class="dp-section-label">Conceptos K8s</div>
-    <div class="dp-tags" id="dp-concepts"></div>
-  </div>
+  <div id="dp-ports-wrap" style="margin-bottom:16px;display:none"><div class="dp-sec-label">Puertos</div><div class="dp-tags" id="dp-ports"></div></div>
+  <div id="dp-connects-wrap" style="margin-bottom:16px;display:none"><div class="dp-sec-label">Conecta con</div><div class="dp-tags" id="dp-connects"></div></div>
+  <div id="dp-concepts-wrap" style="display:none"><div class="dp-sec-label">Conceptos K8s</div><div class="dp-tags" id="dp-concepts"></div></div>
 </div>
+<div id="conn-tip"></div>
 
 <script>
-// ── DATA ──────────────────────────────────────────────────────────────────────
-
-const NAMESPACES = {
-  wordpress:{color:"#3B82F6",glow:"#3B82F620",label:"wordpress",desc:"Capa de presentación — WordPress y su configuración",pods:[
-    {id:"wordpress",name:"wordpress",kind:"Deployment",replicas:"2–5",image:"wordpress:6.4",icon:"🌐",desc:"CMS principal. Stateless: los uploads van a MinIO vía plugin WP Offload Media. Escala horizontalmente con HPA (CPU >50%, Memoria >70%). SecurityContext con runAsUser:33, readOnlyRootFilesystem y capabilities DROP ALL.",ports:[80],connects:["mariadb","redis-sentinel","minio","otel-collector"]},
+// ── DATA ────────────────────────────────────────────────────────────────────
+const NS={
+  wordpress:{color:"#3B82F6",label:"wordpress",desc:"Capa de presentación — WordPress HA con KEDA",pods:[
+    {id:"wordpress",name:"wordpress",kind:"Deployment",replicas:"2–10 (KEDA)",image:"wordpress:6.4",icon:"🌐",
+     desc:"CMS principal stateless. Uploads a MinIO via WP Offload Media. KEDA escala 2–10 réplicas por req/s (threshold 100) + CPU fallback >70%. SecurityContext: runAsUser:33, readOnlyRootFilesystem, DROP ALL. WORDPRESS_CONFIG_EXTRA inyecta Redis Sentinel, MinIO S3 y OTEL en wp-config.php.",
+     ports:[{p:80,proto:"HTTP",desc:"Apache/PHP-FPM desde nginx Ingress"},{p:30080,proto:"NodePort",desc:"Acceso directo al nodo"}],
+     connects:[{to:"mariadb.databases:3306",proto:"TCP/MySQL",desc:"Escrituras y lecturas BD"},{to:"redis-sentinel.databases:26379",proto:"TCP/Sentinel",desc:"Descubrimiento del master Redis"},{to:"minio.storage:9000",proto:"HTTP/S3",desc:"Uploads de media"},{to:"otel-collector.monitoring:4318",proto:"OTLP/HTTP",desc:"Trazas PHP"}],
+     concepts:["Deployment","KEDA ScaledObject","SecurityContext","readOnlyRootFilesystem","startupProbe","podAntiAffinity"]}
   ]},
-  databases:{color:"#F59E0B",glow:"#F59E0B20",label:"databases",desc:"Capa de datos — MariaDB HA + Redis Sentinel",pods:[
-    {id:"mariadb-0",name:"mariadb-0",kind:"StatefulSet",replicas:"1 (Primary)",image:"mariadb:10.6",icon:"🗄️",desc:"Nodo PRIMARY de MariaDB. Gestiona escrituras y lecturas. Binary log habilitado (ROW format) para replicación asíncrona hacia mariadb-1. server-id=1. WordPress conecta siempre al Service 'mariadb' que apunta solo a este pod.",ports:[3306],connects:["mariadb-1"]},
-    {id:"mariadb-1",name:"mariadb-1",kind:"StatefulSet",replicas:"1 (Replica)",image:"mariadb:10.6",icon:"🗄️",desc:"Nodo REPLICA de MariaDB. Solo lectura (read-only=1). Recibe replicación asíncrona desde mariadb-0 via relay-log. Configurado por el Job 04b-mariadb-replication-job al desplegar. server-id=2.",ports:[3306],connects:[]},
-    {id:"redis-0",name:"redis-0",kind:"StatefulSet",replicas:"1 (Master)",image:"redis:6.2-alpine",icon:"⚡",desc:"Master de Redis. Acepta escrituras. Cada pod lleva un sidecar Sentinel que monitoriza la salud del Redis local y se coordina con los otros 2 Sentinels para decidir failover automático (quorum=2).",ports:[6379,26379],connects:["redis-1","redis-2"]},
-    {id:"redis-1",name:"redis-1",kind:"StatefulSet",replicas:"1 (Replica)",image:"redis:6.2-alpine",icon:"⚡",desc:"Réplica 1 de Redis. Solo lectura. Replica datos del master vía replicaof. Sidecar Sentinel incluido. En caso de fallo del master, Sentinel promueve la réplica con mayor prioridad.",ports:[6379,26379],connects:[]},
-    {id:"redis-2",name:"redis-2",kind:"StatefulSet",replicas:"1 (Replica)",image:"redis:6.2-alpine",icon:"⚡",desc:"Réplica 2 de Redis. Solo lectura. Tercer nodo del quorum de Sentinel. Garantiza que siempre hay mayoría para decidir failover incluso si un nodo falla.",ports:[6379,26379],connects:[]},
+  databases:{color:"#F59E0B",label:"databases",desc:"Capa de datos — MariaDB HA + Redis HA Sentinel",pods:[
+    {id:"mariadb-0",name:"mariadb-0",kind:"StatefulSet",replicas:"1 — Primary",image:"mariadb:10.6",icon:"🗄️",
+     desc:"PRIMARY MariaDB. Gestiona escrituras. Binary log ROW habilitado (--log-bin, --binlog-format=ROW, --sync-binlog=1). server-id=1. Service 'mariadb' con selector fijo a este pod. Init containers: fix-perms + init-scripts. PVC 5Gi.",
+     ports:[{p:3306,proto:"TCP/MySQL",desc:"SQL + binary log hacia réplica"}],
+     connects:[{to:"mariadb-1:3306",proto:"Binary Log ROW",desc:"Replicación asíncrona"}],
+     concepts:["StatefulSet","binary log","ROW format","selector fijo","volumeClaimTemplates"]},
+    {id:"mariadb-1",name:"mariadb-1",kind:"StatefulSet",replicas:"1 — Replica",image:"mariadb:10.6",icon:"🗄️",
+     desc:"REPLICA MariaDB. --read-only=1. Recibe binary log via relay-log desde mariadb-0. Configurado por el Job mariadb-replication-setup (CHANGE MASTER TO). Service 'mariadb-read' para lecturas. server-id=2. PVC 5Gi.",
+     ports:[{p:3306,proto:"TCP/MySQL",desc:"Solo lectura — Service mariadb-read"}],
+     connects:[],concepts:["StatefulSet","relay-log","read-only","CHANGE MASTER TO"]},
+    {id:"redis-0",name:"redis-0",kind:"StatefulSet",replicas:"1 — Master",image:"redis:7-alpine",icon:"⚡",
+     desc:"Master Redis. Sidecar Sentinel en el mismo pod (loopback 127.0.0.1). Quorum=2 con redis-1 y redis-2. down-after=5000ms. AOF + RDB habilitados.",
+     ports:[{p:6379,proto:"TCP/Redis",desc:"Escritura/lectura"},{p:26379,proto:"TCP/Sentinel",desc:"Quorum y failover"}],
+     connects:[{to:"redis-1:6379",proto:"REPLICAOF",desc:"Replicación"},{to:"redis-2:6379",proto:"REPLICAOF",desc:"Replicación"}],
+     concepts:["StatefulSet","sidecar Sentinel","quorum=2","AOF","RDB"]},
+    {id:"redis-1",name:"redis-1",kind:"StatefulSet",replicas:"1 — Replica",image:"redis:7-alpine",icon:"⚡",
+     desc:"Réplica Redis. replica-read-only yes. Sidecar Sentinel. Participa en quorum de failover.",
+     ports:[{p:6379,proto:"TCP/Redis",desc:"Solo lectura"},{p:26379,proto:"TCP/Sentinel",desc:"Voto quorum"}],
+     connects:[],concepts:["StatefulSet","replica-read-only","Sentinel quorum"]},
+    {id:"redis-2",name:"redis-2",kind:"StatefulSet",replicas:"1 — Replica",image:"redis:7-alpine",icon:"⚡",
+     desc:"Réplica Redis. Tercer nodo del quorum. Garantiza mayoría (2/3) para failover aunque falle un Sentinel.",
+     ports:[{p:6379,proto:"TCP/Redis",desc:"Solo lectura"},{p:26379,proto:"TCP/Sentinel",desc:"Tercer voto quorum"}],
+     connects:[],concepts:["quorum mínimo","split-brain prevention"]}
   ]},
-  monitoring:{color:"#10B981",glow:"#10B98120",label:"monitoring",desc:"Observabilidad — Métricas, Logs, Trazas y Alertas",pods:[
-    {id:"prometheus",name:"prometheus",kind:"Deployment",replicas:"1",image:"prom/prometheus:v2.48.0",icon:"📊",desc:"Recolecta métricas de todos los pods vía Kubernetes Service Discovery. Evalúa reglas de alerta cada 15s. Implementa SLOs con burn rate (99.9% disponibilidad, error budget 43min/mes). Retención 15 días en PVC de 10Gi.",ports:[9090],connects:["alertmanager","grafana"]},
-    {id:"alertmanager",name:"alertmanager",kind:"Deployment",replicas:"1",image:"prom/alertmanager:v0.26.0",icon:"🚨",desc:"Recibe alertas de Prometheus y las enruta por severidad. Agrupa alertas relacionadas, aplica inhibición (si PodDown activo, suprime HighCPU del mismo pod) y envía a Slack via Incoming Webhook. Repeat interval: 12h.",ports:[9093],connects:[]},
-    {id:"grafana",name:"grafana",kind:"Deployment",replicas:"1",image:"grafana/grafana:10.2.3",icon:"📈",desc:"Visualización central. Datasources provisionados como código: Prometheus (métricas) y Loki (logs). Dashboards predefinidos: Kubernetes Overview y WordPress K8s Project con variables de namespace. PVC 5Gi para persistencia.",ports:[3000],connects:["prometheus","loki","jaeger"]},
-    {id:"loki",name:"loki",kind:"Deployment",replicas:"1",image:"grafana/loki:2.9.3",icon:"📋",desc:"Agregación de logs indexada por labels (no por contenido). Schema v13 con TSDB. Retención 31 días. Solo recibe logs de Promtail y los sirve a Grafana. No expuesto al exterior — solo ClusterIP.",ports:[3100,9096],connects:[]},
-    {id:"promtail",name:"promtail",kind:"DaemonSet",replicas:"1/nodo",image:"grafana/promtail:2.9.3",icon:"🔍",desc:"Agente de logs desplegado en cada nodo. Lee /var/log y /var/lib/docker/containers del host. Enriquece cada log con metadata de Kubernetes (namespace, pod, container). Filtra solo namespaces relevantes del proyecto.",ports:[9080],connects:["loki"]},
-    {id:"jaeger",name:"jaeger",kind:"Deployment",replicas:"1",image:"jaegertracing/all-in-one:1.52",icon:"🔭",desc:"Recibe, almacena y visualiza trazas distribuidas. Modo all-in-one con almacenamiento in-memory (10.000 trazas). Acepta OTLP/gRPC (4317) y HTTP (4318). UI en puerto 16686. En producción se conectaría a Elasticsearch.",ports:[16686,4317,4318,14268],connects:[]},
-    {id:"otel-collector",name:"otel-collector",kind:"DaemonSet",replicas:"1/nodo",image:"otel/opentelemetry-collector-contrib:0.91.0",icon:"🔗",desc:"Pipeline de trazas: receivers OTLP → processors (memory_limiter + batch) → exporters hacia Jaeger. DaemonSet para latencia mínima — cada pod envía al agente local. Expone hostPort 4317/4318.",ports:[4317,4318],connects:["jaeger"]},
+  monitoring:{color:"#10B981",label:"monitoring",desc:"Observabilidad — Métricas · Logs · Trazas · Alertas",pods:[
+    {id:"prometheus",name:"prometheus",kind:"Deployment",replicas:"1",image:"prom/prometheus:v2.48.0",icon:"📊",
+     desc:"Pull model, scrape /15s. Service Discovery K8s. SLOs: disponibilidad ≥99.5%, latencia p95 ≤2s. Alertas: WordPressHighErrorRate, WordPressHighLatency, PodCrashLooping. Retención 15d PVC 10Gi.",
+     ports:[{p:9090,proto:"HTTP",desc:"UI y PromQL — via Ingress HTTPS"}],
+     connects:[{to:"alertmanager:9093",proto:"HTTP",desc:"Envío de alertas"},{to:"todos los pods",proto:"HTTP scrape",desc:"Pull /metrics cada 15s"}],
+     concepts:["ClusterRole","kubernetes_sd_configs","relabeling","SLO","recording rules"]},
+    {id:"alertmanager",name:"alertmanager",kind:"Deployment",replicas:"1",image:"prom/alertmanager:v0.26.0",icon:"🚨",
+     desc:"Recibe alertas, agrupa (group_by alertname+namespace), aplica inhibición (PodDown suprime HighCPU) y enruta a Slack via Incoming Webhook. Repeat interval: 12h.",
+     ports:[{p:9093,proto:"HTTP",desc:"API alertas — kubectl port-forward"}],
+     connects:[{to:"Slack Webhook",proto:"HTTPS",desc:"Notificaciones al canal configurado"}],
+     concepts:["routing tree","inhibition","grouping","Slack webhook"]},
+    {id:"grafana",name:"grafana",kind:"Deployment",replicas:"1",image:"grafana/grafana:10.2.3",icon:"📈",
+     desc:"Datasources provisionados como código: Prometheus (isDefault), Loki, Jaeger (tracesToLogsV2 + tracesToMetrics). Dashboards JSON en ConfigMaps: WordPress HA Overview + Kubernetes Cluster. admin/admin123.",
+     ports:[{p:3000,proto:"HTTP",desc:"UI Grafana — via Ingress HTTPS"}],
+     connects:[{to:"prometheus:9090",proto:"PromQL",desc:"Métricas y SLOs"},{to:"loki:3100",proto:"LogQL",desc:"Logs centralizados"},{to:"jaeger-query:16686",proto:"HTTP",desc:"Trazas distribuidas"}],
+     concepts:["Provisioning as code","datasource ConfigMap","dashboard ConfigMap","correlación M-L-T"]},
+    {id:"loki",name:"loki",kind:"Deployment",replicas:"1",image:"grafana/loki:2.9.3",icon:"📋",
+     desc:"Indexa solo por labels. Schema TSDB v13. Retención 31 días con compactor. PVC 10Gi. Solo accesible por Promtail (push) y Grafana (query).",
+     ports:[{p:3100,proto:"HTTP",desc:"Push (Promtail) y query (Grafana)"},{p:9096,proto:"gRPC",desc:"Interno Loki"}],
+     connects:[],concepts:["TSDB v13","label indexing","compactor","LogQL"]},
+    {id:"promtail",name:"promtail",kind:"DaemonSet",replicas:"1/nodo",image:"grafana/promtail:2.9.3",icon:"🔍",
+     desc:"DaemonSet — 1 por nodo. Monta /var/log y /var/lib/docker/containers readOnly. Service Discovery enriquece con namespace/pod/container. Filtra solo namespaces del proyecto.",
+     ports:[{p:9080,proto:"HTTP",desc:"Métricas propias"}],
+     connects:[{to:"loki:3100",proto:"HTTP push",desc:"Envío de logs enriquecidos"}],
+     concepts:["DaemonSet","hostPath","ClusterRole","kubernetes_sd","pipeline docker{}"]},
+    {id:"jaeger",name:"jaeger",kind:"Deployment",replicas:"1",image:"jaegertracing/all-in-one:1.52",icon:"🔭",
+     desc:"all-in-one: collector+query+UI. SPAN_STORAGE_TYPE=memory, 10k trazas. COLLECTOR_OTLP_ENABLED=true. 2 Services: jaeger-collector (OTel→4317) y jaeger-query (Grafana→16686).",
+     ports:[{p:16686,proto:"HTTP",desc:"UI — kubectl port-forward"},{p:4317,proto:"gRPC/OTLP",desc:"Recepción desde OTel Collector"},{p:4318,proto:"HTTP/OTLP",desc:"Alternativa HTTP"}],
+     connects:[],concepts:["distributed tracing","OTLP","in-memory","all-in-one"]},
+    {id:"otel-collector",name:"otel-collector",kind:"DaemonSet",replicas:"1/nodo",image:"otel/opentelemetry-collector-contrib:0.91.0",icon:"🔗",
+     desc:"DaemonSet — 1 por nodo. hostPort 4317/4318. Pipeline: receivers[otlp] → processors[memory_limiter 128MiB + batch 5s/1024] → exporters[otlp→jaeger:4317].",
+     ports:[{p:4317,proto:"gRPC/OTLP",desc:"Recepción (hostPort)"},{p:4318,proto:"HTTP/OTLP",desc:"Recepción HTTP (hostPort)"}],
+     connects:[{to:"jaeger-collector:4317",proto:"gRPC/OTLP",desc:"Reenvío a Jaeger"}],
+     concepts:["DaemonSet","hostPort","memory_limiter","batch processor"]}
   ]},
-  storage:{color:"#8B5CF6",glow:"#8B5CF620",label:"storage",desc:"Almacenamiento de objetos — MinIO S3-compatible",pods:[
-    {id:"minio",name:"minio",kind:"Deployment",replicas:"1",image:"minio/minio:latest",icon:"🗃️",desc:"Servidor S3-compatible. Almacena uploads de WordPress (bucket: wordpress-uploads, acceso público lectura) y backups de MariaDB y uploads (bucket: wordpress-backups). API en 9000, consola en 9001. PVC 10Gi.",ports:[9000,9001],connects:[]},
+  storage:{color:"#8B5CF6",label:"storage",desc:"Almacenamiento de objetos S3-compatible",pods:[
+    {id:"minio",name:"minio",kind:"Deployment",replicas:"1",image:"minio/minio:latest",icon:"🗃️",
+     desc:"S3-compatible. Buckets: wordpress-uploads (public read), wordpress-backups (privado), velero-backups. API :9000, consola :9001. PVC 10Gi. Secrets en namespaces storage y wordpress.",
+     ports:[{p:9000,proto:"HTTP/S3",desc:"API S3 — WordPress, backups, Velero"},{p:9001,proto:"HTTP",desc:"Consola web admin"}],
+     connects:[],concepts:["S3 API","Object Storage","bucket policy","stateless WordPress"]}
   ]},
-  "cert-manager":{color:"#EC4899",glow:"#EC489920",label:"cert-manager",desc:"Gestión automática de certificados TLS",pods:[
-    {id:"cert-manager",name:"cert-manager",kind:"Operator",replicas:"1",image:"cert-manager:latest",icon:"🔐",desc:"Operador que gestiona el ciclo de vida de certificados TLS. Cadena de confianza: selfsigned-issuer → CA raíz (RSA 4096) → ca-issuer → certificados wordpress-tls y monitoring-tls. Renovación automática 30 días antes de expirar.",ports:[],connects:[]},
+  "cert-manager":{color:"#EC4899",label:"cert-manager",desc:"Gestión automática de certificados TLS",pods:[
+    {id:"cert-manager",name:"cert-manager",kind:"Operator (Helm)",replicas:"1",image:"cert-manager (Helm)",icon:"🔐",
+     desc:"PKI self-signed: selfsigned-issuer → CA raíz RSA 4096 → ca-issuer → wordpress-tls + monitoring-tls (SAN). renewBefore:720h. Ingress usa anotación cert-manager.io/cluster-issuer: ca-issuer.",
+     ports:[],
+     connects:[{to:"namespaces wordpress y monitoring",proto:"K8s API",desc:"Crea y renueva Secrets TLS"}],
+     concepts:["ClusterIssuer","Certificate","SAN","PKI chain","RSA 4096","auto-renewal"]}
   ]},
-  velero:{color:"#F97316",glow:"#F9731620",label:"velero",desc:"Backup completo del clúster Kubernetes",pods:[
-    {id:"velero",name:"velero",kind:"Deployment",replicas:"1",image:"velero:latest",icon:"💾",desc:"Backup completo de objetos K8s + snapshots de PVCs vía CSI. Schedule diario 1:00 AM (Europe/Madrid). Namespaces: wordpress + databases. Retención 30 días. Backend: MinIO bucket velero-backups. RTO ~15min.",ports:[],connects:["minio"]},
-  ]},
+  velero:{color:"#F97316",label:"velero",desc:"Backup completo del clúster",pods:[
+    {id:"velero",name:"velero",kind:"Deployment (Helm)",replicas:"1",image:"velero v1.12.4",icon:"💾",
+     desc:"Helm chart vmware-tanzu/velero v5.2.0 + plugin-for-aws v1.8.2. Schedule 1AM diario: namespaces wordpress+databases, TTL 720h. CSI snapshots (addons volumesnapshots + csi-hostpath-driver). Backend MinIO bucket velero-backups.",
+     ports:[],
+     connects:[{to:"minio.storage:9000",proto:"HTTP/S3",desc:"Almacena backups"},{to:"K8s API:6443",proto:"HTTPS",desc:"Lista recursos K8s"}],
+     concepts:["Velero","CSI snapshots","S3 backend","schedule","TTL","restore"]}
+  ]}
 };
 
-const NS_COLORS = {
-  wordpress:     {bg:"#1E3A5F",border:"#3B82F6",text:"#93C5FD",accent:"#3B82F6"},
-  databases:     {bg:"#3D2B0A",border:"#F59E0B",text:"#FCD34D",accent:"#F59E0B"},
-  monitoring:    {bg:"#0A2E1F",border:"#10B981",text:"#6EE7B7",accent:"#10B981"},
-  storage:       {bg:"#2D1B69",border:"#8B5CF6",text:"#C4B5FD",accent:"#8B5CF6"},
+const NSC={
+  wordpress:{bg:"#1E3A5F",border:"#3B82F6",text:"#93C5FD",accent:"#3B82F6"},
+  databases:{bg:"#3D2B0A",border:"#F59E0B",text:"#FCD34D",accent:"#F59E0B"},
+  monitoring:{bg:"#0A2E1F",border:"#10B981",text:"#6EE7B7",accent:"#10B981"},
+  storage:{bg:"#2D1B69",border:"#8B5CF6",text:"#C4B5FD",accent:"#8B5CF6"},
   "cert-manager":{bg:"#4A0E2E",border:"#EC4899",text:"#F9A8D4",accent:"#EC4899"},
-  velero:        {bg:"#431407",border:"#F97316",text:"#FDBA74",accent:"#F97316"},
+  velero:{bg:"#431407",border:"#F97316",text:"#FDBA74",accent:"#F97316"}
 };
 
-const FILES = [
-  {id:"00",name:"00-namespace.yaml",icon:"📁",category:"Infraestructura",desc:"Crea todos los namespaces del proyecto: wordpress, databases, monitoring, storage, cert-manager, velero, security. Aplica labels kubernetes.io/metadata.name necesarias para que los namespaceSelector de las NetworkPolicies funcionen correctamente.",concepts:["Namespace","Labels"]},
-  {id:"01",name:"01-secrets.yaml",icon:"🔑",category:"Seguridad",desc:"Define los Secrets de MariaDB (root + user password), Redis y MinIO en los namespaces que los necesitan. Los Secrets se duplican entre namespaces porque un pod solo puede referenciar Secrets de su propio namespace. Valores en base64.",concepts:["Secret","Opaque","base64"]},
-  {id:"02",name:"02-configmap.yaml",icon:"⚙️",category:"Configuración",desc:"ConfigMaps con datos no sensibles: host de MariaDB, nombre de BD, usuario y URL del sitio para WordPress; nombre de BD y usuario para MariaDB. Separa configuración de código y permite actualizarla sin reconstruir imágenes.",concepts:["ConfigMap","Separación config/código"]},
-  {id:"03",name:"03-pvc.yaml",icon:"💿",category:"Almacenamiento",desc:"PersistentVolumeClaim de 2Gi para WordPress (core, plugins, themes). ReadWriteOnce — en Minikube con un solo nodo funciona con múltiples réplicas. MariaDB y Redis NO tienen PVC aquí: usan volumeClaimTemplates en sus StatefulSets.",concepts:["PVC","ReadWriteOnce","StorageClass"]},
-  {id:"04",name:"04-mariadb.yaml",icon:"🗄️",category:"Base de datos",desc:"StatefulSet de 2 réplicas para MariaDB HA. Un script de entrypoint detecta el ordinal del pod (0=PRIMARY, 1=REPLICA) y arranca con la configuración correcta. Service 'mariadb' apunta solo a mariadb-0 via label statefulset.kubernetes.io/pod-name.",concepts:["StatefulSet","Headless Service","podAntiAffinity","initContainers"]},
-  {id:"04b",name:"04b-mariadb-replication-job.yaml",icon:"🔄",category:"Base de datos",desc:"Job de inicialización que configura la replicación MariaDB: espera a que ambos pods estén listos, crea el usuario 'replicator' en el primary, captura la posición del binary log y ejecuta CHANGE MASTER TO en la réplica. Se autoeliminan tras 5 minutos.",concepts:["Job","ttlSecondsAfterFinished","Binary Log Replication"]},
-  {id:"05",name:"05-redis.yaml",icon:"⚡",category:"Caché",desc:"StatefulSet de 3 pods Redis (1 master + 2 replicas) cada uno con un sidecar Sentinel. El script start-redis.sh detecta el ordinal para arrancar como master o replica. Quorum de Sentinel = 2, garantiza failover automático si el master falla.",concepts:["StatefulSet","Sidecar pattern","Redis Sentinel","Quorum"]},
-  {id:"06",name:"06-wordpress.yaml",icon:"🌐",category:"Aplicación",desc:"Deployment de WordPress 6.4 con SecurityContext completo (runAsUser:33, readOnlyRootFilesystem, DROP ALL capabilities). Configura Redis Sentinel, MinIO S3 y OpenTelemetry via WORDPRESS_CONFIG_EXTRA. emptyDir para /tmp y /var/run/apache2.",concepts:["Deployment","SecurityContext","podAntiAffinity","startupProbe"]},
-  {id:"07",name:"07-network-policy.yaml",icon:"🔒",category:"Seguridad",desc:"19 NetworkPolicies implementando modelo zero-trust: default-deny en todos los namespaces + políticas explícitas de allow. Cubre: WordPress↔MariaDB/Redis/MinIO/OTel, Prometheus scraping, Loki↔Promtail/Grafana, backups CronJobs, replicación MariaDB.",concepts:["NetworkPolicy","Zero-trust","namespaceSelector","podSelector"]},
-  {id:"08",name:"08-ingress.yaml",icon:"🚪",category:"Red",desc:"Dos recursos Ingress NGINX: wordpress-ingress (wp-k8s.local, proxy-body-size 64m) y monitoring-ingress (grafana + prometheus con certificado multi-SAN). TLS forzado con cert-manager via anotación cluster-issuer.",concepts:["Ingress","IngressClass","TLS termination","Virtual hosting"]},
-  {id:"09",name:"09-hpa-wordpress.yaml",icon:"📈",category:"Escalado",desc:"HorizontalPodAutoscaler v2 con dos métricas: CPU >50% y Memoria >70%. Rango 2–5 réplicas. Los techos están calibrados contra la ResourceQuota del namespace (5 pods × requests = dentro del límite de 2Gi).",concepts:["HPA v2","autoscaling/v2","múltiples métricas","Metrics Server"]},
-  {id:"10",name:"10-prometheus.yaml",icon:"📊",category:"Observabilidad",desc:"Prometheus + Alertmanager completos. Service Discovery con RBAC para nodos, cAdvisor y pods. Reglas de alerta: PodDown, OOMKill, HighCPU, MariaDBDown. SLOs con burn rate multi-ventana (14.4x crítico, 3x warning). Slack como canal de notificación.",concepts:["ClusterRole","kubernetes_sd_configs","relabeling","SLO burn rate"]},
-  {id:"11",name:"11-loki.yaml",icon:"📋",category:"Observabilidad",desc:"Loki con schema v13/TSDB y Promtail DaemonSet. Retención 31 días con compactor automático. Promtail monta hostPath del nodo y usa Service Discovery para enriquecer logs con metadata de pods. Filtra solo namespaces del proyecto.",concepts:["DaemonSet","hostPath","ClusterRole","log aggregation"]},
-  {id:"12",name:"12-grafana.yaml",icon:"📉",category:"Observabilidad",desc:"Grafana con provisioning como código: datasources (Prometheus + Loki), proveedor de dashboards y dos dashboards JSON embebidos en ConfigMaps. subPath para montar ficheros individuales. Credenciales desde Secret.",concepts:["Provisioning","subPath volumeMount","Dashboard as code"]},
-  {id:"13",name:"13-pdb.yaml",icon:"🛡️",category:"Disponibilidad",desc:"PodDisruptionBudget para WordPress con minAvailable:1. Garantiza que kubectl drain y rolling updates nunca dejan el servicio sin pods. Solo protege contra disrupciones voluntarias — no contra fallos de nodo.",concepts:["PodDisruptionBudget","disrupciones voluntarias","minAvailable"]},
-  {id:"14",name:"14-resource-quota.yaml",icon:"⚖️",category:"Gobernanza",desc:"LimitRange + ResourceQuota para namespaces wordpress y databases. Valores calculados para soportar HPA maxReplicas:5. LimitRange asigna defaults a pods sin resources declarados. Aislamiento de recursos entre namespaces.",concepts:["LimitRange","ResourceQuota","requests vs limits","QoS"]},
-  {id:"15",name:"15-cert-manager.yaml",icon:"🔐",category:"Seguridad",desc:"Cadena de confianza TLS self-signed en 5 pasos: selfsigned-issuer → CA raíz RSA 4096 → ca-issuer → certificados wordpress-tls y monitoring-tls (multi-SAN). Renovación automática 30 días antes de expirar. CA en namespace cert-manager.",concepts:["ClusterIssuer","Certificate","SAN","PKI chain"]},
-  {id:"16",name:"16-minio.yaml",icon:"🗃️",category:"Almacenamiento",desc:"MinIO S3-compatible en namespace storage. Job de inicialización crea buckets wordpress-uploads (público lectura) y wordpress-backups. Secrets duplicados en namespaces storage y wordpress. Hace WordPress stateless respecto a media.",concepts:["Object Storage","S3 API","Job init pattern","stateless apps"]},
-  {id:"17",name:"17-tracing.yaml",icon:"🔭",category:"Observabilidad",desc:"Jaeger all-in-one + OTel Collector DaemonSet. Pipeline: WordPress → OTel Collector (hostPort 4317/4318) → Jaeger (memoria, 10k trazas) → Grafana datasource. Dos Services para Jaeger: jaeger-collector y jaeger-query (alias para Grafana).",concepts:["OpenTelemetry","DaemonSet","hostPort","OTLP protocol"]},
-  {id:"18",name:"18-backup.yaml",icon:"💿",category:"Backup",desc:"3 CronJobs: mariadb-backup (2AM, mysqldump + gzip → MinIO), wordpress-uploads-backup (3AM, tar.gz → MinIO), backup-cleanup (domingo 4AM, elimina >30 días). Job de restauración suspendido con instrucciones inline. RPO ~24h, RTO ~15min.",concepts:["CronJob","concurrencyPolicy","ttlSecondsAfterFinished","RPO/RTO"]},
-  {id:"19",name:"19-velero.yaml",icon:"💾",category:"Backup",desc:"Velero backup completo: objetos K8s + snapshots CSI de PVCs. Backend MinIO (bucket velero-backups). Schedule diario 1AM. NetworkPolicy permite egress hacia MinIO:9000 y API K8s:6443. Restauración: velero restore create --from-backup.",concepts:["Velero","CSI snapshots","NetworkPolicy egress","cluster backup"]},
+const FILES=[
+  {id:"ns",name:"namespace.yaml",icon:"📁",category:"Infraestructura",desc:"7 namespaces con Pod Security Standards: enforce baseline + warn/audit restricted. Velero usa privileged por CSI. Labels kubernetes.io/metadata.name para NetworkPolicies.",concepts:["Namespace","PSS baseline","labels metadata.name"]},
+  {id:"sec",name:"secrets.yaml",icon:"🔑",category:"Seguridad",desc:"Plantilla base64. NO se aplica directamente — fallback manual. deploy.sh genera Sealed Secrets con kubeseal. Secrets duplicados entre namespaces (mínimo privilegio).",concepts:["Secret","Opaque","base64","Sealed Secrets"]},
+  {id:"cm",name:"configmap.yaml",icon:"⚙️",category:"Configuración",desc:"mariadb-config (MYSQL_DATABASE, MYSQL_USER) y wordpress-config (DB_HOST, DB_NAME, DB_USER, SITE_URL). Valores deben coincidir o WordPress falla con 'Error establishing a database connection'.",concepts:["ConfigMap","12-factor","DNS interno K8s"]},
+  {id:"pvc",name:"pvc.yaml",icon:"💿",category:"Almacenamiento",desc:"PVC wordpress-pvc 2Gi. ReadWriteOnce — OK en Minikube (1 nodo). En producción multi-nodo requiere RWX o externalizar uploads a MinIO.",concepts:["PVC","ReadWriteOnce","StorageClass"]},
+  {id:"mdb",name:"mariadb.yaml",icon:"🗄️",category:"Base de datos",desc:"StatefulSet 2 pods. start-mariadb.sh detecta ordinal: PRIMARY (server-id=1, binary log ROW) o REPLICA (read-only). Service 'mariadb' selector fijo a mariadb-0. PVCs 5Gi cada uno.",concepts:["StatefulSet","Headless Service","initContainers","binary log","podAntiAffinity"]},
+  {id:"rep",name:"mariadb-replication-job.yaml",icon:"🔄",category:"Base de datos",desc:"Job post-despliegue. Espera a ambos pods, crea usuario replicator, SHOW MASTER STATUS, CHANGE MASTER TO en mariadb-1. ttlSecondsAfterFinished: 300.",concepts:["Job","ttlSecondsAfterFinished","CHANGE MASTER TO","GRANT REPLICATION SLAVE"]},
+  {id:"red",name:"redis.yaml",icon:"⚡",category:"Caché",desc:"StatefulSet 3 pods + sidecar Sentinel. start-redis.sh detecta rol. Sentinel via loopback 127.0.0.1. Service redis-sentinel :26379. AOF+RDB. quorum=2.",concepts:["StatefulSet","sidecar Sentinel","quorum","AOF","RDB","headless Service"]},
+  {id:"wp",name:"wordpress.yaml",icon:"🌐",category:"Aplicación",desc:"Deployment WordPress 6.4. WORDPRESS_CONFIG_EXTRA: Redis Sentinel, MinIO S3, OTEL. SecurityContext completo. emptyDirs para /tmp y /var/run/apache2. NodePort :30080.",concepts:["Deployment","WORDPRESS_CONFIG_EXTRA","SecurityContext","emptyDir","startupProbe"]},
+  {id:"np",name:"network-policy.yaml",icon:"🔒",category:"Seguridad",desc:"19 NetworkPolicies zero-trust. 4 default-deny + 15 allow explícitos con namespaceSelector+podSelector. Cubre todos los flujos: Ingress, WP↔BD, Prometheus scrape, backups, Velero.",concepts:["NetworkPolicy","zero-trust","default-deny","namespaceSelector","podSelector"]},
+  {id:"ing",name:"ingress.yaml",icon:"🚪",category:"Red",desc:"2 Ingress NGINX. wordpress-ingress: wp-k8s.local, proxy-body-size 64m, HTTPS forzado. monitoring-ingress: grafana + prometheus con certificado multi-SAN.",concepts:["Ingress","TLS termination","SAN","ssl-redirect","virtual hosting"]},
+  {id:"keda",name:"keda-wordpress.yaml",icon:"📈",category:"Escalado",desc:"ScaledObject KEDA. Trigger: sum(rate(nginx_ingress_controller_requests[1m])) threshold 100 req/s. CPU fallback >70%. Scale-up: +2/30s. Scale-down: -1/60s.",concepts:["KEDA","ScaledObject","Prometheus trigger","scale behavior","proactive scaling"]},
+  {id:"prom",name:"prometheus.yaml",icon:"📊",category:"Observabilidad",desc:"Prometheus v2.48.0 + Alertmanager v0.26.0. ClusterRole Service Discovery. SLOs recording rules. Alertas con routing Slack. Configura slack_api_url antes de desplegar.",concepts:["ClusterRole","kubernetes_sd_configs","SLO","AlertManager routing","Slack webhook"]},
+  {id:"lok",name:"loki.yaml",icon:"📋",category:"Observabilidad",desc:"Loki v2.9.3 (TSDB v13, retención 31d, PVC 10Gi) + Promtail DaemonSet. Monta hostPath del nodo. Service Discovery enriquece logs. Filtra namespaces del proyecto.",concepts:["Loki TSDB","compactor","DaemonSet hostPath","ClusterRole","label enrichment"]},
+  {id:"graf",name:"grafana.yaml",icon:"📉",category:"Observabilidad",desc:"Grafana v10.2.3. Datasources y dashboards provisionados como código en ConfigMaps. Correlación cruzada Prometheus+Loki+Jaeger (tracesToLogsV2, tracesToMetrics).",concepts:["Grafana provisioning","datasource as code","dashboard ConfigMap","subPath"]},
+  {id:"pdb",name:"pdb.yaml",icon:"🛡️",category:"Disponibilidad",desc:"PodDisruptionBudget WordPress: minAvailable:1. kubectl drain y rolling updates nunca dejan el namespace sin pods.",concepts:["PodDisruptionBudget","minAvailable","disrupciones voluntarias"]},
+  {id:"rq",name:"resource-quota.yaml",icon:"⚖️",category:"Gobernanza",desc:"LimitRange + ResourceQuota para wordpress y databases. LimitRange asigna defaults a pods sin resources. Dimensionado para KEDA max:10 y Redis HA + MariaDB HA.",concepts:["LimitRange","ResourceQuota","requests vs limits","QoS"]},
+  {id:"cert",name:"cert-manager.yaml",icon:"🔐",category:"Seguridad",desc:"PKI self-signed 5 pasos: selfsigned-issuer → CA raíz RSA 4096 → ca-issuer → wordpress-tls → monitoring-tls (2 SANs). renewBefore:720h.",concepts:["ClusterIssuer","Certificate","SAN","PKI chain","RSA 4096","auto-renewal"]},
+  {id:"min",name:"minio.yaml",icon:"🗃️",category:"Almacenamiento",desc:"MinIO Deployment + PVC 10Gi. Job minio-setup crea buckets. Secrets en storage y wordpress. imagePullPolicy: Never. API S3 :9000, consola :9001.",concepts:["MinIO","S3 API","Job init","bucket policy","imagePullPolicy Never"]},
+  {id:"trc",name:"tracing.yaml",icon:"🔭",category:"Observabilidad",desc:"Jaeger all-in-one v1.52 (memory 10k) + OTel Collector DaemonSet v0.91.0. Pipeline: receivers[otlp] → processors[memory_limiter+batch] → exporters[jaeger]. 2 Services Jaeger.",concepts:["Jaeger all-in-one","OTLP","DaemonSet","hostPort","memory_limiter","batch"]},
+  {id:"bkp",name:"backup.yaml",icon:"💿",category:"Backup",desc:"3 CronJobs: mariadb-backup (2AM, mysqldump --single-transaction → MinIO), uploads-backup (3AM, tar.gz PVC → MinIO), cleanup (domingos 4AM, >30d). Job restore suspend:true. RPO ~24h, RTO ~15min.",concepts:["CronJob","concurrencyPolicy Forbid","mysqldump","RPO","RTO","suspend Job"]},
+  {id:"vel",name:"velero.yaml",icon:"💾",category:"Backup",desc:"Job velero-bucket-setup crea bucket velero-backups. NetworkPolicy egress → MinIO:9000 + API:6443. Velero instalado via Helm: v1.12.4 + plugin-for-aws v1.8.2. Schedule 1AM, TTL 720h.",concepts:["Velero","CSI snapshots","NetworkPolicy egress","Helm","TTL"]}
 ];
 
-const CAT_COLORS = {
-  "Infraestructura":"#64748B","Seguridad":"#EC4899","Configuración":"#F59E0B",
-  "Almacenamiento":"#8B5CF6","Base de datos":"#F59E0B","Caché":"#EF4444",
-  "Aplicación":"#3B82F6","Red":"#06B6D4","Escalado":"#10B981",
-  "Observabilidad":"#10B981","Disponibilidad":"#3B82F6","Gobernanza":"#64748B","Backup":"#F97316",
-};
+const CC={"Infraestructura":"#64748B","Seguridad":"#EC4899","Configuración":"#F59E0B","Almacenamiento":"#8B5CF6","Base de datos":"#F59E0B","Caché":"#EF4444","Aplicación":"#3B82F6","Red":"#06B6D4","Escalado":"#10B981","Observabilidad":"#10B981","Disponibilidad":"#3B82F6","Gobernanza":"#64748B","Backup":"#F97316"};
 
-const ARCH_NODES = [
-  {id:"user",       label:"Usuario",              icon:"👤", x:20,  y:185, color:"#64748B", ns:null},
-  {id:"ingress",    label:"NGINX Ingress",         icon:"🚪", x:155, y:185, color:"#3B82F6", ns:"kube-system"},
-  {id:"wordpress",  label:"WordPress\n2–5 pods",   icon:"🌐", x:310, y:120, color:"#3B82F6", ns:"wordpress"},
-  {id:"mariadb",    label:"MariaDB\nPrimary+Replica",icon:"🗄️",x:310, y:268, color:"#F59E0B", ns:"databases"},
-  {id:"redis",      label:"Redis Sentinel\n1M+2R",  icon:"⚡", x:460, y:268, color:"#F59E0B", ns:"databases"},
-  {id:"minio",      label:"MinIO\nS3 Storage",      icon:"🗃️", x:460, y:120, color:"#8B5CF6", ns:"storage"},
-  {id:"prometheus", label:"Prometheus",             icon:"📊", x:610, y:100, color:"#10B981", ns:"monitoring"},
-  {id:"grafana",    label:"Grafana",                icon:"📈", x:610, y:210, color:"#10B981", ns:"monitoring"},
-  {id:"loki",       label:"Loki + Promtail",        icon:"📋", x:610, y:320, color:"#10B981", ns:"monitoring"},
-  {id:"jaeger",     label:"Jaeger + OTel",          icon:"🔭", x:760, y:180, color:"#10B981", ns:"monitoring"},
-  {id:"velero",     label:"Velero Backup",           icon:"💾", x:760, y:320, color:"#F97316", ns:"velero"},
-  {id:"certmgr",    label:"cert-manager\nTLS",      icon:"🔐", x:155, y:320, color:"#EC4899", ns:"cert-manager"},
-];
-const ARCH_EDGES = [
-  {from:"user",to:"ingress",label:"HTTPS"},
-  {from:"ingress",to:"wordpress",label:"HTTP/80"},
-  {from:"ingress",to:"grafana",label:"HTTP/3000"},
-  {from:"wordpress",to:"mariadb",label:"3306"},
-  {from:"wordpress",to:"redis",label:"26379"},
-  {from:"wordpress",to:"minio",label:"S3/9000"},
-  {from:"prometheus",to:"wordpress",label:"scrape"},
-  {from:"prometheus",to:"mariadb",label:"scrape"},
-  {from:"grafana",to:"prometheus",label:"query"},
-  {from:"grafana",to:"loki",label:"query"},
-  {from:"grafana",to:"jaeger",label:"traces"},
-  {from:"wordpress",to:"jaeger",label:"OTLP"},
-  {from:"velero",to:"minio",label:"backup"},
-  {from:"certmgr",to:"ingress",label:"TLS certs"},
+const NODES=[
+  {id:"user",      label:"Browser\nHTTPS",      icon:"👤",x:10, y:210,color:"#64748B",ns:null,layer:"app"},
+  {id:"ingress",   label:"NGINX Ingress\nEntrada TLS",icon:"🚪",x:145,y:210,color:"#3B82F6",ns:"ingress-nginx",layer:"app"},
+  {id:"certmgr",   label:"cert-manager",        icon:"🔐",x:145,y:368,color:"#EC4899",ns:"cert-manager",layer:"sec"},
+  {id:"wordpress", label:"WordPress\n2–10 pods", icon:"🌐",x:305,y:118,color:"#3B82F6",ns:"wordpress",layer:"app"},
+  {id:"keda",      label:"KEDA\nreq/s scaler",  icon:"📈",x:305,y:268,color:"#10B981",ns:"keda",layer:"app"},
+  {id:"mariadb",   label:"MariaDB HA\n0+1",      icon:"🗄️",x:460,y:60, color:"#F59E0B",ns:"databases",layer:"data"},
+  {id:"redis",     label:"Redis HA\n1M+2R+3S",   icon:"⚡",x:460,y:200,color:"#F59E0B",ns:"databases",layer:"data"},
+  {id:"minio",     label:"MinIO\nS3 10Gi",       icon:"🗃️",x:460,y:340,color:"#8B5CF6",ns:"storage",layer:"data"},
+  {id:"prometheus",label:"Prometheus\n+Alertmgr",icon:"📊",x:625,y:60, color:"#10B981",ns:"monitoring",layer:"obs"},
+  {id:"loki",      label:"Loki\n+Promtail",      icon:"📋",x:625,y:200,color:"#10B981",ns:"monitoring",layer:"obs"},
+  {id:"jaeger",    label:"Jaeger\n+OTel",        icon:"🔭",x:625,y:340,color:"#10B981",ns:"monitoring",layer:"obs"},
+  {id:"grafana",   label:"Grafana\nv10.2.3",     icon:"📈",x:800,y:200,color:"#10B981",ns:"monitoring",layer:"obs"},
+  {id:"velero",    label:"Velero\nBackup",       icon:"💾",x:800,y:360,color:"#F97316",ns:"velero",layer:"bkp"},
 ];
 
-// ── STATE ──────────────────────────────────────────────────────────────────
+const EDGES=[
+  {f:"user",      t:"ingress",   l:"HTTPS"},
+  {f:"ingress",   t:"wordpress", l:"HTTP/80"},
+  {f:"ingress",   t:"grafana",   l:"HTTP/3000"},
+  {f:"certmgr",   t:"ingress",   l:"TLS certs"},
+  {f:"wordpress", t:"mariadb",   l:"3306"},
+  {f:"wordpress", t:"redis",     l:"Sentinel\n26379"},
+  {f:"wordpress", t:"minio",     l:"S3/9000"},
+  {f:"wordpress", t:"jaeger",    l:"OTLP\n4318"},
+  {f:"keda",      t:"wordpress", l:"scale\nreq/s"},
+  {f:"prometheus",t:"wordpress", l:"scrape"},
+  {f:"prometheus",t:"mariadb",   l:"scrape"},
+  {f:"prometheus",t:"redis",     l:"scrape"},
+  {f:"grafana",   t:"prometheus",l:"PromQL"},
+  {f:"grafana",   t:"loki",      l:"LogQL"},
+  {f:"grafana",   t:"jaeger",    l:"traces"},
+  {f:"velero",    t:"minio",     l:"backup\nS3"},
+];
 
-let activeTab = 'diagram';
-let selectedItem = null;
-let fileFilter = 'Todos';
-let nsExpanded = {};
-Object.keys(NAMESPACES).forEach(k => nsExpanded[k] = true);
+// ── STATE ────────────────────────────────────────────────────────────────────
+let curTab='diagram', fileFilter='Todos', curLayer='all';
+let nsExp={};
+Object.keys(NS).forEach(k=>nsExp[k]=true);
 
-// ── TABS ───────────────────────────────────────────────────────────────────
-
-function switchTab(tab) {
-  activeTab = tab;
-  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-  document.getElementById('tab-'+tab).classList.add('active');
-  document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.textContent.includes(
-      tab==='diagram'?'Arquitectura':tab==='files'?'Archivos':'Namespaces'
-    ));
-  });
+// ── TABS ─────────────────────────────────────────────────────────────────────
+function switchTab(t){
+  curTab=t;
+  document.querySelectorAll('.tab-content').forEach(e=>e.classList.remove('active'));
+  document.getElementById('tab-'+t).classList.add('active');
+  const lbls={diagram:'Arquitectura',files:'Archivos',namespaces:'Namespaces',flow:'Flujo'};
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.textContent.includes(lbls[t])));
   closePanel();
 }
 
-// ── DIAGRAM ────────────────────────────────────────────────────────────────
+// ── DIAGRAM ───────────────────────────────────────────────────────────────────
+function setLayer(layer){
+  curLayer=layer;
+  document.querySelectorAll('.flt-btn').forEach(b=>b.classList.remove('active'));
+  event.target.classList.add('active');
+  renderDiagram();
+}
 
-function buildDiagram() {
-  const svg = document.getElementById('arch-svg');
-  const nodeMap = {};
-  ARCH_NODES.forEach(n => nodeMap[n.id] = n);
-  const NW = 115, NH = 56;
+function nodeOp(n){ return curLayer==='all'||n.layer===curLayer?1:0.1; }
+function edgeOp(e){
+  if(curLayer==='all') return 1;
+  const fn=NODES.find(n=>n.id===e.f), tn=NODES.find(n=>n.id===e.t);
+  return (fn&&fn.layer===curLayer)||(tn&&tn.layer===curLayer)?1:0.04;
+}
 
-  // defs
-  svg.innerHTML = `<defs>
-    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-      <path d="M0,0 L0,6 L8,3 z" fill="#334155"/>
-    </marker>
+function renderDiagram(){
+  const svg=document.getElementById('arch-svg');
+  const nm={};NODES.forEach(n=>nm[n.id]=n);
+  const NW=125,NH=56;
+  svg.innerHTML=`<defs>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#334155"/></marker>
+    <marker id="arr-hi" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#7DD3FC"/></marker>
   </defs>`;
 
   // edges
-  ARCH_EDGES.forEach(e => {
-    const f = nodeMap[e.from], t = nodeMap[e.to];
-    if (!f || !t) return;
-    const fx = f.x + NW/2, fy = f.y + NH/2;
-    const tx = t.x + NW/2, ty = t.y + NH/2;
-    const mx = (fx+tx)/2, my = (fy+ty)/2;
-    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
-    line.setAttribute('x1',fx); line.setAttribute('y1',fy);
-    line.setAttribute('x2',tx); line.setAttribute('y2',ty);
-    line.setAttribute('stroke','#2A3441'); line.setAttribute('stroke-width','1.5');
-    line.setAttribute('stroke-dasharray','4 3');
-    line.setAttribute('marker-end','url(#arrow)');
-    svg.appendChild(line);
-
-    const labels = (e.label||'').split('\n');
-    labels.forEach((l,li) => {
-      const txt = document.createElementNS('http://www.w3.org/2000/svg','text');
-      txt.setAttribute('x',mx); txt.setAttribute('y',my+18+li*11-((labels.length-1)*5));
-      txt.setAttribute('fill','#475569'); txt.setAttribute('font-size','9');
-      txt.setAttribute('text-anchor','middle'); txt.setAttribute('font-family','monospace');
-      txt.textContent = l;
-      svg.appendChild(txt);
+  const edgeGroups=[];
+  EDGES.forEach((e)=>{
+    const f=nm[e.f],t=nm[e.t];if(!f||!t)return;
+    const fx=f.x+NW/2,fy=f.y+NH/2,tx=t.x+NW/2,ty=t.y+NH/2;
+    const mx=(fx+tx)/2,my=(fy+ty)/2;
+    const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+    g.style.opacity=edgeOp(e);g.style.transition='opacity .25s';
+    const ln=document.createElementNS('http://www.w3.org/2000/svg','line');
+    ln.setAttribute('x1',fx);ln.setAttribute('y1',fy);ln.setAttribute('x2',tx);ln.setAttribute('y2',ty);
+    ln.setAttribute('stroke','#2A3441');ln.setAttribute('stroke-width','1.5');ln.setAttribute('stroke-dasharray','4 3');
+    ln.setAttribute('marker-end','url(#arr)');ln.classList.add('eln');g.appendChild(ln);
+    (e.l||'').split('\n').forEach((l,i)=>{
+      const tx2=document.createElementNS('http://www.w3.org/2000/svg','text');
+      tx2.setAttribute('x',mx);tx2.setAttribute('y',my+12+i*11);
+      tx2.setAttribute('fill','#334155');tx2.setAttribute('font-size','8');
+      tx2.setAttribute('text-anchor','middle');tx2.setAttribute('font-family','monospace');
+      tx2.classList.add('elbl');tx2.textContent=l;g.appendChild(tx2);
     });
+    g._from=e.f;g._to=e.t;g._label=e.l||'';
+    edgeGroups.push(g);svg.appendChild(g);
   });
 
   // nodes
-  ARCH_NODES.forEach(node => {
-    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
-    g.style.cursor = 'pointer';
+  NODES.forEach(node=>{
+    const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+    g.style.cursor='pointer';g.style.opacity=nodeOp(node);g.style.transition='opacity .25s';
 
-    const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
-    rect.setAttribute('x',node.x); rect.setAttribute('y',node.y);
-    rect.setAttribute('width',NW); rect.setAttribute('height',NH);
-    rect.setAttribute('rx','8'); rect.setAttribute('fill','#0D1117');
-    rect.setAttribute('stroke','#2A3441'); rect.setAttribute('stroke-width','1');
-    g.appendChild(rect);
+    const rect=document.createElementNS('http://www.w3.org/2000/svg','rect');
+    rect.setAttribute('x',node.x);rect.setAttribute('y',node.y);
+    rect.setAttribute('width',NW);rect.setAttribute('height',NH);
+    rect.setAttribute('rx','8');rect.setAttribute('fill','#0D1117');
+    rect.setAttribute('stroke','#2A3441');rect.setAttribute('stroke-width','1');
+    rect.style.transition='all .2s';g.appendChild(rect);
 
-    const ico = document.createElementNS('http://www.w3.org/2000/svg','text');
-    ico.setAttribute('x',node.x+10); ico.setAttribute('y',node.y+22);
-    ico.setAttribute('font-size','18'); ico.textContent = node.icon;
-    g.appendChild(ico);
+    const ico=document.createElementNS('http://www.w3.org/2000/svg','text');
+    ico.setAttribute('x',node.x+9);ico.setAttribute('y',node.y+22);ico.setAttribute('font-size','17');ico.textContent=node.icon;g.appendChild(ico);
 
-    const lines = node.label.split('\n');
-    lines.forEach((l,li) => {
-      const txt = document.createElementNS('http://www.w3.org/2000/svg','text');
-      txt.setAttribute('x',node.x+NW/2); txt.setAttribute('y',node.y+32+li*13);
-      txt.setAttribute('fill','#94A3B8'); txt.setAttribute('font-size',li===0?'10':'9');
-      txt.setAttribute('font-weight',li===0?'600':'400'); txt.setAttribute('text-anchor','middle');
-      txt.setAttribute('font-family',li===0?'inherit':'monospace');
-      txt.textContent = l;
-      g.appendChild(txt);
+    node.label.split('\n').forEach((l,i)=>{
+      const t=document.createElementNS('http://www.w3.org/2000/svg','text');
+      t.setAttribute('x',node.x+NW/2);t.setAttribute('y',node.y+30+i*13);
+      t.setAttribute('fill','#94A3B8');t.setAttribute('font-size',i===0?'10':'8');
+      t.setAttribute('font-weight',i===0?'600':'400');t.setAttribute('text-anchor','middle');
+      t.setAttribute('font-family',i===0?'inherit':'monospace');t.classList.add('ntxt');t.textContent=l;g.appendChild(t);
     });
 
-    if (node.ns) {
-      const ns = document.createElementNS('http://www.w3.org/2000/svg','text');
-      ns.setAttribute('x',node.x+NW/2); ns.setAttribute('y',node.y+NH+13);
-      ns.setAttribute('fill',node.color); ns.setAttribute('font-size','8');
-      ns.setAttribute('text-anchor','middle'); ns.setAttribute('opacity','0.6');
-      ns.textContent = node.ns;
-      g.appendChild(ns);
+    if(node.ns){
+      const ns=document.createElementNS('http://www.w3.org/2000/svg','text');
+      ns.setAttribute('x',node.x+NW/2);ns.setAttribute('y',node.y+NH+14);
+      ns.setAttribute('fill',node.color);ns.setAttribute('font-size','7');
+      ns.setAttribute('text-anchor','middle');ns.setAttribute('opacity','0.5');ns.textContent=node.ns;g.appendChild(ns);
     }
 
-    g.addEventListener('mouseenter',()=>{
-      rect.setAttribute('fill',node.color+'22');
-      rect.setAttribute('stroke',node.color);
-      rect.setAttribute('stroke-width','2');
-      g.querySelectorAll('text').forEach((t,i)=>{ if(i>=1) t.setAttribute('fill',node.color); });
+    // hover
+    g.addEventListener('mouseenter',function(ev){
+      const connected=new Set();
+      EDGES.forEach(e=>{if(e.f===node.id)connected.add(e.t);if(e.t===node.id)connected.add(e.f);});
+      // highlight node
+      rect.setAttribute('fill',node.color+'22');rect.setAttribute('stroke',node.color);rect.setAttribute('stroke-width','2');
+      g.querySelectorAll('.ntxt').forEach(t=>t.setAttribute('fill',node.color));
+      // edges
+      edgeGroups.forEach(eg=>{
+        const conn=eg._from===node.id||eg._to===node.id;
+        eg.style.opacity=conn?1:0.03;
+        if(conn){
+          eg.querySelector('.eln').setAttribute('stroke',node.color+'99');
+          eg.querySelector('.eln').setAttribute('stroke-width','2');
+          eg.querySelector('.eln').setAttribute('stroke-dasharray','6 2');
+          eg.querySelector('.eln').setAttribute('marker-end','url(#arr-hi)');
+          eg.querySelectorAll('.elbl').forEach(l=>l.setAttribute('fill','#7DD3FC'));
+        }
+      });
+      // dim other nodes
+      svg.querySelectorAll('g[data-nid]').forEach(ng=>{
+        if(ng.getAttribute('data-nid')!==node.id&&!connected.has(ng.getAttribute('data-nid')))
+          ng.style.opacity='0.1';
+      });
+      // tooltip
+      const conns=EDGES.filter(e=>e.f===node.id||e.t===node.id);
+      const tip=document.getElementById('conn-tip');
+      if(conns.length){
+        tip.innerHTML='<div style="color:#E2E8F0;font-weight:700;margin-bottom:6px;font-size:12px">'+node.label.replace('\n',' ')+'</div>'+
+          conns.map(e=>{
+            const other=nm[e.f===node.id?e.t:e.f];
+            const dir=e.f===node.id?'→':'←';
+            return `<div style="margin-bottom:4px;display:flex;align-items:center;gap:6px">
+              <span style="color:#475569;font-size:13px">${dir}</span>
+              <span style="color:${other.color}">${other.label.replace('\n',' ')}</span>
+              <span style="color:#334155;font-size:10px">${e.l.replace('\n',' ')}</span>
+            </div>`;
+          }).join('');
+        tip.style.display='block';
+        tip.style.left=(ev.clientX+18)+'px';tip.style.top=(ev.clientY-10)+'px';
+      }
     });
-    g.addEventListener('mouseleave',()=>{
-      rect.setAttribute('fill','#0D1117');
-      rect.setAttribute('stroke','#2A3441');
-      rect.setAttribute('stroke-width','1');
-      g.querySelectorAll('text').forEach((t,i)=>{ if(i>=1) t.setAttribute('fill','#94A3B8'); });
-      if (node.ns) g.querySelectorAll('text')[g.querySelectorAll('text').length-1].setAttribute('fill',node.color);
+
+    g.addEventListener('mousemove',function(ev){
+      const tip=document.getElementById('conn-tip');
+      if(tip.style.display==='block'){tip.style.left=(ev.clientX+18)+'px';tip.style.top=(ev.clientY-10)+'px';}
     });
+
+    g.addEventListener('mouseleave',function(){
+      rect.setAttribute('fill','#0D1117');rect.setAttribute('stroke','#2A3441');rect.setAttribute('stroke-width','1');
+      g.querySelectorAll('.ntxt').forEach(t=>t.setAttribute('fill','#94A3B8'));
+      edgeGroups.forEach(eg=>{
+        eg.style.opacity=edgeOp({f:eg._from,t:eg._to});
+        eg.querySelector('.eln').setAttribute('stroke','#2A3441');
+        eg.querySelector('.eln').setAttribute('stroke-width','1.5');
+        eg.querySelector('.eln').setAttribute('stroke-dasharray','4 3');
+        eg.querySelector('.eln').setAttribute('marker-end','url(#arr)');
+        eg.querySelectorAll('.elbl').forEach(l=>l.setAttribute('fill','#334155'));
+      });
+      svg.querySelectorAll('g[data-nid]').forEach(ng=>ng.style.opacity=nodeOp(NODES.find(n=>n.id===ng.getAttribute('data-nid'))||{}));
+      document.getElementById('conn-tip').style.display='none';
+    });
+
     g.addEventListener('click',()=>selectNode(node));
+    g.setAttribute('data-nid',node.id);
     svg.appendChild(g);
   });
 }
 
-function buildLegend() {
-  const legend = document.getElementById('legend');
-  [
-    {color:"#3B82F6",label:"wordpress"},
-    {color:"#F59E0B",label:"databases"},
-    {color:"#10B981",label:"monitoring"},
-    {color:"#8B5CF6",label:"storage"},
-    {color:"#EC4899",label:"cert-manager"},
-    {color:"#F97316",label:"velero"},
-  ].forEach(({color,label}) => {
-    legend.innerHTML += `<div class="legend-item">
-      <div class="legend-dot" style="background:${color}"></div>
-      <span class="legend-text">${label}</span>
-    </div>`;
-  });
+function buildLegend(){
+  document.getElementById('legend').innerHTML=[
+    {color:"#3B82F6",label:"wordpress"},{color:"#F59E0B",label:"databases"},
+    {color:"#10B981",label:"monitoring"},{color:"#8B5CF6",label:"storage"},
+    {color:"#EC4899",label:"cert-manager"},{color:"#F97316",label:"velero"},
+  ].map(({color,label})=>`<div class="legend-item"><div class="legend-dot" style="background:${color}"></div><span class="legend-text">${label}</span></div>`).join('');
 }
 
-function selectNode(node) {
-  const nsKey = node.ns;
-  const ns = NAMESPACES[nsKey];
-  if (ns) {
-    const pod = ns.pods.find(p => p.id===node.id || p.name===node.id);
-    if (pod) { openPanel(pod,'pod',NS_COLORS[nsKey]); return; }
-  }
-  openPanel({
-    icon: node.icon,
-    name: node.label.replace('\n',' '),
-    kind: node.ns||'sistema',
-    desc: `Componente ${node.label.replace('\n',' ')} del namespace ${node.ns||'sistema'}`,
-    image:null, ports:[], connects:[]
-  },'pod',{accent:node.color,text:node.color,bg:'#1E293B'});
+function selectNode(node){
+  const ns=NS[node.ns];
+  if(ns){const pod=ns.pods.find(p=>p.id===node.id);if(pod){openPanel(pod,'pod',NSC[node.ns]);return;}}
+  openPanel({icon:node.icon,name:node.label.replace('\n',' '),kind:node.ns||'sistema',desc:`Componente del namespace ${node.ns||'sistema'}`,image:null,ports:[],connects:[]},
+    'pod',{accent:node.color,text:node.color,bg:'#1E293B'});
 }
 
-// ── FILES ──────────────────────────────────────────────────────────────────
-
-function buildFiles() {
-  const cats = ['Todos',...[...new Set(FILES.map(f=>f.category))]];
-  const bar = document.getElementById('filter-bar');
-  bar.innerHTML = cats.map(c =>
-    `<button class="filter-btn${c===fileFilter?' active':''}" onclick="setFilter('${c}')">${c}</button>`
-  ).join('');
-
-  const filtered = fileFilter==='Todos' ? FILES : FILES.filter(f=>f.category===fileFilter);
-  const grid = document.getElementById('files-grid');
-  grid.innerHTML = filtered.map(file => {
-    const cc = CAT_COLORS[file.category]||'#3B82F6';
-    const shortDesc = file.desc.length>120 ? file.desc.slice(0,120)+'…' : file.desc;
-    return `<button class="file-card" onclick="openPanel(FILES.find(f=>f.id==='${file.id}'),'file',{accent:'${cc}',text:'${cc}',bg:'#1E293B'})"
-      onmouseenter="this.style.borderColor='${cc}'" onmouseleave="this.style.borderColor='#1E293B'">
-      <div class="file-card-top">
-        <div class="file-card-left">
-          <span style="font-size:20px">${file.icon}</span>
-          <span class="file-name">${file.name}</span>
-        </div>
-        <span class="file-badge" style="color:${cc};background:${cc}22;border-color:${cc}44">${file.category}</span>
-      </div>
-      <div class="file-desc">${shortDesc}</div>
-    </button>`;
+// ── FILES ─────────────────────────────────────────────────────────────────────
+function buildFiles(){
+  const cats=['Todos',...[...new Set(FILES.map(f=>f.category))]];
+  document.getElementById('filter-bar').innerHTML=cats.map(c=>`<button class="filter-btn${c===fileFilter?' active':''}" onclick="setFilter('${c}')">${c}</button>`).join('');
+  const fil=fileFilter==='Todos'?FILES:FILES.filter(f=>f.category===fileFilter);
+  document.getElementById('files-grid').innerHTML=fil.map(f=>{
+    const c=CC[f.category]||'#3B82F6';
+    const d=f.desc.length>130?f.desc.slice(0,130)+'…':f.desc;
+    return `<button class="file-card" onclick="openFilePanel('${f.id}')" onmouseenter="this.style.borderColor='${c}'" onmouseleave="this.style.borderColor='#1E293B'">
+      <div class="file-card-top"><div class="file-card-left"><span style="font-size:20px">${f.icon}</span><span class="file-name">${f.name}</span></div>
+      <span class="file-badge" style="color:${c};background:${c}22;border-color:${c}44">${f.category}</span></div>
+      <div class="file-desc">${d}</div></button>`;
   }).join('');
 }
+function openFilePanel(id){const f=FILES.find(x=>x.id===id);openPanel(f,'file',{accent:CC[f.category]||'#3B82F6',text:CC[f.category]||'#3B82F6',bg:'#1E293B'});}
+function setFilter(c){fileFilter=c;buildFiles();}
 
-function setFilter(cat) {
-  fileFilter = cat;
-  buildFiles();
-}
-
-// ── NAMESPACES ─────────────────────────────────────────────────────────────
-
-function buildNamespaces() {
-  const list = document.getElementById('ns-list');
-  list.innerHTML = Object.entries(NAMESPACES).map(([nsKey,ns]) => {
-    const c = NS_COLORS[nsKey]||{bg:'#1E293B',border:'#334155',text:'#94A3B8',accent:'#64748B'};
-    const isOpen = nsExpanded[nsKey];
-    const podsHtml = ns.pods.map(pod => {
-      const portsStr = pod.ports&&pod.ports.length ? `:${pod.ports.join(', :')}` : '';
-      return `<button class="pod-card" style="border-color:${c.border}44"
-        onclick="openPanel(getPod('${nsKey}','${pod.id}'),'pod',NS_COLORS['${nsKey}'])"
+// ── NAMESPACES ────────────────────────────────────────────────────────────────
+function buildNamespaces(){
+  document.getElementById('ns-list').innerHTML=Object.entries(NS).map(([k,ns])=>{
+    const c=NSC[k]||{bg:'#1E293B',border:'#334155',text:'#94A3B8',accent:'#64748B'};
+    const pods=ns.pods.map(p=>{
+      const ps=p.ports&&p.ports.length?':'+p.ports.map(x=>typeof x==='object'?x.p:x).join(', :'):'';
+      return `<button class="pod-card" style="border-color:${c.border}44" onclick="openPodPanel('${k}','${p.id}')"
         onmouseenter="this.style.borderColor='${c.accent}';this.style.background='${c.accent}11'"
         onmouseleave="this.style.borderColor='${c.border}44';this.style.background='#0D1117'">
-        <div class="pod-icon">${pod.icon}</div>
-        <div class="pod-name" style="color:${c.text}">${pod.name}</div>
-        <div class="pod-badges">
-          <span class="pod-badge" style="background:${c.accent}22;color:${c.accent}">${pod.kind}</span>
-          <span class="pod-badge" style="background:#1E293B;color:#64748B">${pod.replicas}</span>
-        </div>
-        ${portsStr ? `<div class="pod-ports">${portsStr}</div>` : ''}
+        <div class="pod-icon">${p.icon}</div>
+        <div class="pod-name" style="color:${c.text}">${p.name}</div>
+        <div class="pod-badges"><span class="pod-badge" style="background:${c.accent}22;color:${c.accent}">${p.kind}</span><span class="pod-badge" style="background:#1E293B;color:#64748B">${p.replicas}</span></div>
+        ${ps?`<div class="pod-ports">${ps}</div>`:''}
       </button>`;
     }).join('');
-
     return `<div class="ns-block" style="background:${c.bg}88;border-color:${c.border}44">
-      <button class="ns-header" onclick="toggleNs('${nsKey}')">
+      <button class="ns-header" onclick="toggleNs('${k}')">
         <div class="ns-header-left">
-          <div class="ns-dot-live" style="background:${c.accent};box-shadow:0 0 8px ${c.accent}"></div>
-          <span class="ns-title" style="color:${c.text}">namespace/${nsKey}</span>
+          <div class="ns-dot" style="background:${c.accent};box-shadow:0 0 8px ${c.accent}"></div>
+          <span class="ns-title" style="color:${c.text}">namespace/${k}</span>
           <span class="ns-desc">${ns.desc}</span>
         </div>
         <div class="ns-right">
           <span class="ns-count" style="background:${c.accent}22;color:${c.accent};border-color:${c.accent}44">${ns.pods.length} pod${ns.pods.length!==1?'s':''}</span>
-          <span class="ns-toggle">${isOpen?'▲':'▼'}</span>
+          <span id="nstog-${k}" style="color:#475569">${nsExp[k]?'▲':'▼'}</span>
         </div>
       </button>
-      ${isOpen ? `<div class="ns-body" id="nsbody-${nsKey}">${podsHtml}</div>` : `<div id="nsbody-${nsKey}" style="display:none">${podsHtml}</div>`}
+      <div id="nb-${k}" style="${nsExp[k]?'':'display:none'}" class="ns-body">${pods}</div>
     </div>`;
   }).join('');
 }
-
-function getPod(nsKey, podId) {
-  return NAMESPACES[nsKey].pods.find(p=>p.id===podId);
+function openPodPanel(k,id){openPanel(NS[k].pods.find(p=>p.id===id),'pod',NSC[k]);}
+function toggleNs(k){
+  nsExp[k]=!nsExp[k];
+  document.getElementById('nb-'+k).style.display=nsExp[k]?'grid':'none';
+  document.getElementById('nstog-'+k).textContent=nsExp[k]?'▲':'▼';
 }
 
-function toggleNs(nsKey) {
-  nsExpanded[nsKey] = !nsExpanded[nsKey];
-  const body = document.getElementById('nsbody-'+nsKey);
-  const block = body.closest('.ns-block');
-  const toggle = block.querySelector('.ns-toggle');
-  if (nsExpanded[nsKey]) {
-    body.style.display = 'grid';
-    toggle.textContent = '▲';
-  } else {
-    body.style.display = 'none';
-    toggle.textContent = '▼';
-  }
+// ── FLOW ──────────────────────────────────────────────────────────────────────
+function buildFlow(){
+  const steps=[
+    {num:"1",color:"#3B82F6",icon:"👤",title:"El usuario hace una petición",
+     desc:"El navegador escribe <code style='color:#7DD3FC;background:#1E293B;padding:1px 5px;border-radius:3px'>https://wp-k8s.local</code>. La petición sale hacia el clúster cifrada con TLS.",
+     tags:[{l:"HTTPS",c:"#3B82F6"},{l:"DNS local /etc/hosts",c:"#64748B"}]},
+    {num:"2",color:"#06B6D4",icon:"🚪",title:"NGINX Ingress — única puerta de entrada",
+     desc:"Primera parada dentro del clúster. El Ingress descifra el TLS (el certificado lo gestiona cert-manager automáticamente), lee el Host header y enruta: <code style='color:#7DD3FC;background:#1E293B;padding:1px 5px;border-radius:3px'>wp-k8s.local</code> → WordPress · <code style='color:#7DD3FC;background:#1E293B;padding:1px 5px;border-radius:3px'>grafana.*</code> → Grafana.",
+     tags:[{l:"TLS termination",c:"#EC4899"},{l:"Host-based routing",c:"#06B6D4"},{l:"cert-manager auto-renew",c:"#EC4899"}]},
+    {num:"3",color:"#3B82F6",icon:"🌐",title:"WordPress procesa la petición",
+     desc:"PHP-FPM ejecuta el código. Para responder necesita tres recursos externos:",
+     tags:[{l:"PHP-FPM",c:"#3B82F6"},{l:"runAsUser:33",c:"#64748B"},{l:"readOnlyRootFS",c:"#64748B"}],
+     children:[
+       {icon:"🗄️",name:"MariaDB :3306",desc:"Lee y escribe en la BD. Siempre va al primary (mariadb-0). Si la réplica falla, el servicio sigue."},
+       {icon:"⚡",name:"Redis Sentinel :26379",desc:"Caché de sesiones. WordPress pregunta al Sentinel qué pod es el master — failover transparente."},
+       {icon:"🗃️",name:"MinIO S3 :9000",desc:"Uploads de imágenes van directo a MinIO. Los pods WordPress son completamente stateless."},
+     ]},
+    {num:"4",color:"#10B981",icon:"📈",title:"KEDA escala WordPress automáticamente",
+     desc:"Mientras llegan peticiones, KEDA pregunta a Prometheus cuántos req/s entran al Ingress. Si superan 100 req/s crea nuevas réplicas (máx 10) <strong style='color:#E2E8F0'>antes</strong> de que la CPU se dispare — más proactivo que el HPA tradicional.",
+     tags:[{l:"threshold: 100 req/s",c:"#10B981"},{l:"min:2 max:10 réplicas",c:"#10B981"},{l:"CPU fallback >70%",c:"#64748B"}]},
+    {num:"5",color:"#10B981",icon:"👁️",title:"Observabilidad — siempre activa en segundo plano",
+     desc:"Los tres pilares recogen datos de forma continua e independiente al tráfico de usuario:",
+     tags:[{l:"métricas",c:"#10B981"},{l:"logs",c:"#10B981"},{l:"trazas",c:"#10B981"}],
+     children:[
+       {icon:"📊",name:"Prometheus cada 15s",desc:"Scrape de todos los pods. SLOs: disponibilidad ≥99.5% y latencia p95 ≤2s. Si se rompen → Alertmanager → Slack."},
+       {icon:"🔍",name:"Promtail → Loki",desc:"DaemonSet en cada nodo. Centraliza logs de todos los contenedores con retención 31 días."},
+       {icon:"🔗",name:"OTel → Jaeger",desc:"WordPress envía trazas PHP. OTel las agrupa y las manda a Jaeger para análisis de latencia."},
+     ]},
+    {num:"6",color:"#F97316",icon:"💾",title:"Backup automático — cada noche sin intervención",
+     desc:"Tres procesos programados protegen los datos:",
+     tags:[{l:"RPO ~24h",c:"#F97316"},{l:"RTO ~15min",c:"#F97316"}],
+     children:[
+       {icon:"🗄️",name:"2:00 AM — MariaDB dump",desc:"mysqldump completo comprimido → MinIO bucket wordpress-backups."},
+       {icon:"🗃️",name:"3:00 AM — Uploads WP",desc:"tar.gz del PVC de uploads → MinIO. Los archivos de media quedan respaldados."},
+       {icon:"💾",name:"1:00 AM — Velero snapshot",desc:"Backup completo del clúster: todos los objetos K8s + snapshots PVCs → MinIO bucket velero-backups."},
+     ]},
+    {num:"7",color:"#10B981",icon:"📈",title:"El operador consulta Grafana",
+     desc:"Un único punto de acceso. Desde un pico en la gráfica de errores puedes saltar al log del pod en ese momento exacto, y desde el log a la traza PHP que causó el fallo — los tres datasources correlacionados.",
+     tags:[{l:"Prometheus datasource",c:"#10B981"},{l:"Loki datasource",c:"#10B981"},{l:"Jaeger datasource",c:"#10B981"},{l:"grafana.monitoring.local",c:"#64748B"}]},
+  ];
+
+  let html='<div class="flow-wrap">';
+  steps.forEach((s,i)=>{
+    const last=i===steps.length-1;
+    html+=`<div class="flow-step">
+      <div class="flow-left">
+        <div class="flow-num" style="color:${s.color};border-color:${s.color};background:${s.color}15">${s.num}</div>
+        ${!last?`<div class="flow-vline" style="background:linear-gradient(${s.color}80,transparent)"></div>`:''}
+      </div>
+      <div class="flow-body" style="border-color:${s.color}33">
+        <div class="flow-title" style="color:${s.color}"><span style="font-size:20px">${s.icon}</span>${s.title}</div>
+        <div class="flow-desc">${s.desc}</div>`;
+    if(s.children){
+      html+='<div class="flow-children">';
+      s.children.forEach(c=>{html+=`<div class="flow-child"><span style="font-size:18px;flex-shrink:0">${c.icon}</span><div><div class="flow-child-name">${c.name}</div><div class="flow-child-desc">${c.desc}</div></div></div>`;});
+      html+='</div>';
+    }
+    if(s.tags){
+      html+='<div class="flow-tags">';
+      s.tags.forEach(t=>{html+=`<span class="flow-tag" style="color:${t.c};background:${t.c}15;border-color:${t.c}33">${t.l}</span>`;});
+      html+='</div>';
+    }
+    html+='</div></div>';
+    if(!last) html+='<div class="flow-arrow">↓</div>';
+  });
+  html+='</div>';
+  document.getElementById('flow-container').innerHTML=html;
 }
 
-// ── DETAIL PANEL ───────────────────────────────────────────────────────────
-
-function openPanel(item, type, nsColor) {
-  const c = nsColor || {accent:'#3B82F6',text:'#93C5FD',bg:'#1E3A5F'};
-  const panel = document.getElementById('detail-panel');
-  panel.style.borderLeft = `1px solid ${c.accent}44`;
-  panel.style.boxShadow = `-8px 0 32px ${c.accent}22`;
-
-  document.getElementById('dp-icon').textContent = item.icon||'📦';
-  document.getElementById('dp-kind').textContent = type==='pod' ? item.kind : item.category;
-  document.getElementById('dp-kind').style.color = c.accent;
-  document.getElementById('dp-name').textContent = item.name;
-
-  const imgBox = document.getElementById('dp-image-box');
-  if (item.image) {
-    document.getElementById('dp-image').textContent = item.image;
-    imgBox.style.display = 'block';
-  } else { imgBox.style.display = 'none'; }
-
-  document.getElementById('dp-desc').textContent = item.desc||'';
-
-  const portsWrap = document.getElementById('dp-ports-wrap');
-  const portsTags = document.getElementById('dp-ports');
-  if (item.ports && item.ports.length) {
-    portsTags.innerHTML = item.ports.map(p =>
-      `<span class="dp-tag" style="background:${c.accent}22;border:1px solid ${c.accent}44;color:${c.text}">${p}</span>`
-    ).join('');
-    portsWrap.style.display = 'block';
-  } else { portsWrap.style.display = 'none'; }
-
-  const conWrap = document.getElementById('dp-connects-wrap');
-  const conTags = document.getElementById('dp-connects');
-  if (item.connects && item.connects.length) {
-    conTags.innerHTML = item.connects.map(c2 =>
-      `<span class="dp-tag" style="background:#161B22;border:1px solid #2A3441;color:#94A3B8">${c2}</span>`
-    ).join('');
-    conWrap.style.display = 'block';
-  } else { conWrap.style.display = 'none'; }
-
-  const concsWrap = document.getElementById('dp-concepts-wrap');
-  const concsTags = document.getElementById('dp-concepts');
-  if (item.concepts && item.concepts.length) {
-    concsTags.innerHTML = item.concepts.map(c3 =>
-      `<span class="dp-concept">${c3}</span>`
-    ).join('');
-    concsWrap.style.display = 'block';
-  } else { concsWrap.style.display = 'none'; }
-
-  panel.classList.add('open');
-  document.getElementById('main').classList.add('panel-open');
+// ── PANEL ─────────────────────────────────────────────────────────────────────
+function openPanel(item,type,c){
+  c=c||{accent:'#3B82F6',text:'#93C5FD',bg:'#1E293B'};
+  const panel=document.getElementById('detail-panel');
+  panel.style.borderLeft=`1px solid ${c.accent}44`;panel.style.boxShadow=`-8px 0 32px ${c.accent}22`;
+  document.getElementById('dp-icon').textContent=item.icon||'📦';
+  document.getElementById('dp-kind').textContent=type==='pod'?item.kind:item.category;
+  document.getElementById('dp-kind').style.color=c.accent;
+  document.getElementById('dp-name').textContent=item.name;
+  const ib=document.getElementById('dp-image-box');
+  if(item.image){document.getElementById('dp-image').textContent=item.image;ib.style.display='block';}else ib.style.display='none';
+  document.getElementById('dp-desc').textContent=item.desc||'';
+  const pw=document.getElementById('dp-ports-wrap'),pt=document.getElementById('dp-ports');
+  if(item.ports&&item.ports.length){
+    pt.innerHTML=item.ports.map(p=>{const o=typeof p==='object'?p:{p,proto:'TCP',desc:''};
+      return `<div class="dp-connect-item" style="border-color:${c.accent}33"><span style="color:${c.text};font-size:12px;font-family:monospace">:${o.p} <span style="color:${c.accent};font-size:10px">${o.proto}</span></span>${o.desc?`<span class="dp-connect-proto">${o.desc}</span>`:''}</div>`;
+    }).join('');pw.style.display='block';
+  }else pw.style.display='none';
+  const cw=document.getElementById('dp-connects-wrap'),ct=document.getElementById('dp-connects');
+  const conns=item.connects||[];
+  if(conns.length){
+    ct.innerHTML=conns.map(x=>{const o=typeof x==='object'?x:{to:x,proto:'',desc:''};
+      return `<div class="dp-connect-item"><span style="color:#E2E8F0;font-size:11px;font-family:monospace">${o.to}</span>${o.proto?`<span class="dp-connect-proto">${o.proto}${o.desc?' — '+o.desc:''}</span>`:''}</div>`;
+    }).join('');cw.style.display='block';
+  }else cw.style.display='none';
+  const xw=document.getElementById('dp-concepts-wrap'),xt=document.getElementById('dp-concepts');
+  if(item.concepts&&item.concepts.length){xt.innerHTML=item.concepts.map(c2=>`<span class="dp-concept">${c2}</span>`).join('');xw.style.display='block';}else xw.style.display='none';
+  panel.classList.add('open');document.getElementById('main').classList.add('panel-open');
 }
 
-function closePanel() {
+function closePanel(){
   document.getElementById('detail-panel').classList.remove('open');
   document.getElementById('main').classList.remove('panel-open');
 }
 
-// ── INIT ───────────────────────────────────────────────────────────────────
-
-buildDiagram();
+// ── INIT ──────────────────────────────────────────────────────────────────────
+renderDiagram();
 buildLegend();
 buildFiles();
 buildNamespaces();
+buildFlow();
 </script>
 </body>
 </html>
