@@ -109,7 +109,7 @@ svg{display:block;margin:0 auto}
 <body>
 <div id="header">
   <div class="logo">⎈</div>
-  <div><div class="logo-title">KubeNet</div><div class="logo-sub">WordPress HA · Minikube · 7 namespaces · 19 NetworkPolicies</div></div>
+  <div><div class="logo-title">KubeNet</div><div class="logo-sub">WordPress HA · Minikube · 6 namespaces · 19 NetworkPolicies</div></div>
   <div class="tabs">
     <button class="tab-btn active" onclick="switchTab('diagram')">🗺️ Arquitectura</button>
     <button class="tab-btn" onclick="switchTab('files')">📄 Archivos</button>
@@ -271,7 +271,7 @@ const NSC={
 };
 
 const FILES=[
-  {id:"ns",name:"namespace.yaml",icon:"📁",category:"Infraestructura",desc:"7 namespaces con Pod Security Standards: enforce baseline + warn/audit restricted. Velero usa privileged por CSI. Labels kubernetes.io/metadata.name para NetworkPolicies.",concepts:["Namespace","PSS baseline","labels metadata.name"]},
+  {id:"ns",name:"namespace.yaml",icon:"📁",category:"Infraestructura",desc:"6 namespaces con Pod Security Standards: enforce baseline + warn/audit restricted. Velero usa privileged por CSI. Labels kubernetes.io/metadata.name para NetworkPolicies.",concepts:["Namespace","PSS baseline","labels metadata.name"]},
   {id:"sec",name:"secrets.yaml",icon:"🔑",category:"Seguridad",desc:"Plantilla base64. NO se aplica directamente — fallback manual. deploy.sh genera Sealed Secrets con kubeseal. Secrets duplicados entre namespaces (mínimo privilegio).",concepts:["Secret","Opaque","base64","Sealed Secrets"]},
   {id:"cm",name:"configmap.yaml",icon:"⚙️",category:"Configuración",desc:"mariadb-config (MYSQL_DATABASE, MYSQL_USER) y wordpress-config (DB_HOST, DB_NAME, DB_USER, SITE_URL). Valores deben coincidir o WordPress falla con 'Error establishing a database connection'.",concepts:["ConfigMap","12-factor","DNS interno K8s"]},
   {id:"pvc",name:"pvc.yaml",icon:"💿",category:"Almacenamiento",desc:"PVC wordpress-pvc 2Gi. ReadWriteOnce — OK en Minikube (1 nodo). En producción multi-nodo requiere RWX o externalizar uploads a MinIO.",concepts:["PVC","ReadWriteOnce","StorageClass"]},
