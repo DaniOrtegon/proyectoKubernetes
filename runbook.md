@@ -1,7 +1,32 @@
 # RUNBOOK — WordPress HA en Kubernetes
 **Proyecto:** KubeNet — WordPress HA en Minikube  
-**Versión:** 1.0  
+**Versión:** 1.1  
 **Entorno:** Minikube + Kubernetes v1.28
+
+> ⚠️ **Nota de seguridad:** Este runbook no contiene credenciales en texto plano.  
+> Todos los comandos leen las contraseñas directamente desde los Kubernetes Secrets del clúster.
+
+---
+
+## Cómo leer credenciales del clúster
+
+Los comandos de este runbook usan este patrón para no exponer contraseñas:
+
+```bash
+# Leer contraseña de root de MariaDB
+MARIADB_ROOT_PASS=$(kubectl get secret mariadb-secret -n databases \
+  -o jsonpath='{.data.root-password}' | base64 -d)
+
+# Leer contraseña del usuario replicador
+MARIADB_REPL_PASS=$(kubectl get secret mariadb-secret -n databases \
+  -o jsonpath='{.data.replication-password}' | base64 -d)
+
+# Leer contraseña de Redis
+REDIS_PASS=$(kubectl get secret redis-secret -n databases \
+  -o jsonpath='{.data.password}' | base64 -d)
+```
+
+Ejecuta el bloque correspondiente antes de los pasos de cada sección.
 
 ---
 
@@ -19,9 +44,10 @@
 ## 1. Prometheus — Lockfile corrupto
 
 **Síntoma**
-```
+```bash
 kubectl get pods -n monitoring
 # prometheus-xxxx   0/1   CrashLoopBackOff
+
 kubectl logs -n monitoring deployment/prometheus | grep -i lock
 # level=error msg="opening storage failed" err="lock file already exists"
 ```
@@ -196,7 +222,7 @@ Hacer backup de la clave maestra tras el primer despliegue:
 kubectl get secret -n kube-system \
   -l sealedsecrets.bitnami.com/sealed-secrets-key \
   -o yaml > sealed-secrets-master-key-backup.yaml
-# ⚠️ NUNCA subir este archivo al repositorio
+# ⚠️ NUNCA subir este archivo al repositorio — añadirlo a .gitignore
 ```
 
 ---
@@ -205,8 +231,12 @@ kubectl get secret -n kube-system \
 
 **Síntoma**
 ```bash
+# Leer credenciales del clúster antes de continuar
+MARIADB_ROOT_PASS=$(kubectl get secret mariadb-secret -n databases \
+  -o jsonpath='{.data.root-password}' | base64 -d)
+
 kubectl exec -n databases mariadb-1 -- \
-  mysql -u root -p'RootDB#2026!' -e 'SHOW SLAVE STATUS\G' 2>/dev/null \
+  mysql -u root -p"${MARIADB_ROOT_PASS}" -e 'SHOW SLAVE STATUS\G' 2>/dev/null \
   | grep -E 'Running|Behind|Error'
 # Slave_IO_Running: No
 # Slave_SQL_Running: No
@@ -220,17 +250,26 @@ La réplica no está sincronizada. Reads en la réplica devuelven datos desactua
 
 ---
 
+**Paso 0 — Leer credenciales del clúster**
+```bash
+MARIADB_ROOT_PASS=$(kubectl get secret mariadb-secret -n databases \
+  -o jsonpath='{.data.root-password}' | base64 -d)
+
+MARIADB_REPL_PASS=$(kubectl get secret mariadb-secret -n databases \
+  -o jsonpath='{.data.replication-password}' | base64 -d)
+```
+
 **Paso 1 — Verificar estado de la replicación**
 ```bash
 kubectl exec -n databases mariadb-1 -- \
-  mysql -u root -p'RootDB#2026!' -e 'SHOW SLAVE STATUS\G' 2>/dev/null \
+  mysql -u root -p"${MARIADB_ROOT_PASS}" -e 'SHOW SLAVE STATUS\G' 2>/dev/null \
   | grep -E 'Slave_IO|Slave_SQL|Seconds_Behind|Last_Error'
 ```
 
 **Paso 2 — Verificar que el primary está accesible**
 ```bash
 kubectl exec -n databases mariadb-1 -- \
-  mysql -u root -p'RootDB#2026!' \
+  mysql -u root -p"${MARIADB_ROOT_PASS}" \
   -h mariadb-0.mariadb-headless.databases.svc.cluster.local \
   -e 'SELECT 1' 2>/dev/null
 # Esperado: 1
@@ -239,13 +278,13 @@ kubectl exec -n databases mariadb-1 -- \
 **Paso 3 — Reiniciar la replicación**
 ```bash
 kubectl exec -n databases mariadb-1 -- \
-  mysql -u root -p'RootDB#2026!' 2>/dev/null << 'SQL'
+  mysql -u root -p"${MARIADB_ROOT_PASS}" 2>/dev/null << SQL
 STOP SLAVE;
 RESET SLAVE;
 CHANGE MASTER TO
   MASTER_HOST='mariadb-0.mariadb-headless.databases.svc.cluster.local',
   MASTER_USER='replicator',
-  MASTER_PASSWORD='RootDB#2026!',
+  MASTER_PASSWORD='${MARIADB_REPL_PASS}',
   MASTER_AUTO_POSITION=1;
 START SLAVE;
 SQL
@@ -254,7 +293,7 @@ SQL
 **Paso 4 — Verificar que la replicación está activa**
 ```bash
 kubectl exec -n databases mariadb-1 -- \
-  mysql -u root -p'RootDB#2026!' -e 'SHOW SLAVE STATUS\G' 2>/dev/null \
+  mysql -u root -p"${MARIADB_ROOT_PASS}" -e 'SHOW SLAVE STATUS\G' 2>/dev/null \
   | grep -E 'Slave_IO|Slave_SQL|Seconds_Behind'
 # Esperado:
 # Slave_IO_Running: Yes
@@ -294,6 +333,12 @@ WordPress no puede usar la caché Redis. Las sesiones pueden verse afectadas. Ma
 
 ---
 
+**Paso 0 — Leer credenciales del clúster**
+```bash
+REDIS_PASS=$(kubectl get secret redis-secret -n databases \
+  -o jsonpath='{.data.password}' | base64 -d)
+```
+
 **Paso 1 — Ver estado del Sentinel**
 ```bash
 for i in 0 1 2; do
@@ -309,13 +354,12 @@ kubectl get pods -n databases -l app=redis
 kubectl logs -n databases redis-0 -c redis | tail -20
 ```
 
-**Paso 3 — Forzar elección de nuevo master**
+**Paso 3 — Identificar qué pod actúa como master**
 ```bash
-# Identificar qué pod está respondiendo como master
 for i in 0 1 2; do
   echo -n "redis-$i role: "
   kubectl exec -n databases redis-$i -c redis -- \
-    redis-cli -a 'Redis#2024!' role 2>/dev/null | head -1
+    redis-cli -a "${REDIS_PASS}" role 2>/dev/null | head -1
 done
 ```
 
