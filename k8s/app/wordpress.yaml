@@ -152,6 +152,15 @@ spec:
             # sin modificar wp-config.php directamente ni reconstruir la imagen.
             - name: WORDPRESS_CONFIG_EXTRA
               value: |
+                // --- Proxy HTTPS (Ingress NGINX termina TLS) ---
+                // El Ingress termina TLS y reenvía el tráfico a WordPress en HTTP interno.
+                // Sin este bloque, WordPress no sabe que la conexión original era HTTPS
+                // y genera URLs en HTTP, causando bucles de redirección o contenido mixto.
+                // X-Forwarded-Proto: https es inyectado automáticamente por el Ingress NGINX.
+                if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
+                    $_SERVER['HTTPS'] = 'on';
+                }
+
                 // --- URLs de WordPress ---
                 define('WP_HOME', 'https://wp-k8s.local');
                 define('WP_SITEURL', 'https://wp-k8s.local');
