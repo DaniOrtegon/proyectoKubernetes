@@ -48,7 +48,7 @@ spec:
       restartPolicy: OnFailure   # Reintenta si MinIO no está disponible todavía
       containers:
         - name: mc
-          image: minio/mc:latest
+          image: minio/mc:RELEASE.2024-01-16T16-07-38Z
           imagePullPolicy: Never
           command:
             - /bin/sh
