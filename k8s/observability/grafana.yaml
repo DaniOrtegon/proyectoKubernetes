@@ -31,7 +31,7 @@ metadata:
 type: Opaque
 data:
   admin-user: YWRtaW4=          # 'admin' en base64
-  admin-password: YWRtaW4xMjM=  # 'admin123' en base64 — CAMBIAR en producción
+  admin-password: S3ViZW5ldEdyYWZhbmEjMjAwNiE=  # 'admin123' en base64 — CAMBIAR en producción
 
 ---
 # --- ConfigMap: provisioning de datasources (Prometheus + Loki) ---
