@@ -1,7 +1,7 @@
 # RUNBOOK — WordPress HA en Kubernetes
 **Proyecto:** KubeNet — WordPress HA en Minikube  
 **Versión:** 1.1  
-**Entorno:** Minikube + Kubernetes v1.28
+**Entorno:** Minikube + Kubernetes v1.35
 
 > ⚠️ **Nota de seguridad:** Este runbook no contiene credenciales en texto plano.  
 > Todos los comandos leen las contraseñas directamente desde los Kubernetes Secrets del clúster.
