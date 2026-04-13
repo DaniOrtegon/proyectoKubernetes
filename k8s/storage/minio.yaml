@@ -84,7 +84,7 @@ metadata:
   labels:
     app: minio
     app.kubernetes.io/name: minio
-    app.kubernetes.io/version: "latest"
+    app.kubernetes.io/version: "RELEASE.2024-01-16T16-07-38Z"
     app.kubernetes.io/part-of: wordpress-ha
     app.kubernetes.io/component: storage
 spec:
@@ -101,7 +101,7 @@ spec:
     spec:
       containers:
         - name: minio
-          image: minio/minio:latest
+          image: minio/minio:RELEASE.2024-01-16T16-07-38Z
           imagePullPolicy: Never   # Usa imagen precargada en Minikube; no intenta descargar de internet
           command:
             - minio
@@ -198,7 +198,7 @@ spec:
       restartPolicy: OnFailure   # Reintenta si MinIO no está listo todavía cuando el Job arranca
       containers:
         - name: setup
-          image: minio/mc:latest
+          image: minio/mc:RELEASE.2024-01-16T16-07-38Z
           imagePullPolicy: Never
           command:
             - sh
