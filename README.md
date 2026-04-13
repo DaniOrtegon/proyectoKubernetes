@@ -67,17 +67,7 @@ KubeNet es un despliegue de WordPress en alta disponibilidad sobre Kubernetes (M
 
 ## ⚙️ Requisitos previos
 
-### Herramientas
-
-```bash
-minikube
-kubectl
-helm
-docker
-kubeseal
-```
-
-### Recursos recomendados
+### Recursos de la máquina
 
 | Recurso | Mínimo |
 |---|---|
@@ -85,31 +75,49 @@ kubeseal
 | RAM | 8 GB |
 | Disco | 40 GB |
 
+### Herramientas (se instalan automáticamente con `install.sh`)
+
+```
+Docker · kubectl · Minikube · Helm
+```
+
 ---
 
 ## ⚡ Despliegue rápido
 
 ```bash
+# 1. Clonar el repositorio
 git clone <repo>
 cd KubeNet
 
-# 1. Configurar contraseñas (genera .env interactivamente)
+# 2. Instalar dependencias (Docker, kubectl, Minikube, Helm)
+chmod +x install.sh
+./install.sh
+
+# ⚠️  Si Docker se acaba de instalar, cierra sesión y vuelve a entrar antes de continuar
+
+# 3. Arrancar Minikube
+minikube start --cpus=4 --memory=8192
+
+# 4. Configurar contraseñas (se generan interactivamente, nunca se guardan en el repo)
 chmod +x setup.sh
 ./setup.sh
 
-# 2. Desplegar
+# 5. Desplegar
 chmod +x deploy.sh
 ./deploy.sh
 
-# 3. Exponer servicios
+# 6. Exponer servicios — ejecutar en otra terminal y dejarlo corriendo
 minikube tunnel
 ```
 
 Acceso tras el despliegue: **https://wp-k8s.local**
 
 > ✔ El script `deploy.sh` es **idempotente**: puede ejecutarse múltiples veces sin romper el estado del clúster.
+> El navegador mostrará un aviso de certificado — es normal, el TLS es self-signed. Acepta la excepción.
 
 ---
+
 
 ## 🏗️ Arquitectura
 
@@ -293,6 +301,7 @@ resource validation      → comprobación de limits/requests
 
 ```
 .
+├── install.sh                       # Instalación de dependencias (Docker, kubectl, Minikube, Helm)
 ├── deploy.sh                        # Script de despliegue idempotente
 ├── setup.sh                         # Configuración inicial de contraseñas
 ├── runbook.md                        # Procedimientos operativos
