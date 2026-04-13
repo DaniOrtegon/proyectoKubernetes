@@ -1,246 +1,316 @@
-#!/bin/bash
 # ============================================================
-# setup.sh — Configuración inicial de contraseñas
+# wordpress.yaml — Deployment de WordPress en HA
 #
-# Lee el archivo .env y propaga las contraseñas a:
-#   - redis.yaml       (ConfigMap con requirepass/masterauth/sentinel)
-#   - minio.yaml       (Secret stringData)
-#   - grafana.yaml     (Secret base64)
-#   - deploy.sh        (generate_sealed_secrets con las passwords correctas)
-#
-# USO:
-#   cp .env.example .env
-#   nano .env          # edita las contraseñas
-#   ./setup.sh         # aplica los cambios
-#   ./deploy.sh        # despliega
+# ARQUITECTURA:
+#   - Deployment con réplica inicial = 1 (KEDA escala desde 2 en 09-keda-wordpress.yaml)
+#   - readOnlyRootFilesystem + runAsUser=33 (www-data) → seguridad reforzada
+#   - Conecta a MariaDB primary, Redis Sentinel y MinIO S3
+#   - Probes HTTP en /wp-login.php con header Host correcto
 # ============================================================
 
-set -e
+# --- RECURSO 1: Deployment WordPress ---
+# Deployment (no StatefulSet): WordPress es stateless por diseño cuando
+# los uploads van a MinIO/S3. El estado (sesiones, caché) se externaliza
+# a Redis, y la BD a MariaDB. Cada réplica es equivalente e intercambiable.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wordpress
+  namespace: wordpress        # Namespace separado de databases por segmentación de red
+  labels:
+    app: wordpress
+    app.kubernetes.io/name: wordpress
+    app.kubernetes.io/version: "6.4"
+    app.kubernetes.io/part-of: wordpress-ha
+    app.kubernetes.io/component: frontend
+spec:
+  # replicas: 1 aquí, pero KEDA (09-keda-wordpress.yaml) toma el control
+  # y escala entre minReplicas:2 y maxReplicas:10 según carga.
+  # El valor 1 solo aplica antes de que KEDA esté activo.
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wordpress
+  template:
+    metadata:
+      labels:
+        app: wordpress
+        app.kubernetes.io/name: wordpress
+        app.kubernetes.io/version: "6.4"
+        app.kubernetes.io/part-of: wordpress-ha
+    spec:
+      affinity:
+        podAntiAffinity:
+          # ENTORNO: preferredDuringSchedulingIgnoredDuringExecution es la opción correcta
+          # para Minikube (1 nodo). Con 'required' el HPA no puede programar el 2º pod
+          # porque no hay un segundo nodo con topologyKey kubernetes.io/hostname distinto,
+          # dejando permanentemente 1 pod en Pending y rompiendo la HA.
+          #
+          # En producción multi-nodo: cambiar a requiredDuringSchedulingIgnoredDuringExecution
+          # para garantizar separación estricta entre réplicas.
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - wordpress
+                topologyKey: kubernetes.io/hostname   # Un Pod de WordPress por nodo físico
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
+      # --- SecurityContext a nivel de Pod ---
+      # Aplica a todos los contenedores del Pod como política base.
+      # R-SEC-1: runAsUser 33 = www-data en Debian (usuario del servidor web Apache/PHP).
+      # fsGroup 33 garantiza que los volúmenes montados (PVC, emptyDir) sean accesibles
+      # por el proceso www-data sin necesidad de chown en un init container.
+      # seccompProfile RuntimeDefault activa el perfil seccomp del sistema operativo,
+      # filtrando syscalls peligrosas (ptrace, mount, etc.) con impacto mínimo en rendimiento.
+      securityContext:
+        runAsNonRoot: true          # El proceso principal nunca puede ser uid 0 (root)
+        runAsUser: 33               # www-data: usuario estándar de Apache/PHP en Debian
+        fsGroup: 33                 # GID del grupo propietario de los volumenes montados
+        seccompProfile:
+          type: RuntimeDefault      # Perfil seccomp del nodo: bloquea syscalls innecesarias
 
-log_info()    { echo -e "${BLUE}[INFO]${NC} $1"; }
-log_success() { echo -e "${GREEN}[OK]${NC} $1"; }
-log_warn()    { echo -e "${YELLOW}[WARN]${NC} $1"; }
-log_error()   { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
+      containers:
+        - name: wordpress
+          # wordpress:6.4 = versión LTS estable. Evitar 'latest' en producción
+          # porque un pull inesperado puede cambiar el comportamiento sin control.
+          image: wordpress:6.4
+          ports:
+            - containerPort: 80    # Apache escucha en el puerto estándar HTTP
 
-echo ""
-echo -e "${BLUE}============================================================${NC}"
-echo -e "${BLUE}   KubeNet — Configuración de contraseñas${NC}"
-echo -e "${BLUE}============================================================${NC}"
-echo ""
+          # --- SecurityContext a nivel de contenedor ---
+          # Restricciones adicionales que se suman al contexto del Pod.
+          # readOnlyRootFilesystem: el FS raíz del contenedor es inmutable.
+          # Un atacante que ejecute código arbitrario no puede modificar binarios
+          # ni escribir ficheros persistentes fuera de los volúmenes explícitamente montados.
+          # CONSECUENCIA: PHP necesita /tmp y Apache necesita /var/run/apache2 → emptyDirs.
+          securityContext:
+            allowPrivilegeEscalation: false    # Bloquea sudo, setuid y escalada de privilegios
+            readOnlyRootFilesystem: true       # FS raíz inmutable (requiere emptyDirs para /tmp)
+            capabilities:
+              drop: ["ALL"]                   # Elimina todas las capabilities de Linux kernel
 
-# ============================================================
-# 1. Cargar .env
-# ============================================================
-ENV_FILE="$(dirname "$0")/.env"
+          env:
+            # --- Variables no sensibles desde ConfigMap ---
+            # WORDPRESS_DB_HOST apunta al Service ClusterIP del primary MariaDB
+            # (definido en 04-mariadb.yaml como 'mariadb.databases.svc.cluster.local')
+            - name: WORDPRESS_DB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: wordpress-config
+                  key: WORDPRESS_DB_HOST
 
-if [ ! -f "$ENV_FILE" ]; then
-  log_warn "No se encontró el archivo .env"
-  log_info "Creando .env a partir de .env.example..."
-  cp "$(dirname "$0")/.env.example" "$ENV_FILE"
-  echo ""
-  echo -e "${YELLOW}  Edita el archivo .env con tus contraseñas y vuelve a ejecutar setup.sh:${NC}"
-  echo -e "  ${GREEN}nano .env${NC}"
-  echo -e "  ${GREEN}./setup.sh${NC}"
-  echo ""
-  exit 0
-fi
+            - name: WORDPRESS_DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: wordpress-config
+                  key: WORDPRESS_DB_NAME
 
-log_info "Cargando contraseñas desde .env..."
-# Carga el .env ignorando líneas comentadas o vacías.
-# Las contraseñas pueden contener # — NO se quitan los comentarios inline
-# porque las passwords del proyecto usan # como carácter (ej: RootDB#2026!)
-while IFS='=' read -r key value; do
-  # Ignorar líneas vacías o que empiezan por #
-  [[ "$key" =~ ^[[:space:]]*#.*$ || -z "$key" ]] && continue
-  # Trim de espacios al inicio y al final del valor
-  value="${value#"${value%%[![:space:]]*}"}"
-  value="${value%"${value##*[![:space:]]}"}"
-  export "$key=$value"
-done < "$ENV_FILE"
+            - name: WORDPRESS_DB_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: wordpress-config
+                  key: WORDPRESS_DB_USER
 
-# Verificar que las variables obligatorias están definidas
-REQUIRED_VARS=(
-  MARIADB_ROOT_PASSWORD
-  MARIADB_USER_PASSWORD
-  REDIS_PASSWORD
-  MINIO_ROOT_USER
-  MINIO_ROOT_PASSWORD
-  GRAFANA_ADMIN_USER
-  GRAFANA_ADMIN_PASSWORD
-)
+            # --- Credenciales desde Secrets ---
+            # IMPORTANTE: mariadb-secret está en el namespace 'databases',
+            # pero este Pod está en 'wordpress'. Los Secrets son namespace-scoped
+            # → no se pueden referenciar cross-namespace directamente.
+            # Solución implementada: duplicar el Secret en 01-secrets.yaml para ambos namespaces.
+            # Alternativa más robusta: External Secrets Operator o Vault Agent Injector.
+            - name: WORDPRESS_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mariadb-secret         # Debe existir en namespace 'wordpress'
+                  key: mariadb-user-password
 
-for var in "${REQUIRED_VARS[@]}"; do
-  if [ -z "${!var}" ]; then
-    log_error "La variable $var está vacía en .env. Revisa el archivo."
-  fi
-done
+            # Password de Redis inyectada en runtime; se referencia en WORDPRESS_CONFIG_EXTRA
+            # via getenv('REDIS_PASSWORD') para evitar escribirla en texto plano en el PHP.
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: redis-secret
+                  key: redis-password
 
-log_success "Contraseñas cargadas correctamente"
-echo ""
+            # Credenciales MinIO para el plugin WP Offload Media (AS3CF)
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-secret
+                  key: access-key
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-secret
+                  key: secret-key
 
-# ============================================================
-# FUNCIÓN: reemplazar un valor en un archivo YAML/SH de forma segura
-# Usa un delimitador alternativo (|) para evitar conflictos con / en passwords
-# ============================================================
-replace_in_file() {
-  local file="$1"
-  local pattern="$2"
-  local replacement="$3"
-  # Escapar caracteres especiales del replacement para sed
-  local escaped
-  escaped=$(printf '%s\n' "$replacement" | sed 's/[[\.*^$()+?{|]/\\&/g')
-  sed -i "s|${pattern}|${escaped}|g" "$file"
-}
+            # WORDPRESS_CONFIG_EXTRA: bloque PHP inyectado en wp-config.php por el entrypoint
+            # de la imagen oficial de WordPress. Permite configurar constantes de WordPress
+            # sin modificar wp-config.php directamente ni reconstruir la imagen.
+            - name: WORDPRESS_CONFIG_EXTRA
+              value: |
+                // --- URLs de WordPress ---
+                define('WP_HOME', 'https://wp-k8s.local');
+                define('WP_SITEURL', 'https://wp-k8s.local');
+                define('FORCE_SSL_ADMIN', true);   // Fuerza HTTPS en el área de administración
+                define('FORCE_SSL_LOGIN', true);   // Fuerza HTTPS en el login
 
-# ============================================================
-# 2. Parchear redis.yaml
-# Sustituye la contraseña hardcodeada en el ConfigMap de Redis
-# ============================================================
-REDIS_YAML="$(dirname "$0")/k8s/data/redis.yaml"
-log_info "Parcheando redis.yaml..."
+                // --- Redis HA via Sentinel ---
+                // WP_REDIS_SENTINEL: nombre lógico del grupo en Sentinel ('mymaster')
+                // WP_REDIS_SENTINEL_CONNECTION: Service ClusterIP del Sentinel (no el Redis directo)
+                // Usar Sentinel garantiza que el plugin siempre conecte al master actual,
+                // incluso después de un failover automático.
+                define('WP_REDIS_SENTINEL', 'mymaster');
+                define('WP_REDIS_SENTINEL_CONNECTION', 'redis-sentinel.databases.svc.cluster.local:26379');
+                define('WP_REDIS_PASSWORD', getenv('REDIS_PASSWORD'));
+                define('WP_REDIS_TIMEOUT', 1);           // Timeout de conexión en segundos
+                define('WP_REDIS_READ_TIMEOUT', 1);      // Timeout de lectura en segundos
 
-# Hacemos backup si no existe ya
-[ ! -f "${REDIS_YAML}.bak" ] && cp "$REDIS_YAML" "${REDIS_YAML}.bak"
+                // --- OpenTelemetry (tracing distribuido) ---
+                // Requiere plugin: wp-packages/opentelemetry-wordpress
+                // Las trazas se envían al OTel Collector definido en 17-tracing.yaml.
+                // OTEL_PHP_AUTOLOAD_ENABLED activa la instrumentación automática de PHP.
+                putenv('OTEL_PHP_AUTOLOAD_ENABLED=true');
+                putenv('OTEL_SERVICE_NAME=wordpress');
+                putenv('OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector.monitoring.svc.cluster.local:4318');
+                putenv('OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf');
 
-# Extraer la contraseña actual del backup para reemplazarla
-CURRENT_REDIS_PASS=$(grep -m1 'requirepass ' "${REDIS_YAML}.bak" | awk '{print $2}')
+                // --- MinIO S3 (uploads stateless) ---
+                // AS3CF_SETTINGS configura el plugin WP Offload Media para enviar
+                // uploads a MinIO en lugar del disco local.
+                // Esto hace los Pods de WordPress completamente stateless (sin PVC de uploads).
+                // 'provider' => 'aws': MinIO es compatible con la API S3 de AWS.
+                // ⚠️ 'remove-local-file' => false: los uploads se guardan TAMBIÉN en /var/www/html.
+                //    Cambiar a true para un diseño realmente stateless y ahorrar espacio en PVC.
+                // ⚠️ 'force-https' => true: el Ingress termina TLS, WordPress debe generar URLs HTTPS.
+                define('AS3CF_SETTINGS', serialize([
+                  'provider'                 => 'aws',
+                  'access-key-id'            => getenv('MINIO_ACCESS_KEY'),
+                  'secret-access-key'        => getenv('MINIO_SECRET_KEY'),
+                  'bucket'                   => 'wordpress-uploads',
+                  'region'                   => 'us-east-1',         // MinIO ignora la región
+                  'use-server-roles'         => false,
+                  'enable-object-prefix'     => true,
+                  'object-prefix'            => 'uploads/',
+                  'force-https'              => true,                // HTTPS en Ingress TLS
+                  'remove-local-file'        => false,               // Ver advertencia arriba
+                  'custom-domain'            => 'minio.storage.svc.cluster.local:9000',
+                  'enable-delivery-domain'   => true,
+                ]));
 
-if [ -n "$CURRENT_REDIS_PASS" ] && [ "$CURRENT_REDIS_PASS" != "$REDIS_PASSWORD" ]; then
-  # Reemplazar todas las ocurrencias de la contraseña anterior por la nueva
-  sed -i "s|requirepass ${CURRENT_REDIS_PASS}|requirepass ${REDIS_PASSWORD}|g" "$REDIS_YAML"
-  sed -i "s|masterauth ${CURRENT_REDIS_PASS}|masterauth ${REDIS_PASSWORD}|g" "$REDIS_YAML"
-  sed -i "s|sentinel auth-pass mymaster ${CURRENT_REDIS_PASS}|sentinel auth-pass mymaster ${REDIS_PASSWORD}|g" "$REDIS_YAML"
-  sed -i "s|redis-cli -a '${CURRENT_REDIS_PASS}'|redis-cli -a '${REDIS_PASSWORD}'|g" "$REDIS_YAML"
-  log_success "redis.yaml actualizado"
-elif [ "$CURRENT_REDIS_PASS" = "$REDIS_PASSWORD" ]; then
-  log_success "redis.yaml ya tiene la contraseña correcta — sin cambios"
-else
-  log_warn "No se encontró la contraseña anterior en redis.yaml — verifica manualmente"
-fi
+          # Límites de recursos: ajustados para un Pod WordPress con PHP-Apache.
+          # WordPress puede consumir más memoria con plugins pesados → monitorizar en producción.
+          resources:
+            requests:
+              cpu: 100m       # Garantía mínima de CPU para el scheduler
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi   # OOMKill si se supera → revisar si WordPress crece
 
-# ============================================================
-# 3. Parchear minio.yaml
-# Sustituye las credenciales de MinIO en los Secrets stringData
-# ============================================================
-MINIO_YAML="$(dirname "$0")/k8s/storage/minio.yaml"
-log_info "Parcheando minio.yaml..."
+          # --- startupProbe ---
+          # PHP-FPM + WordPress puede tardar >30s en el primer arranque (instalación de WP,
+          # conexión a BD). startupProbe da hasta failureThreshold × periodSeconds = 5 minutos
+          # antes de que Kubernetes considere el Pod fallido.
+          # Durante este tiempo, readiness y liveness NO se evalúan.
+          # El header Host es necesario porque el vhost de Apache responde por 'wp-k8s.local'.
+          startupProbe:
+            httpGet:
+              path: /wp-login.php
+              port: 80
+              httpHeaders:
+                - name: Host
+                  value: wp-k8s.local
+            failureThreshold: 30
+            periodSeconds: 10          # hasta 5 minutos para el primer startup
 
-[ ! -f "${MINIO_YAML}.bak" ] && cp "$MINIO_YAML" "${MINIO_YAML}.bak"
+          # --- readinessProbe ---
+          # Determina si el Pod puede recibir tráfico del Service.
+          # Mientras no pase, el Pod se excluye del balanceo.
+          # successThreshold: 1 → un solo check positivo basta para volver a incluirlo.
+          readinessProbe:
+            httpGet:
+              path: /wp-login.php
+              port: 80
+              httpHeaders:
+                - name: Host
+                  value: wp-k8s.local
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
+            successThreshold: 1
 
-# Leer valores actuales del backup
-CURRENT_MINIO_USER=$(grep -m1 'root-user:' "${MINIO_YAML}.bak" | awk '{print $2}')
-CURRENT_MINIO_PASS=$(grep -m1 'root-password:' "${MINIO_YAML}.bak" | awk '{print $2}')
+          # --- livenessProbe ---
+          # Detecta Pods bloqueados o en estado zombie y los reinicia.
+          # Más tolerante que readiness (failureThreshold: 5) para evitar
+          # reinicios durante picos de carga legítimos.
+          livenessProbe:
+            httpGet:
+              path: /wp-login.php
+              port: 80
+              httpHeaders:
+                - name: Host
+                  value: wp-k8s.local
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            failureThreshold: 5        # Tolerante a picos de carga
 
-# Reemplazar usuario root
-if [ -n "$CURRENT_MINIO_USER" ]; then
-  sed -i "s|root-user: ${CURRENT_MINIO_USER}|root-user: ${MINIO_ROOT_USER}|g" "$MINIO_YAML"
-fi
-# Reemplazar contraseña root
-if [ -n "$CURRENT_MINIO_PASS" ]; then
-  sed -i "s|root-password: ${CURRENT_MINIO_PASS}|root-password: ${MINIO_ROOT_PASSWORD}|g" "$MINIO_YAML"
-fi
-# Reemplazar access-key y secret-key (usan los mismos valores en este proyecto)
-CURRENT_ACCESS=$(grep -m1 'access-key:' "${MINIO_YAML}.bak" | awk '{print $2}')
-CURRENT_SECRET=$(grep -m1 'secret-key:' "${MINIO_YAML}.bak" | awk '{print $2}')
-[ -n "$CURRENT_ACCESS" ] && sed -i "s|access-key: ${CURRENT_ACCESS}|access-key: ${MINIO_ROOT_USER}|g" "$MINIO_YAML"
-[ -n "$CURRENT_SECRET" ] && sed -i "s|secret-key: ${CURRENT_SECRET}|secret-key: ${MINIO_ROOT_PASSWORD}|g" "$MINIO_YAML"
+          volumeMounts:
+            # PVC wordpress-pvc (definido en 03-pvc.yaml) montado en la raíz de WordPress.
+            # Cubre tanto el core de WP como wp-content (plugins, temas, uploads locales).
+            # Con readOnlyRootFilesystem:true, este es el único punto de escritura del FS.
+            - name: wordpress-storage
+              mountPath: /var/www/html
 
-log_success "minio.yaml actualizado"
+            # emptyDir efímero para /tmp: requerido por PHP para ficheros temporales,
+            # sesiones en disco y compilación de plantillas.
+            # Se vacía al terminar el Pod → sin coste de almacenamiento persistente.
+            - name: tmp-dir
+              mountPath: /tmp
 
-# ============================================================
-# 4. Parchear grafana.yaml
-# El secret de Grafana usa base64 directamente en el YAML
-# ============================================================
-GRAFANA_YAML="$(dirname "$0")/k8s/observability/grafana.yaml"
-log_info "Parcheando grafana.yaml..."
+            # emptyDir para el directorio de PIDs y sockets de Apache.
+            # Apache necesita escribir aquí sus ficheros de runtime (apache2.pid, etc.)
+            - name: apache-run
+              mountPath: /var/run/apache2
 
-[ ! -f "${GRAFANA_YAML}.bak" ] && cp "$GRAFANA_YAML" "${GRAFANA_YAML}.bak"
+      volumes:
+        # PVC creado en 03-pvc.yaml — almacenamiento persistente del core WordPress
+        - name: wordpress-storage
+          persistentVolumeClaim:
+            claimName: wordpress-pvc
 
-GRAFANA_USER_B64=$(echo -n "$GRAFANA_ADMIN_USER"     | base64)
-GRAFANA_PASS_B64=$(echo -n "$GRAFANA_ADMIN_PASSWORD" | base64)
+        # Directorio temporal efímero y escribible para PHP/Apache
+        - name: tmp-dir
+          emptyDir: {}
 
-# Leer valores actuales del backup
-CURRENT_USER_B64=$(grep 'admin-user:'     "${GRAFANA_YAML}.bak" | awk '{print $2}')
-CURRENT_PASS_B64=$(grep 'admin-password:' "${GRAFANA_YAML}.bak" | awk '{print $2}')
+        # Directorio de runtime de Apache (PIDs, sockets)
+        - name: apache-run
+          emptyDir: {}
 
-[ -n "$CURRENT_USER_B64" ] && sed -i "s|admin-user: ${CURRENT_USER_B64}|admin-user: ${GRAFANA_USER_B64}|g" "$GRAFANA_YAML"
-[ -n "$CURRENT_PASS_B64" ] && sed -i "s|admin-password: ${CURRENT_PASS_B64}|admin-password: ${GRAFANA_PASS_B64}|g" "$GRAFANA_YAML"
-
-log_success "grafana.yaml actualizado"
-
-# ============================================================
-# 5. Parchear deploy.sh
-# Sustituye las contraseñas hardcodeadas en generate_sealed_secrets()
-# y en los mensajes del resumen final
-# ============================================================
-DEPLOY_SH="$(dirname "$0")/deploy.sh"
-log_info "Parcheando deploy.sh..."
-
-[ ! -f "${DEPLOY_SH}.bak" ] && cp "$DEPLOY_SH" "${DEPLOY_SH}.bak"
-
-# Leer valores actuales del backup
-CURRENT_MARIADB_ROOT=$(grep -m1 "mariadb-root-password='" "${DEPLOY_SH}.bak" | sed "s/.*mariadb-root-password='\\([^']*\\)'.*/\\1/")
-CURRENT_MARIADB_USER=$(grep -m1 "mariadb-user-password='" "${DEPLOY_SH}.bak" | sed "s/.*mariadb-user-password='\\([^']*\\)'.*/\\1/")
-CURRENT_REDIS_IN_SH=$(grep -m1 "redis-password='" "${DEPLOY_SH}.bak" | sed "s/.*redis-password='\\([^']*\\)'.*/\\1/")
-
-# MariaDB root
-[ -n "$CURRENT_MARIADB_ROOT" ] && \
-  sed -i "s|mariadb-root-password='${CURRENT_MARIADB_ROOT}'|mariadb-root-password='${MARIADB_ROOT_PASSWORD}'|g" "$DEPLOY_SH"
-
-# MariaDB user (múltiples ocurrencias)
-[ -n "$CURRENT_MARIADB_USER" ] && \
-  sed -i "s|mariadb-user-password='${CURRENT_MARIADB_USER}'|mariadb-user-password='${MARIADB_USER_PASSWORD}'|g" "$DEPLOY_SH"
-
-# Redis
-[ -n "$CURRENT_REDIS_IN_SH" ] && \
-  sed -i "s|redis-password='${CURRENT_REDIS_IN_SH}'|redis-password='${REDIS_PASSWORD}'|g" "$DEPLOY_SH"
-
-# Actualizar también los mensajes del resumen final (echo con contraseñas en texto)
-CURRENT_MINIO_SUMMARY=$(grep "minioadmin.*Minio" "${DEPLOY_SH}.bak" | grep -o "contraseña: [^'\"]*" | head -1 | sed 's/contraseña: //')
-if [ -n "$CURRENT_MINIO_SUMMARY" ]; then
-  sed -i "s|contraseña: ${CURRENT_MINIO_SUMMARY}|contraseña: ${MINIO_ROOT_PASSWORD}|g" "$DEPLOY_SH"
-fi
-
-# Actualizar contraseña en el comando de ejemplo de replicación del resumen
-CURRENT_ROOT_ECHO=$(grep "mysql -u root -p'" "${DEPLOY_SH}.bak" | head -1 | sed "s/.*-p'\\([^']*\\)'.*/\\1/")
-[ -n "$CURRENT_ROOT_ECHO" ] && \
-  sed -i "s|-p'${CURRENT_ROOT_ECHO}'|-p'${MARIADB_ROOT_PASSWORD}'|g" "$DEPLOY_SH"
-
-log_success "deploy.sh actualizado"
-
-# ============================================================
-# 6. Añadir .env al .gitignore si no está ya
-# ============================================================
-GITIGNORE="$(dirname "$0")/.gitignore"
-if [ ! -f "$GITIGNORE" ] || ! grep -q "^\.env$" "$GITIGNORE"; then
-  echo ".env" >> "$GITIGNORE"
-  echo "*.bak" >> "$GITIGNORE"
-  echo "sealed-secrets-backup-*/" >> "$GITIGNORE"
-  log_success ".env añadido a .gitignore"
-fi
-
-# ============================================================
-# RESUMEN
-# ============================================================
-echo ""
-echo -e "${GREEN}============================================================${NC}"
-echo -e "${GREEN}   ✅  Configuración completada${NC}"
-echo -e "${GREEN}============================================================${NC}"
-echo ""
-echo -e "  Archivos actualizados:"
-echo -e "    ${GREEN}✓${NC} k8s/data/redis.yaml"
-echo -e "    ${GREEN}✓${NC} k8s/storage/minio.yaml"
-echo -e "    ${GREEN}✓${NC} k8s/observability/grafana.yaml"
-echo -e "    ${GREEN}✓${NC} deploy.sh"
-echo ""
-echo -e "  Los archivos originales tienen copia de seguridad en ${YELLOW}*.bak${NC}"
-echo ""
-echo -e "${BLUE}  Siguiente paso → despliega el proyecto:${NC}"
-echo -e "  ${GREEN}./deploy.sh${NC}"
-echo ""
+---
+# --- RECURSO 2: Service NodePort ---
+# Expone WordPress fuera del clúster sin necesidad de un LoadBalancer externo.
+# NodePort abre el puerto 30080 en TODOS los nodos del clúster.
+# En Minikube: accesible via http://<minikube-ip>:30080
+# En producción: preferir un Ingress (ya definido en 08-ingress.yaml) sobre NodePort.
+apiVersion: v1
+kind: Service
+metadata:
+  name: wordpress
+  namespace: wordpress
+  labels:
+    app: wordpress
+    app.kubernetes.io/name: wordpress
+    app.kubernetes.io/part-of: wordpress-ha
+    app.kubernetes.io/component: frontend
+spec:
+  type: NodePort          # Compatible con Minikube y clústeres sin LoadBalancer
+  ports:
+    - port: 80            # Puerto del Service dentro del clúster
+      targetPort: 80      # Puerto del contenedor al que se redirige el tráfico
+      nodePort: 30080     # Puerto externo fijo: http://<IP-nodo>:30080
+  selector:
+    app: wordpress        # Selecciona todos los Pods con label app=wordpress
