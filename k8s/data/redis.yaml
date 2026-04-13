@@ -1,5 +1,5 @@
 # ============================================================
-# 05-redis.yaml — Redis HA con Sentinel (manual, sin Helm)
+# redis.yaml — Redis HA con Sentinel (manual, sin Helm)
 #
 # ARQUITECTURA:
 #   - 1 master (redis-0) + 2 replicas (redis-1, redis-2)
@@ -29,8 +29,8 @@ data:
   redis-master.conf: |
     bind 0.0.0.0           # Escucha en todas las interfaces del Pod
     port 6379
-    requirepass Redis#2024! # Contraseña para clientes que se conecten al master
-    masterauth Redis#2024!  # Contraseña usada por las réplicas para autenticarse
+    requirepass KubenetRedis#2006! # Contraseña para clientes que se conecten al master
+    masterauth KubenetRedis#2006!  # Contraseña usada por las réplicas para autenticarse
                             # (necesaria también en el master para cuando pase a réplica tras failover)
     appendonly yes          # Habilita AOF: cada escritura se registra en fichero
     appendfsync everysec    # Sincroniza AOF a disco cada segundo (balance rendimiento/durabilidad)
@@ -44,8 +44,8 @@ data:
   redis-replica.conf: |
     bind 0.0.0.0
     port 6379
-    requirepass Redis#2024!
-    masterauth Redis#2024!   # Contraseña para conectarse al master durante la replicación
+    requirepass KubenetRedis#2006!
+    masterauth KubenetRedis#2006!   # Contraseña para conectarse al master durante la replicación
     # FQDN del Pod master via Service headless — DNS estable garantizado por el StatefulSet
     replicaof redis-0.redis-headless.databases.svc.cluster.local 6379
     replica-read-only yes    # Las réplicas rechazan escrituras directas (solo las acepta el master)
@@ -65,7 +65,7 @@ data:
     # 127.0.0.1 6379: dirección del Redis local en el mismo Pod (loopback)
     # 2: quorum — número mínimo de Sentinels que deben acordar que el master está caído
     #    para iniciar el failover. Con 3 Sentinels, quorum=2 tolera 1 fallo de Sentinel.
-    sentinel auth-pass mymaster Redis#2024!       # Contraseña para conectarse a los nodos Redis
+    sentinel auth-pass mymaster KubenetRedis#2006!       # Contraseña para conectarse a los nodos Redis
     sentinel down-after-milliseconds mymaster 5000  # Tiempo sin respuesta para considerar el master caído (5s)
     sentinel failover-timeout mymaster 60000        # Timeout máximo para completar el failover (60s)
     sentinel parallel-syncs mymaster 1              # Réplicas que sincronizan simultáneamente tras failover
@@ -242,7 +242,7 @@ spec:
           # Hasta que no pase, el Pod no recibe tráfico del Service.
           readinessProbe:
             exec:
-              command: [sh, -c, "redis-cli -a 'Redis#2024!' ping | grep PONG"]
+              command: [sh, -c, "redis-cli -a 'KubenetRedis#2006!' ping | grep PONG"]
             initialDelaySeconds: 15
             periodSeconds: 10
             failureThreshold: 3
@@ -250,7 +250,7 @@ spec:
           # Más tolerante que readiness (initialDelay mayor, más failureThreshold).
           livenessProbe:
             exec:
-              command: [sh, -c, "redis-cli -a 'Redis#2024!' ping | grep PONG"]
+              command: [sh, -c, "redis-cli -a 'KubenetRedis#2006!' ping | grep PONG"]
             initialDelaySeconds: 30
             periodSeconds: 20
             failureThreshold: 5
