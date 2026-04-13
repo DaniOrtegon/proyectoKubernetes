@@ -153,8 +153,10 @@ spec:
             - name: WORDPRESS_CONFIG_EXTRA
               value: |
                 // --- URLs de WordPress ---
-                define('WP_HOME', 'http://wp-k8s.local');
-                define('WP_SITEURL', 'http://wp-k8s.local');
+                define('WP_HOME', 'https://wp-k8s.local');
+                define('WP_SITEURL', 'https://wp-k8s.local');
+                define('FORCE_SSL_ADMIN', true);   // Fuerza HTTPS en el área de administración
+                define('FORCE_SSL_LOGIN', true);   // Fuerza HTTPS en el login
 
                 // --- Redis HA via Sentinel ---
                 // WP_REDIS_SENTINEL: nombre lógico del grupo en Sentinel ('mymaster')
@@ -183,7 +185,7 @@ spec:
                 // 'provider' => 'aws': MinIO es compatible con la API S3 de AWS.
                 // ⚠️ 'remove-local-file' => false: los uploads se guardan TAMBIÉN en /var/www/html.
                 //    Cambiar a true para un diseño realmente stateless y ahorrar espacio en PVC.
-                // ⚠️ 'force-https' => false: MinIO en Minikube usa HTTP. En producción: true.
+                // ⚠️ 'force-https' => true: el Ingress termina TLS, WordPress debe generar URLs HTTPS.
                 define('AS3CF_SETTINGS', serialize([
                   'provider'                 => 'aws',
                   'access-key-id'            => getenv('MINIO_ACCESS_KEY'),
@@ -193,7 +195,7 @@ spec:
                   'use-server-roles'         => false,
                   'enable-object-prefix'     => true,
                   'object-prefix'            => 'uploads/',
-                  'force-https'              => false,               // HTTP en Minikube
+                  'force-https'              => true,                // HTTPS en Ingress TLS
                   'remove-local-file'        => false,               // Ver advertencia arriba
                   'custom-domain'            => 'minio.storage.svc.cluster.local:9000',
                   'enable-delivery-domain'   => true,
