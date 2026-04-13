@@ -164,7 +164,7 @@ spec:
         # No se puede ejecutar directamente desde el ConfigMap porque el entrypoint
         # necesita permisos de ejecución, que se asignan con chmod aquí.
         - name: init-scripts
-          image: busybox
+          image: busybox:1.36
           imagePullPolicy: Never     # Usar imagen local (entorno Minikube sin acceso a registry)
           command:
             - sh
