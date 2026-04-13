@@ -412,8 +412,8 @@ generate_sealed_secrets() {
 
   kubectl create secret generic mariadb-secret \
     --namespace databases \
-    --from-literal=mariadb-root-password='RootDB#2026!' \
-    --from-literal=mariadb-user-password='WpUser#2024!' \
+    --from-literal=mariadb-root-password='KubenetRoot#2006!' \
+    --from-literal=mariadb-user-password='KubenetDb#2006!' \
     --dry-run=client -o yaml \
     | kubeseal --format yaml > sealed-mariadb-secret-databases.yaml \
     || log_error "Error generando sealed-mariadb-secret-databases.yaml"
@@ -421,7 +421,7 @@ generate_sealed_secrets() {
 
   kubectl create secret generic mariadb-secret \
     --namespace wordpress \
-    --from-literal=mariadb-user-password='WpUser#2024!' \
+    --from-literal=mariadb-user-password='KubenetDb#2006!' \
     --dry-run=client -o yaml \
     | kubeseal --format yaml > sealed-mariadb-secret-wordpress.yaml \
     || log_error "Error generando sealed-mariadb-secret-wordpress.yaml"
@@ -429,7 +429,7 @@ generate_sealed_secrets() {
 
   kubectl create secret generic redis-secret \
     --namespace databases \
-    --from-literal=redis-password='Redis#2024!' \
+    --from-literal=redis-password='KubenetRedis#2006!' \
     --dry-run=client -o yaml \
     | kubeseal --format yaml > sealed-redis-secret-databases.yaml \
     || log_error "Error generando sealed-redis-secret-databases.yaml"
@@ -437,7 +437,7 @@ generate_sealed_secrets() {
 
   kubectl create secret generic redis-secret \
     --namespace wordpress \
-    --from-literal=redis-password='Redis#2024!' \
+    --from-literal=redis-password='KubenetRedis#2006!' \
     --dry-run=client -o yaml \
     | kubeseal --format yaml > sealed-redis-secret-wordpress.yaml \
     || log_error "Error generando sealed-redis-secret-wordpress.yaml"
@@ -1165,7 +1165,7 @@ echo -e "    ${GREEN}Prometheus${NC}  →  https://prometheus.monitoring.local"
 echo -e "                   Alertmanager incluido en el mismo pod"
 echo ""
 echo -e "    ${GREEN}MinIO${NC}       →  http://minio.storage.local"
-echo -e "                   usuario: minioadmin  |  contraseña: Minio#2024!"
+echo -e "                   usuario: minioadmin  |  contraseña: KubenetMinio#2006!"
 echo -e "                   Buckets: wordpress-uploads, wordpress-backups"
 echo ""
 echo -e "    ${GREEN}Jaeger${NC}      →  kubectl port-forward -n monitoring svc/jaeger-query 16686:16686"
@@ -1180,7 +1180,7 @@ echo -e "    Estado del escalado:      kubectl get scaledobject -n wordpress"
 echo -e "    Logs WordPress:           kubectl logs -n wordpress -l app=wordpress -f"
 echo -e "    Logs MariaDB:             kubectl logs -n databases -l app=mariadb -f"
 echo -e "    Logs Redis:               kubectl logs -n databases -l app=redis -f"
-echo -e "    Estado replicación:       kubectl exec -n databases mariadb-1 -- mysql -u root -p'RootDB#2026!' -e 'SHOW SLAVE STATUS\G' 2>/dev/null | grep -E 'Running|Behind'"
+echo -e "    Estado replicación:       kubectl exec -n databases mariadb-1 -- mysql -u root -p'KubenetRoot#2006!' -e 'SHOW SLAVE STATUS\G' 2>/dev/null | grep -E 'Running|Behind'"
 echo -e "    Ver NetworkPolicies:      kubectl get networkpolicy -A"
 echo -e "    Ver SealedSecrets:        kubectl get sealedsecret -A"
 echo -e "    Ver certificados TLS:     kubectl get certificate -A"
