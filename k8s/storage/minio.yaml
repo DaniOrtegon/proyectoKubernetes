@@ -35,8 +35,8 @@ metadata:
     app.kubernetes.io/part-of: wordpress-ha
 type: Opaque
 stringData:
-  root-user: minioadmin          # Usuario root de MinIO — CAMBIAR en producción
-  root-password: Minio#2024!     # Contraseña root — CAMBIAR en producción; usar Sealed Secret
+  root-user: kubenetadmin          # Usuario root de MinIO — CAMBIAR en producción
+  root-password: KubenetMinio#2006!     # Contraseña root — CAMBIAR en producción; usar Sealed Secret
 
 ---
 # --- Secret con credenciales de acceso S3 (namespace 'wordpress') ---
@@ -52,8 +52,8 @@ metadata:
     app.kubernetes.io/part-of: wordpress-ha
 type: Opaque
 stringData:
-  access-key: minioadmin         # Clave de acceso S3 compatible (mismo valor que root en desarrollo)
-  secret-key: Minio#2024!        # Clave secreta S3 compatible
+  access-key: kubenetadmin         # Clave de acceso S3 compatible (mismo valor que root en desarrollo)
+  secret-key: KubenetMinio#2006!        # Clave secreta S3 compatible
 
 ---
 # --- PVC para almacenamiento de objetos de MinIO ---
