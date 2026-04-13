@@ -1,0 +1,63 @@
+# ============================================================
+# keda-wordpress.yaml — ScaledObject KEDA para WordPress
+#
+# KEDA reemplaza al HPA clásico y permite escalar basándose en
+# métricas de Prometheus (req/s) además de CPU como fallback.
+#
+# REQUISITOS:
+#   - KEDA instalado en namespace 'keda' (lo instala deploy.sh)
+#   - Prometheus corriendo en namespace 'monitoring'
+#   - Metrics Server habilitado en Minikube
+#
+# ESCALADO:
+#   - min: 2 réplicas (HA garantizada en todo momento)
+#   - max: 10 réplicas
+#   - Trigger 1: req/s desde Prometheus (tráfico real)
+#   - Trigger 2: CPU como fallback si Prometheus no está disponible
+# ============================================================
+
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: wordpress-scaledobject
+  namespace: wordpress
+  labels:
+    app: wordpress
+    app.kubernetes.io/name: wordpress
+    app.kubernetes.io/part-of: wordpress-ha
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: wordpress             # Debe coincidir con el Deployment en wordpress.yaml
+
+  minReplicaCount: 2            # Mínimo 2 réplicas para garantizar HA
+  maxReplicaCount: 10           # Máximo 10 réplicas — ajustar según ResourceQuota
+
+  # Tiempo de espera antes de escalar hacia abajo (cooldown).
+  # Evita oscilaciones si el tráfico baja momentáneamente.
+  cooldownPeriod: 60
+
+  # pollingInterval: frecuencia con la que KEDA consulta las métricas
+  pollingInterval: 15
+
+  triggers:
+    # --- Trigger 1: Peticiones por segundo (Prometheus) ---
+    # Escala cuando el número de req/s supera 10 por réplica.
+    # Usa la métrica de nginx ingress: peticiones totales al servicio wordpress.
+    # Si Prometheus no está disponible, KEDA cae al trigger de CPU.
+    - type: prometheus
+      metadata:
+        serverAddress: http://prometheus.monitoring.svc.cluster.local:9090
+        metricName: nginx_ingress_requests_per_second
+        query: |
+          sum(rate(nginx_ingress_controller_requests{service="wordpress"}[1m]))
+        threshold: "10"         # Escala cuando supera 10 req/s por réplica
+
+    # --- Trigger 2: CPU (fallback) ---
+    # Escala cuando el uso medio de CPU supera el 50% del request declarado.
+    # Actúa como fallback si Prometheus no tiene datos del ingress.
+    - type: cpu
+      metricType: Utilization
+      metadata:
+        value: "50"             # 50% del CPU request (100m) = 50m de uso medio
